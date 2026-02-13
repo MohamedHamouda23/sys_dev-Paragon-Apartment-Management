@@ -1,29 +1,60 @@
+
 import tkinter as tk
+from helpers import create_button
 
 
 
 def create_page(parent):
     frame = tk.Frame(parent, bg='#c9e4c4')
-
-    # Top buttons frame
+    # Top buttons frame (centered)
     top_btn_frame = tk.Frame(frame, bg='#c9e4c4')
-    top_btn_frame.pack(side="top", fill="x", pady=(30, 10), padx=30)
+    top_btn_frame.pack(side="top", fill="x", pady=(30, 10))
 
-    btn_add_lease= tk.Button(top_btn_frame, text="Add lease", font=("Arial", 12, "bold"), width=15, height=2, bg="#3B86FF", fg="white")
-    btn_add_lease.pack(side="left", padx=(0, 20))
+    # Centering inner frame for buttons
+    btns_inner_frame = tk.Frame(top_btn_frame, bg='#c9e4c4')
+    btns_inner_frame.pack(anchor="center")
 
-    btn_track_lease = tk.Button(top_btn_frame, text="Track lease", font=("Arial", 12, "bold"), width=15, height=2, bg="#3B86FF", fg="white")
-    btn_track_lease.pack(side="left")
+    btn_add_lease = create_button(
+        btns_inner_frame,
+        text="Add lease",
+        width=150,
+        height=50,
+        bg="#3B86FF",
+        fg="white",
+        command=None
+    )
+    btn_add_lease.pack(side="left", padx=(0,40))
+
+    btn_remove_lease = create_button(
+        btns_inner_frame,
+        text="remove lease",
+        width=150,
+        height=50,
+        bg="#3B86FF",
+        fg="white",
+        command=None
+    )
+    btn_remove_lease.pack(side="left",padx=(0, 40))
     
-    btn_remove_lease = tk.Button(top_btn_frame, text="Remove lease", font=("Arial", 12, "bold"), width=15, height=2, bg="#3B86FF", fg="white")
-    btn_remove_lease.pack(side="right")
+    
+    btn_track_lease = create_button(
+        btns_inner_frame,
+        text="Track lease",
+        width=150,
+        height=50,
+        bg="#3B86FF",
+        fg="white",
+        command=None
+    )
+    btn_track_lease.pack(side="left",padx=(0, 0))
 
+    # Big box for apartments
     box_frame = tk.Frame(frame, bg="white", bd=2, relief="groove")
     box_frame.pack(fill="both", expand=True, padx=40, pady=(10, 40))
 
     placeholder_label = tk.Label(
         box_frame,
-        text="Registered lease will appear here",
+        text="lease will appear here",
         font=("Arial", 16),
         bg="white",
         fg="#888"

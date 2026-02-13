@@ -1,18 +1,40 @@
+
 import tkinter as tk
+from helpers import create_button
 
 
 
 def create_page(parent):
     frame = tk.Frame(parent, bg='#c9e4c4')
 
-    # Top buttons frame
+    # Top buttons frame (centered)
     top_btn_frame = tk.Frame(frame, bg='#c9e4c4')
-    top_btn_frame.pack(side="top", fill="x", pady=(30, 10), padx=30)
+    top_btn_frame.pack(side="top", fill="x", pady=(30, 10))
 
-    btn_add_property = tk.Button(top_btn_frame, text="Add Property", font=("Arial", 12, "bold"), width=15, height=2, bg="#3B86FF", fg="white")
-    btn_add_property.pack(side="left", padx=(0, 20))
+    # Centering inner frame for buttons
+    btns_inner_frame = tk.Frame(top_btn_frame, bg='#c9e4c4')
+    btns_inner_frame.pack(anchor="center")
 
-    btn_add_city = tk.Button(top_btn_frame, text="Add City", font=("Arial", 12, "bold"), width=15, height=2, bg="#3B86FF", fg="white")
+    btn_add_property = create_button(
+        btns_inner_frame,
+        text="Add Property",
+        width=150,
+        height=50,
+        bg="#3B86FF",
+        fg="white",
+        command=None
+    )
+    btn_add_property.pack(side="left", padx=(0, 90))
+
+    btn_add_city = create_button(
+        btns_inner_frame,
+        text="Add City",
+        width=150,
+        height=50,
+        bg="#3B86FF",
+        fg="white",
+        command=None
+    )
     btn_add_city.pack(side="left")
 
     # Big box for apartments

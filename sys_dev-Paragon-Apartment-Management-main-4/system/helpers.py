@@ -22,8 +22,10 @@ def create_button(parent,text="Click Me", width=150, height=50, bg="red",fg="whi
             current_window.destroy()
             next_window_func()
 
-    # Create the canvas for button
-    canvas = tk.Canvas(parent, width=width, height=height, highlightthickness=0, bd=0)
+    # Get parent background color for canvas
+    parent_bg = parent.cget("bg") if hasattr(parent, "cget") else "white"
+    # Create the canvas for button, set bg to parent bg
+    canvas = tk.Canvas(parent, width=width, height=height, highlightthickness=0, bd=0, bg=parent_bg)
     
     # Place or pack based on coordinates
     if x is not None and y is not None:
@@ -211,4 +213,3 @@ def create_entry(parent, row, label_text, label_size, show=None):
     entry = tk.Entry(parent, show=show, font=("Arial", label_size), bg='white', bd=0, relief="solid")
     entry.grid(row=row, column=1, padx=25, pady=20, sticky="w", ipady=5)
     return entry
-
