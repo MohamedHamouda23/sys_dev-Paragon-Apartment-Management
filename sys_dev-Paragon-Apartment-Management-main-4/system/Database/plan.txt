@@ -1,0 +1,18 @@
+Database Team Rotation (2-week intervals)
+
+Week 1-2   : Ava and Erin
+Week 3-4   : Mohamed Hamouda (23077543)
+Week 5-6   : Erin Williams (23072947)
+Week 7-8   : Leyla Ahmed (24060594)
+Week 9-10  : Mohamed Hamouda (23077543)
+Week 11-12 : Momchil Georgiev (24033989)
+Week 13-14 : Erin Williams (23072947)
+Week 15-16 : Leyla Ahmed (24060594)
+Week 17-18 : Mohamed Hamouda (23077543)
+Week 19-20 : Momchil Georgiev (24033989)
+Week 21-22 : Erin Williams (23072947)
+Week 23-24 : Leyla Ahmed (24060594)
+Week 25-26 : Mohamed Hamouda (23077543)
+Week 27    : **Final Integration & Testing (All collaborate)**
+
+
