@@ -5,7 +5,7 @@ import User_Management, Property_Management, Tenant_Management, Lease_Management
 
 
 
-def page_template(main_window): 
+def page_template(main_window,user_info): 
     root = tk.Tk()
     root.title("Dashboard")
     root.geometry("850x650")
@@ -43,6 +43,7 @@ def page_template(main_window):
     create_side_navbar(
         parent=root,
         button_text=list(page_modules.keys()),
+        user_info=user_info,
         button_command=button_commands
     )
     

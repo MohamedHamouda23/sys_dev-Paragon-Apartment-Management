@@ -107,7 +107,7 @@ def create_navbar(parent, logo_path, button_text, button_command=None):
 
 
 
-def create_side_navbar(parent, button_text, button_command=None):
+def create_side_navbar(parent, button_text,user_info, button_command=None):
     
     sidebar_width = 190
     frame = tk.Frame(parent, bg="white", width=sidebar_width)
@@ -129,9 +129,9 @@ def create_side_navbar(parent, button_text, button_command=None):
     user_img.pack(side="top", pady=(0, 5))
 
     # Placeholder for user name and email (replace with actual values)
-    user_name = tk.Label(user_info_frame, text="User Name", font=("Arial", 12, "bold"), bg="white")
+    user_name = tk.Label(user_info_frame, text=f"{user_info[1]} {user_info[2]}", font=("Arial", 12, "bold"), bg="white")
     user_name.pack(side="top")
-    user_email = tk.Label(user_info_frame, text="user@email.com", font=("Arial", 10), bg="white")
+    user_email = tk.Label(user_info_frame, text=f"{user_info[4]}", font=("Arial", 10), bg="white")
     user_email.pack(side="top")
 
     # --- Create buttons ---

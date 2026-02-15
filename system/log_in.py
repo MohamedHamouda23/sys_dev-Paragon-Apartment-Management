@@ -3,20 +3,30 @@ import tkinter as tk
 from helpers import create_button, create_entry, create_navbar
 from Dashbaord import page_template
 from PaymentGateway import payment_window 
+from database import check_user,retrive_data
 
-def Log_in(username_entry, password_entry):
-    return username_entry.get(), password_entry.get()
+def Log_in(email_entry, password_entry):
+    return email_entry.get(), password_entry.get()
 
-def authentication(username_entry, password_entry, login_window, main_window):
-    username, password = Log_in(username_entry, password_entry)
-    print("Auth:", username, password)
-    # ----------------------------------------------
-    # Database authentication logic here
-    # ----------------------------------------------
+
+def authentication(email_entry, password_entry,login_window, main_window):
+    email, password = Log_in(email_entry, password_entry)
+
+    user = check_user(email, password)
+
+    if user:
+        user_info = retrive_data(email, password)
+        login_window.destroy()
+        page_template(main_window,user_info)
+    else:
+        print("Invalid login")
+
+
+
+
+
     
 
-    login_window.destroy()
-    page_template(main_window)
 
 
 def Log_window(main_window):  
@@ -39,7 +49,7 @@ def Log_window(main_window):
     frame = tk.Frame(login_root, bg="#ffffff", width=400, height=350, relief="solid", border=1)
     frame.place(relx=0.5, rely=0.6, anchor="center")
 
-    username_entry = create_entry(frame, 0, "Username", label_size=20)
+    email_entry = create_entry(frame, 0, "Email", label_size=20)
     password_entry = create_entry(frame, 1, "Password", label_size=20, show="*")
 
     button_frame = tk.Frame(frame, bg="#ffffff")
@@ -51,6 +61,6 @@ def Log_window(main_window):
         height=50,
         bg="red",
         fg="white",
-        command=lambda: authentication(username_entry, password_entry, login_root, main_window)
+        command=lambda: authentication(email_entry, password_entry, login_root, main_window)
     )
 
