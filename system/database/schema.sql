@@ -74,14 +74,14 @@ CREATE TABLE IF NOT EXISTS Apartments
     city_id	int,
     building_id int,
     num_rooms	int,
-    type 	TEXT CHECK(type IN ('Studio', 'One Bedroom', 'Two Bedroom', 'Three Bedroom', 'Penthouse')),
+    type 	TEXT CHECK(type IN ('Studio', 'Apartment', 'Penthouse')),
     occupancy_status 	TEXT CHECK(occupancy_status IN ('Occupied', 'Vacant', 'Unavailable')),
     FOREIGN KEY (city_id) REFERENCES Location(city_id),
     FOREIGN KEY (building_id) REFERENCES Buildings(building_id));
 
 
 
-CREATE TABLE IF NOT EXIST Buildings
+CREATE TABLE IF NOT EXISTS Buildings
  (
     building_id  INTEGER PRIMARY KEY AUTOINCREMENT,
     city_id	int,
@@ -214,6 +214,12 @@ INSERT INTO Role (role_name) VALUES
 ('Administrators'),
 ('Manager'),
 ('Tenant');
+
+INSERT INTO Buildings (city_id, street, postcode) VALUES
+(1, '123 Bristol St', 'BS1 4ST'),
+(2, '456 Cardiff Rd', 'CF10 1EP'),
+(3, '789 London Ave', 'E1 6AN'),
+(4, '321 Manchester Blvd', 'M1 2AB');
 
 INSERT INTO Location (city_name) VALUES
 ('Bristol'),

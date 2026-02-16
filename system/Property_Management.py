@@ -18,12 +18,21 @@ def show_add_apartment_popup(parent):
     cursor = conn.cursor()
     cursor.execute("SELECT city_id, city_name FROM Location")
     cities = cursor.fetchall()
-    conn.close()
-
     city_names = [c[1] for c in cities]
     city_ids = {c[1]: c[0] for c in cities}
 
-    types = ['Studio', 'One Bedroom', 'Two Bedroom', 'Three Bedroom', 'Penthouse']
+    # Fetch all buildings and organize by city_id, include postcode
+    cursor.execute("SELECT building_id, city_id, street, postcode FROM Buildings")
+    buildings = cursor.fetchall()
+    buildings_by_city = {}
+    display_to_id = {}
+    for b_id, c_id, street, postcode in buildings:
+        display = f"{street} ({postcode})"
+        buildings_by_city.setdefault(c_id, []).append((b_id, display))
+        display_to_id[display] = b_id
+    conn.close()
+
+    types = ['Studio', 'Apartment', 'Penthouse']
     occupancy = ['Occupied', 'Vacant', 'Unavailable']
 
     tk.Label(popup, text="City:").pack()
@@ -32,8 +41,22 @@ def show_add_apartment_popup(parent):
     city_dropdown.pack()
 
     tk.Label(popup, text="Address:").pack()
-    address_entry = tk.Entry(popup)
-    address_entry.pack()
+    address_var = tk.StringVar()
+    address_dropdown = ttk.Combobox(popup, textvariable=address_var, values=[], state="readonly")
+    address_dropdown.pack()
+
+    def update_addresses(*args):
+        selected_city = city_var.get()
+        if selected_city:
+            city_id = city_ids[selected_city]
+            addresses = [display for _, display in buildings_by_city.get(city_id, [])]
+            address_dropdown['values'] = addresses
+            address_var.set('' if not addresses else addresses[0])
+        else:
+            address_dropdown['values'] = []
+            address_var.set('')
+
+    city_var.trace_add('write', update_addresses)
 
     tk.Label(popup, text="Number of Rooms:").pack()
     rooms_entry = tk.Entry(popup)
@@ -51,7 +74,7 @@ def show_add_apartment_popup(parent):
 
     def submit():
         city = city_var.get()
-        address = address_entry.get()
+        address = address_var.get()
         num_rooms = rooms_entry.get()
         apt_type = type_var.get()
         occ = occ_var.get()
@@ -59,11 +82,16 @@ def show_add_apartment_popup(parent):
             messagebox.showerror("Error", "All fields are required.")
             return
         try:
+            city_id = city_ids[city]
+            building_id = display_to_id.get(address)
+            if building_id is None:
+                messagebox.showerror("Error", "Invalid building selection.")
+                return
             conn = check_connection()
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO Apartments (city_id, address, num_rooms, type, occupancy_status) VALUES (?, ?, ?, ?, ?)",
-                (city_ids[city], address, int(num_rooms), apt_type, occ)
+                "INSERT INTO Apartments (city_id, building_id, num_rooms, type, occupancy_status) VALUES (?, ?, ?, ?, ?)",
+                (city_id, building_id, int(num_rooms), apt_type, occ)
             )
             conn.commit()
             conn.close()
