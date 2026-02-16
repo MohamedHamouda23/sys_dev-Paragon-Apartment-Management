@@ -208,8 +208,21 @@ def create_side_navbar(parent, button_text,user_info, button_command=None):
 
 
 def create_entry(parent, row, label_text, label_size, show=None):
-    label = tk.Label(parent, text=label_text, font=("Arial", label_size), bg="#ffffff")
+    # Use a more Mac-friendly font and subtle border
+    import platform
+    system_font = "Helvetica Neue" if platform.system() == "Darwin" else "Arial"
+    label = tk.Label(parent, text=label_text, font=(system_font, label_size), bg="#ffffff")
     label.grid(row=row, column=0, padx=25, pady=40, sticky="e")
-    entry = tk.Entry(parent, show=show, font=("Arial", label_size), bg='white', bd=0, relief="solid")
+    entry = tk.Entry(
+        parent,
+        show=show,
+        font=(system_font, label_size),
+        bg='white',
+        bd=1,  # subtle border
+        relief="groove",  # groove is more native on Mac
+        highlightthickness=1,
+        highlightbackground="#cccccc",
+        highlightcolor="#3B86FF"
+    )
     entry.grid(row=row, column=1, padx=25, pady=20, sticky="w", ipady=5)
     return entry
