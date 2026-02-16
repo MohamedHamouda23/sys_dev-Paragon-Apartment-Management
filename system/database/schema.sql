@@ -1,16 +1,30 @@
-CREATE TABLE Location (
+DROP TABLE IF EXISTS Location;
+DROP TABLE IF EXISTS Role;
+DROP TABLE IF EXISTS User;
+DROP TABLE IF EXISTS User_Access;
+DROP TABLE IF EXISTS Tenant;
+DROP TABLE IF EXISTS Tenant_Reference;
+DROP TABLE IF EXISTS Apartments;
+DROP TABLE IF EXISTS Lease;
+DROP TABLE IF EXISTS Payment;
+DROP TABLE IF EXISTS Maintenance_Request;
+DROP TABLE IF EXISTS Complaints;
+DROP TABLE IF EXISTS Employee;
+DROP TABLE IF EXISTS Maintenance_Assignment;
+DROP TABLE IF EXISTS Report;
+CREATE TABLE IF NOT EXISTS Location (
     city_id  INTEGER PRIMARY KEY AUTOINCREMENT,
     city_name varchar(70)
 );
 
 
-CREATE TABLE Role (
+CREATE TABLE IF NOT EXISTS Role (
     role_id   INTEGER PRIMARY KEY AUTOINCREMENT,
     role_name varchar(35)
 );
 
 
-CREATE TABLE User (
+CREATE TABLE IF NOT EXISTS User (
     user_id   INTEGER PRIMARY KEY AUTOINCREMENT,
     city_id  int,
     first_name	VARCHAR(80),
@@ -20,7 +34,7 @@ CREATE TABLE User (
 
 
 
-CREATE TABLE User_Access (
+CREATE TABLE IF NOT EXISTS User_Access (
     user_id   int,
     password_hash  VARCHAR(255),
     role_id	int,
@@ -31,7 +45,7 @@ CREATE TABLE User_Access (
 );
 
 
-CREATE TABLE Tenant (
+CREATE TABLE IF NOT EXISTS Tenant (
     tenant_id   INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id  int,
     ni_number	VARCHAR(20),
@@ -41,7 +55,7 @@ CREATE TABLE Tenant (
 );
 
 
-CREATE TABLE Tenant_Reference (
+CREATE TABLE IF NOT EXISTS Tenant_Reference (
     reference_id   INTEGER PRIMARY KEY AUTOINCREMENT,
     tenant_id  int,
     reference	VARCHAR(255),
@@ -51,36 +65,22 @@ CREATE TABLE Tenant_Reference (
 
 
 
-CREATE TABLE Occupancy_Status
- (
-    occupancy_status_id   INTEGER PRIMARY KEY AUTOINCREMENT,
-    occupancy_status	VARCHAR(30)
-);
-
-
-CREATE TABLE Apartment_Type (
-    type_id   INTEGER PRIMARY KEY AUTOINCREMENT,
-    type_name	VARCHAR(50)
-);
-
-
-CREATE TABLE Apartments
+CREATE TABLE IF NOT EXISTS Apartments
  (
     apartment_id  INTEGER PRIMARY KEY AUTOINCREMENT,
     city_id	int,
     address	  VARCHAR(255),
     num_rooms	int,
-    type_id 	int,
-    occupancy_status_id 	int,
-    FOREIGN KEY (city_id) REFERENCES Location(city_id),
-    FOREIGN KEY (type_id) REFERENCES Apartment_Type(type_id),
-    FOREIGN KEY (occupancy_status_id) REFERENCES Occupancy_Status(occupancy_status_id)
-);
+    type 	TEXT CHECK(type IN ('Studio', 'One Bedroom', 'Two Bedroom', 'Three Bedroom', 'Penthouse')),
+    occupancy_status 	TEXT CHECK(occupancy_status IN ('Occupied', 'Vacant', 'Unavailable')),
+    FOREIGN KEY (city_id) REFERENCES Location(city_id));
 
 
 
 
-CREATE TABLE Lease
+
+
+CREATE TABLE IF NOT EXISTS Lease
  (
     lease_id 	INTEGER PRIMARY KEY AUTOINCREMENT,
     apartment_id 	int,
@@ -96,7 +96,7 @@ CREATE TABLE Lease
 );
 
 
-CREATE TABLE Payment
+CREATE TABLE IF NOT EXISTS Payment
  (
     payment_id 	INTEGER PRIMARY KEY AUTOINCREMENT,
     lease_id 	int,
@@ -109,38 +109,22 @@ CREATE TABLE Payment
 
 );
 
-CREATE TABLE Maintenance_Request_Status
- (
-    status_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    status	VARCHAR(50)
 
-);
 
-CREATE TABLE Maintenance_Priority
- (
-    priority_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    priority	VARCHAR(50)
-
-);
-
-CREATE TABLE Maintenance_Request
+CREATE TABLE IF NOT EXISTS Maintenance_Request
  (
     request_id 	INTEGER PRIMARY KEY AUTOINCREMENT,
     apartment_id 	int,
     tenant_id 	int,
     issue	VARCHAR(255),
     description	VARCHAR(255),
-    status_id 	int,
-    priority_id 	int,
+    Maintenance_status  TEXT check(Maintenance_status IN ('Open', 'In Progress', 'Resolved', 'Closed')),
+    priority TEXT check(priority IN ('Low', 'Medium', 'High')),
     created_date	DATETIME,
     resolved_date	DATETIME,
     notes	VARCHAR(255),
     FOREIGN KEY (apartment_id) REFERENCES Apartments(apartment_id),
-    FOREIGN KEY (tenant_id) REFERENCES Tenant(tenant_id),
-    FOREIGN KEY (status_id) REFERENCES Maintenance_Request_Status(status_id),
-    FOREIGN KEY (priority_id) REFERENCES Maintenance_Priority(priority_id)
-
-);
+    FOREIGN KEY (tenant_id) REFERENCES Tenant(tenant_id));
 
 
 CREATE TABLE Complaints
@@ -200,6 +184,7 @@ CREATE TABLE Report
     payment_id  	int ,
     date_created	DATETIME ,
     data_from_date	DATE ,
+    report_type 	TEXT CHECK(report_type IN ('Financial', 'Occupancy')),
     data_to_date	DATE ,
     FOREIGN KEY (apartment_id) REFERENCES Apartments(apartment_id),
     FOREIGN KEY (payment_id) REFERENCES Payment(payment_id)
@@ -210,17 +195,6 @@ CREATE TABLE Report
 
 
 
-
-CREATE TABLE Report_Type
- (
-  
-
-    report_type_id 	INTEGER PRIMARY KEY AUTOINCREMENT ,
-    report_id 	INTEGER ,
-    report_type	VARCHAR(50),
-    FOREIGN KEY (report_id) REFERENCES Report(report_id)
-
-);
 
 
 INSERT INTO Role (role_name) VALUES
