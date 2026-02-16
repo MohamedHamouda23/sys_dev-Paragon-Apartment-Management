@@ -12,6 +12,9 @@ DROP TABLE IF EXISTS Complaints;
 DROP TABLE IF EXISTS Employee;
 DROP TABLE IF EXISTS Maintenance_Assignment;
 DROP TABLE IF EXISTS Report;
+DROP TABLE IF EXISTS Buildings;
+
+
 CREATE TABLE IF NOT EXISTS Location (
     city_id  INTEGER PRIMARY KEY AUTOINCREMENT,
     city_name varchar(70)
@@ -69,15 +72,22 @@ CREATE TABLE IF NOT EXISTS Apartments
  (
     apartment_id  INTEGER PRIMARY KEY AUTOINCREMENT,
     city_id	int,
-    address	  VARCHAR(255),
+    building_id int,
     num_rooms	int,
     type 	TEXT CHECK(type IN ('Studio', 'One Bedroom', 'Two Bedroom', 'Three Bedroom', 'Penthouse')),
     occupancy_status 	TEXT CHECK(occupancy_status IN ('Occupied', 'Vacant', 'Unavailable')),
+    FOREIGN KEY (city_id) REFERENCES Location(city_id),
+    FOREIGN KEY (building_id) REFERENCES Buildings(building_id));
+
+
+
+CREATE TABLE IF NOT EXIST Buildings
+ (
+    building_id  INTEGER PRIMARY KEY AUTOINCREMENT,
+    city_id	int,
+    street VARCHAR(70),
+    postcode VARCHAR(10),
     FOREIGN KEY (city_id) REFERENCES Location(city_id));
-
-
-
-
 
 
 CREATE TABLE IF NOT EXISTS Lease
