@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS Buildings
     city_id	int,
     street VARCHAR(70),
     postcode VARCHAR(10),
-    FOREIGN KEY (city_id) REFERENCES Location(city_id));
+    FOREIGN KEY (city_id) REFERENCES Location(city_id)); 
 
 
 CREATE TABLE IF NOT EXISTS Lease
