@@ -12,7 +12,7 @@ def create_page(parent):
     top_btn_frame.pack(side="top", fill="x", pady=(30, 10))
 
     # Centering inner frame for buttons
-    btns_inner_frame = tk.Frame(top_btn_frame, bg='#c9e4c4')
+    btns_inner_frame = tk.Frame(top_btn_frame, bg="#000000")
     btns_inner_frame.pack(anchor="center")
 
     btn_add_user = create_button(
