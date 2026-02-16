@@ -242,7 +242,9 @@ INSERT INTO User (city_id, first_name, surname) VALUES
 (1, 'ava', 'abtin'),
 (1, 'leyla', 'Ahmed'),
 (1, 'erin', 'williams'),
-(1, 'chiko', 'momchil');
+(1, 'tenant', 'test'),
+(1, 'chiko', 'momchil'),
+(1, 'test', 'test');
 
 INSERT INTO User_Access (user_id, password_hash, role_id, email) VALUES
 (1, 'hash_frontdesk123', 1, 'mohamed@company.com'),
@@ -250,7 +252,8 @@ INSERT INTO User_Access (user_id, password_hash, role_id, email) VALUES
 (3, 'hash_maint123', 3, 'leyla@company.com'),
 (4, 'hash_admin123', 4, 'erin@company.com'),
 (5, 'hash_manager123', 5, 'chiko@company.com'),
-(6, 'hash_admin123', 6, 'Tenant@company.com');
+(6, 'hash_admin123', 6, 'Tenant@company.com'),
+(7, '123', 1, '123');
 
 
 INSERT INTO Tenant (user_id, ni_number, telephone, occupation)
