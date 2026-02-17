@@ -226,3 +226,38 @@ def create_entry(parent, row, label_text, label_size, show=None):
     )
     entry.grid(row=row, column=1, padx=25, pady=20, sticky="w", ipady=5)
     return entry
+
+
+
+
+def styled_button(parent, **kwargs):
+
+    return tk.Button(
+        parent,
+        font=("Arial", 12, "bold"),
+        bg="#3B86FF",
+        fg="white",
+        relief="raised",
+        bd=2,
+        padx=10,
+        pady=4,
+        activebackground="#1c5db6",
+        activeforeground="white",
+        cursor="hand2",
+        **kwargs
+    )
+
+def create_frame(parent):
+
+    frame = tk.Frame(parent, bg='#c9e4c4')
+
+    top_btn_frame = tk.Frame(frame, bg='#c9e4c4')
+    top_btn_frame.pack(side="top", fill="x", pady=(30, 10))
+
+    btns_inner_frame = tk.Frame(top_btn_frame, bg='#c9e4c4')
+    btns_inner_frame.pack(anchor="center")
+
+    box_frame = tk.Frame(frame, bg="white", bd=2, relief="groove")
+    box_frame.pack(fill="both", expand=True, padx=40, pady=(10, 40))
+
+    return frame, btns_inner_frame, box_frame
