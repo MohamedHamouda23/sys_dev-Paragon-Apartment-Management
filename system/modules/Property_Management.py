@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from core.helpers import create_button, create_frame
+from core.helpers import create_button, create_frame,clear_frame
 from core.database import check_connection 
 from core.database import (
     get_all_cities, add_city, get_all_buildings, add_building,
@@ -41,10 +41,11 @@ class ApartmentManagerPage:
         )
         add_building_btn.pack(side="left", padx=(0, 0), pady=10)
 
-    def refresh_apartments(self):
-        for widget in self.box_frame.winfo_children():
-            widget.destroy()
 
+
+
+    def refresh_apartments(self):
+        clear_frame(self.box_frame)
         apartments = get_all_apartments()
 
         if not apartments:
@@ -72,8 +73,7 @@ class ApartmentManagerPage:
 
     # ---------------------- Add City ----------------------
     def show_add_city_stepper(self):
-        for widget in self.box_frame.winfo_children():
-            widget.destroy()
+        clear_frame(self.box_frame)
 
         tk.Label(self.box_frame, text="Add New City:").pack(pady=(20, 5))
         city_var = tk.StringVar()
@@ -87,8 +87,7 @@ class ApartmentManagerPage:
                 return
             try:
                 add_city(city_name)
-                for widget in self.box_frame.winfo_children():
-                    widget.destroy()
+                clear_frame(self.box_frame)
                 tk.Label(self.box_frame, text="City added successfully!", fg="green", font=("Arial", 14)).pack(pady=20)
                 self.box_frame.after(1200, self.refresh_apartments)
             except Exception as e:
@@ -98,8 +97,7 @@ class ApartmentManagerPage:
 
     # ---------------------- Add Building ----------------------
     def show_add_building_stepper(self):
-        for widget in self.box_frame.winfo_children():
-            widget.destroy()
+        clear_frame(self.box_frame)
 
         tk.Label(self.box_frame, text="Add New Building:").pack(pady=(20, 5))
 
@@ -132,8 +130,7 @@ class ApartmentManagerPage:
             try:
                 city_id = self.city_ids[city]
                 add_building(city_id, street, postcode)
-                for widget in self.box_frame.winfo_children():
-                    widget.destroy()
+                clear_frame(self.box_frame)
                 tk.Label(self.box_frame, text="Building added successfully!", fg="green", font=("Arial", 14)).pack(pady=20)
                 self.box_frame.after(1200, self.refresh_apartments)
             except Exception as e:
@@ -182,7 +179,7 @@ class AddApartmentStepper:
 
     # -------------------- Step 1: Select City --------------------
     def step_city(self):
-        self.clear_frame()
+        clear_frame(self.box_frame)
         tk.Label(self.box_frame, text="Select City:").pack()
         city_var = tk.StringVar()
         city_dropdown = ttk.Combobox(self.box_frame, textvariable=city_var, values=self.city_names, state="readonly")
@@ -191,7 +188,7 @@ class AddApartmentStepper:
 
     # -------------------- Step 2: Select Address --------------------
     def step_address(self, selected_city):
-        self.clear_frame()
+        clear_frame(self.box_frame)
         tk.Label(self.box_frame, text=f"City: {selected_city}").pack()
         tk.Label(self.box_frame, text="Select Address:").pack()
 
@@ -210,7 +207,7 @@ class AddApartmentStepper:
 
     # -------------------- Step 3: Enter Apartment Details --------------------
     def step_details(self, selected_city, selected_address):
-        self.clear_frame()
+        clear_frame(self.box_frame)
         tk.Label(self.box_frame, text=f"City: {selected_city}").pack()
         tk.Label(self.box_frame, text=f"Address: {selected_address}").pack()
 
@@ -261,10 +258,7 @@ class AddApartmentStepper:
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
-    # -------------------- Utility --------------------
-    def clear_frame(self):
-        for widget in self.box_frame.winfo_children():
-            widget.destroy()
+
 
 
 
