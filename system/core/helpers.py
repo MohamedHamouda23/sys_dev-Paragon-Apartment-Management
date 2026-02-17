@@ -1,5 +1,7 @@
 import tkinter as tk
 import platform  
+from tkinter import ttk
+
 
 def create_button(parent, text="Click Me", width=150, height=50, bg="red", fg="white",
                   command=None, x=None, y=None, next_window_func=None, current_window=None):
@@ -161,11 +163,7 @@ def create_entry(parent, row, label_text, label_size, show=None):
     return entry
 
 
-def styled_button(parent, **kwargs):
-    return tk.Button(parent, font=("Arial", 12, "bold"), bg="#3B86FF", fg="white",
-                     relief="raised", bd=2, padx=10, pady=4,
-                     activebackground="#1c5db6", activeforeground="white",
-                     cursor="hand2", **kwargs)
+
 
 
 def create_frame(parent):
