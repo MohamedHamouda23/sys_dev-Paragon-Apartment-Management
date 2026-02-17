@@ -4,7 +4,7 @@ from helpers import create_button, create_entry, create_navbar
 from Dashbaord import page_template
 from database import check_user, retrive_data
 
-class LoginWindow:
+class Log_window:
     def __init__(self, main_window):
         self.main_window = main_window
         self.main_window.withdraw()  
