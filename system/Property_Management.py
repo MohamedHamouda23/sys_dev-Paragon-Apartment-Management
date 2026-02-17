@@ -15,7 +15,6 @@ class ApartmentManagerPage:
         self.wrap_labels()
         self.refresh_apartments()
 
-    # ---------------------- Buttons ----------------------
     def create_buttons(self):
         add_property_btn = create_button(
             self.btns_inner_frame,
@@ -44,7 +43,6 @@ class ApartmentManagerPage:
         )
         add_building_btn.pack(side="left", padx=(0, 0), pady=10)
 
-    # ---------------------- Apartment Display ----------------------
     def refresh_apartments(self):
         for widget in self.box_frame.winfo_children():
             widget.destroy()
@@ -284,7 +282,6 @@ class AddApartmentStepper:
             messagebox.showerror("Error", str(e))
 
 
-# ---------------------- Usage ----------------------
 def create_page(parent):
     page = ApartmentManagerPage(parent)
     return page.frame

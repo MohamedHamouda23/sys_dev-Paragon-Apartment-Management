@@ -55,7 +55,6 @@ def retrive_data(email, password):
     return user_data
 
 
-
 def get_cities():
     # Fetch cities from DB
     conn = check_connection()
@@ -78,13 +77,33 @@ def get_cities():
     return city_names, city_ids, buildings_by_city, display_to_id
 
 
+def get_all_apartments():
+    try:
+        conn = check_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT a.apartment_id, l.city_name, b.street, b.postcode, a.num_rooms, a.type, a.occupancy_status
+            FROM Apartments a
+            JOIN Location l ON a.city_id = l.city_id
+            JOIN Buildings b ON a.building_id = b.building_id
+        """)
+        apartments = cursor.fetchall()
+        return apartments
+    finally:
+        conn.close()
 
-def add_apartment(city_id, building_id, num_rooms, apt_type, occ):
-    conn = check_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO Apartments (city_id, building_id, num_rooms, type, occupancy_status) VALUES (?, ?, ?, ?, ?)",
-        (city_id, building_id, int(num_rooms), apt_type, occ)
-    )
-    conn.commit()
-    conn.close()
+
+def add_city(city_name):
+    try:
+        conn = check_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO Location (city_name) VALUES (?)",
+            (city_name,)
+        )
+        conn.commit()
+    except Exception as e:
+        print(f"Error adding city: {e}")
+        raise
+    finally:
+        conn.close()
