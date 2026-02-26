@@ -14,6 +14,103 @@ notes for demo:
 5-•	SMART – specific (clearly addresses the LESP responsibilities), measurable (shown in documentation and compliance shown in code), attainable (existing frameworks can be used to compare and ensure our goals are being met), realistic (aligns with MO’s as well assessment brief), time bound (addressed throughout development, and connected to implementation plan WEEK ETC)
 
 
+FR1 Administrators
+
+IDs	Requirement Description
+FR1.1	Full system access (per location).
+FR1.2	Manage all user accounts.
+FR1.3	Register new Apartments.
+FR1.4	View and update Tenant Information.
+FR1.5	Access all financial and occupancy reports.
+FR1.6	Track and manage lease agreements.
+FR1.7	Managing the lifecycle of maintenance requests by approving/denying them.
+
+
+
+___________________________________________________________________________
+
+
+
+FR2 Managers
+
+IDs	Requirement Description
+FR2.1	Access Level: City/location-based control.
+FR2.2	View all tenant, apartment, and lease details within assigned city.
+FR2.3	Generate performance, occupancy, and financial comparison reports for their city.
+FR2.4	Expand operations by adding new locations (manager-level function).
+FR2.5	Assign maintenance staff to new or pending requests.
+FR2.6	Approve or verify completion of maintenance requests.
+FR2.7	Monitor overall maintenance efficiency and costs.
+FR2.8	View system-wide graphical performance analytics for their city.
+
+
+
+
+
+
+FR3 Finance Manager
+
+IDs	Requirement Description
+FR3.1	Access Level: Financial control only.
+FR3.2	Manage and record payments, late payments
+FR3.3	generates notification if the payment is late
+FR3.4	Generate financial reports that compare collected vs. pending rents per apartment, city, or overall.
+FR3.5	Review tenant mock payments 
+
+
+
+___________________________________________________________________________
+
+
+
+
+
+FR4 Front Desk Staff
+
+IDs	Requirement Description
+FR4.1	Access Level: Authentication required.
+FR4.2	Register new tenants 
+FR4.3	Enter Lease details
+FR4.4	Update tenant records as required.
+FR4.5	Register maintenance requests and tenant complaints.
+FR4.6	Maintain logs for tenant registrations and maintenance status.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        FR5 Maintenance Staff
+
+IDs	Requirement Description
+FR5.1	Access Level: Limited maintenance-only access.
+FR5.2	View all maintenance requests submitted by tenants or front desk staff.
+FR5.3	Update request status (pending, in progress, completed).
+FR5.4	Add notes on diagnostics, work done, and materials used.
+FR5.5	Log time taken, resolution details, and associated costs.
+FR5.6	Prioritise maintenance tasks based on urgency and importance.
+FR5.7	Schedule maintenance appointments and notify tenants.
+FR5.8	View historical maintenance records and performance reports.
+
+___________________________________________________________________________
+                  
+ FR6 Tenant Management
+IDs	Requirement Description
+FR6.1	Add, update, and remove tenant records to maintain complete and accurate tenant information.
+FR6.2	Track lease agreements, including start and end dates and contract details.
+FR6.3	Track payment histories for tenants, including due dates and applied penalties.
+FR6.4	Maintain logs of tenant complaints for record-keeping and follow-up.
+FR6.5	Allow tenants to request early termination of lease; system enforces 1-month notice and a 5% monthly rent penalty.
+
 
 - sequence diagram
 - use case digram
