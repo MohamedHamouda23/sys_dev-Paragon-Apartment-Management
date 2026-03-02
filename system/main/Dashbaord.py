@@ -32,7 +32,7 @@ def page_template(main_window, user_info):
     role = user_info[4]
 
     ROLE_PAGES = {
-        "Admin": [
+        "Administrators": [
             "Users", "Properties", "Tenants",
             "Leases", "Reports", "Maintenance"
         ],

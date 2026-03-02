@@ -243,7 +243,7 @@ INSERT INTO User_Access (user_id, password_hash, role_id, email) VALUES
 (4, 'hash_admin123', 4, 'erin@company.com'),
 (5, 'hash_manager123', 5, 'chiko@company.com'),
 (6, 'hash_admin123', 6, 'Tenant@company.com'),
-(7, '123', 1, '123');
+(7, '123', 4, '123');
 
 
 INSERT INTO Tenant (user_id, ni_number, telephone, occupation)

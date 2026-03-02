@@ -98,11 +98,19 @@ class ApartmentManagerPage:
         styled_label(container, "Add New City", font=FONT_TITLE, fg="#222").pack(pady=(0, 4))
         tk.Frame(container, bg=ACCENT, height=3, width=60).pack(pady=(0, 16))
 
+        # Only allow letters in City Name
+        vcmd = container.register(lambda P: P.isalpha() or P == "")
         city_entry = form_field(container, "City Name", [0])
+        city_entry.config(validate="key", validatecommand=(vcmd, "%P"))
 
         def submit_city():
+            city_name = city_entry.get()
+            import tkinter.messagebox as messagebox
+            if not city_name.isalpha():
+                messagebox.showerror("Input Error", "City names must only contain letters.")
+                return
             try:
-                create_city(city_entry.get())
+                create_city(city_name)
                 clear_frame(self.box_frame)
                 styled_label(
                     self.box_frame,
@@ -225,6 +233,14 @@ class AddApartmentStepper:
 
     # ---------------------------------------------------
     def step_address(self, selected_city):
+        import tkinter.messagebox as messagebox
+        if not selected_city or selected_city not in self.city_map:
+            messagebox.showerror("Selection Error", "Please select a city before proceeding.")
+            return
+        if any(char.isdigit() for char in selected_city):
+            messagebox.showerror("Input Error", "City names must only contain letters.")
+            return
+
         clear_frame(self.box_frame)
 
         container = card(self.box_frame)
@@ -265,13 +281,21 @@ class AddApartmentStepper:
             height=50,
             bg="#3B86FF",
             fg="white",
-            command=lambda: self.step_details(selected_city, addr_cb.get()),
+            command=lambda: self._address_next(selected_city, addr_cb.get()),
             next_window_func=None,
             current_window=None
         ).pack()
 
+    def _address_next(self, selected_city, selected_address):
+        if not selected_address:
+            import tkinter.messagebox as messagebox
+            messagebox.showerror("Selection Error", "Please select an address before proceeding.")
+            return
+        self.step_details(selected_city, selected_address)
+
     # ---------------------------------------------------
     def step_details(self, city, address):
+
         clear_frame(self.box_frame)
 
         container = card(self.box_frame)
@@ -284,7 +308,10 @@ class AddApartmentStepper:
         info.pack(fill="x", pady=(0, 12))
         styled_label(info, f"{city}  ·  {address}", fg="#555").pack(anchor="w")
 
+        # Only allow numbers in Number of Rooms
+        vcmd = container.register(lambda P: P.isdigit() or P == "")
         rooms_entry = form_field(container, "Number of Rooms", [0])
+        rooms_entry.config(validate="key", validatecommand=(vcmd, "%P"))
         type_cb     = form_dropdown(container, "Property Type", self.TYPES)
         occ_cb      = form_dropdown(container, "Occupancy Status", self.OCCUPANCY)
 
