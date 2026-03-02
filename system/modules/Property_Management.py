@@ -15,6 +15,7 @@ from core.property_service import (
 )
 
 
+
 # -------------------------------------------------------
 
 class ApartmentManagerPage:
@@ -42,7 +43,22 @@ class ApartmentManagerPage:
                 command=command,
                 next_window_func=None,
                 current_window=None
-            ).pack(side="left", padx=15, pady=10)
+            ).pack(side="left", padx=15, pady=50)
+
+
+        logout_btn = create_button(
+            self.btns_inner_frame,  # or self.frame if you want it at top-right of whole page
+            text="➜]",
+            width=35,
+            height=35,
+            bg="#FF3B3B",
+            fg="white",
+            command=lambda: logout_page(self.frame, self.parent, Log_window),
+            next_window_func=None,
+            current_window=None
+        )
+        logout_btn.pack(anchor="ne", padx=10, pady=0)  # top-right corner
+            
 
     # ---------------------------------------------------
     def refresh_apartments(self):
