@@ -231,3 +231,47 @@ def card(parent):
     inner.pack(padx=2, pady=2)
     return inner
 
+def logout_page(current_frame, parent_widget):
+    """
+    Destroys the current frame, shows the root window, and opens the login window.
+    parent_widget should be any widget in the window; root is found via winfo_toplevel().
+    """
+    try:
+        current_frame.destroy()
+    except Exception:
+        pass
+    try:
+        root = parent_widget.winfo_toplevel()
+        root.deiconify()
+    except Exception:
+        root = None
+    try:
+        from main.log_in import Log_window
+        if root:
+            Log_window(root)
+    except Exception as e:
+        import tkinter.messagebox as messagebox
+        messagebox.showerror("Logout Error", f"Could not show login page: {e}")
+
+def create_logout_button(parent_frame, target_frame, parent_widget, anchor="ne", padx=10, pady=0):
+    """
+    Creates and packs a styled logout button that logs out and shows the login page.
+    parent_frame: where the button will be placed (e.g., self.btns_inner_frame)
+    target_frame: the frame to destroy on logout (e.g., self.frame)
+    parent_widget: any widget in the window (e.g., self.parent), used to find the root window
+    """
+    from main.helpers import logout_page
+    btn = create_button(
+        parent_frame,
+        text="➜]",
+        width=35,
+        height=35,
+        bg="#FF3B3B",
+        fg="white",
+        command=lambda: logout_page(target_frame, parent_widget.winfo_toplevel()),
+        next_window_func=None,
+        current_window=None
+    )
+    btn.pack(anchor=anchor, padx=padx, pady=pady)
+    return btn
+

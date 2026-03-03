@@ -8,6 +8,8 @@ from main.helpers import (
 )
 
 from database.property_service import (
+    # Import Log_window for logout to login page
+
     get_all_cities,
     create_city,
     build_city_map,
@@ -47,18 +49,8 @@ class ApartmentManagerPage:
             ).pack(side="left", padx=15, pady=50)
 
 
-        logout_btn = create_button(
-            self.btns_inner_frame,
-            text="➜]",
-            width=35,
-            height=35,
-            bg="#FF3B3B",
-            fg="white",
-            command=lambda: logout_page(self.frame, self.parent, Log_window),
-            next_window_func=None,
-            current_window=None
-        )
-        logout_btn.pack(anchor="ne", padx=10, pady=0)
+        from main.helpers import create_logout_button
+        create_logout_button(self.btns_inner_frame, self.frame, self.parent)
 
 
 
@@ -221,25 +213,10 @@ class AddApartmentStepper:
             next_window_func=None,
             current_window=None
         ).pack()
-    # -------------------------------------------------------
-    # LOGOUT FUNCTION
-    # -------------------------------------------------------
-    def logout_page(current_frame, parent_window, LogWindowClass):
-        """
-        Destroys the current frame, shows the parent window, and opens the login window.
-        """
-        try:
-            current_frame.destroy()
-        except Exception:
-            pass
-        try:
-            parent_window.deiconify()
-        except Exception:
-            pass
-        LogWindowClass(parent_window)
+
     # ---------------------------------------------------
     def step_address(self, selected_city):
-        if not selected_city or selected_city not in self.city_map:
+        if not selected_city:
             messagebox.showerror("Selection Error", "Please select a city before proceeding.")
             return
         if any(char.isdigit() for char in selected_city):
@@ -370,3 +347,18 @@ class AddApartmentStepper:
 # -------------------------------------------------------
 def create_page(parent):
     return ApartmentManagerPage(parent).frame
+
+def logout_page(current_frame, parent_window):
+    """
+    Destroys the current frame, shows the parent window, and opens the login window.
+    """
+    try:
+        current_frame.destroy()
+    except Exception:
+        pass
+    try:
+        parent_window.deiconify()
+    except Exception:
+        pass
+    from main.log_in import Log_window
+    Log_window(parent_window)
