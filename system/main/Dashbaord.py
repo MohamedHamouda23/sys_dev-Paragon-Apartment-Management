@@ -1,4 +1,4 @@
-from core.helpers import create_side_navbar   # absolute import
+from main.helpers import create_side_navbar   # absolute import
 
 import tkinter as tk
 from modules import User_Management, Property_Management, Tenant_Management,Request_Details,Payments

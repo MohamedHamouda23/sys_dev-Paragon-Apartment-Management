@@ -1,8 +1,8 @@
 # Log_in.py
 import tkinter as tk
 from tkinter import messagebox
-from core.helpers import create_button, create_entry, create_navbar
-from Dashbaord import page_template 
+from main.helpers import create_button, create_entry, create_navbar
+from main.Dashbaord import page_template 
 
 class PaymentWindow:
     def __init__(self, main_window):

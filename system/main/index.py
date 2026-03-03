@@ -1,5 +1,5 @@
 import tkinter as tk
-from core.helpers import create_window, create_navbar
+from main.helpers import create_window, create_navbar
 from .log_in import Log_window
 def main_window():
     root = create_window("Paragon Apartments Management System")

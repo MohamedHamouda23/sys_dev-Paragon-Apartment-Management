@@ -1,23 +1,24 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox
 
-from core.helpers import (
+from main.helpers import (
     create_button, create_frame, clear_frame,
-    styled_label, styled_entry, styled_dropdown,
-    form_field, form_dropdown, card,
+    styled_label, form_field, form_dropdown, card,
     BG, ACCENT, FONT_TITLE, FONT_LABEL
 )
 
-from core.property_service import (
-    fetch_cities, fetch_buildings, fetch_apartments,
-    create_city, create_building, create_apartment,
-    build_city_map, build_buildings_by_city
+from database.property_service import (
+    get_all_cities,
+    create_city,
+    build_city_map,
+    get_all_buildings,
+    create_building,
+    build_buildings_by_city,
+    create_apartment,
+    get_all_apartments
 )
 
-
-
 # -------------------------------------------------------
-
 class ApartmentManagerPage:
 
     def __init__(self, parent):
@@ -45,9 +46,8 @@ class ApartmentManagerPage:
                 current_window=None
             ).pack(side="left", padx=15, pady=50)
 
-
         logout_btn = create_button(
-            self.btns_inner_frame,  # or self.frame if you want it at top-right of whole page
+            self.btns_inner_frame,
             text="➜]",
             width=35,
             height=35,
@@ -57,13 +57,12 @@ class ApartmentManagerPage:
             next_window_func=None,
             current_window=None
         )
-        logout_btn.pack(anchor="ne", padx=10, pady=0)  # top-right corner
-            
+        logout_btn.pack(anchor="ne", padx=10, pady=0)
 
     # ---------------------------------------------------
     def refresh_apartments(self):
         clear_frame(self.box_frame)
-        apartments = fetch_apartments()
+        apartments = get_all_apartments() 
 
         container = card(self.box_frame)
 
@@ -94,7 +93,6 @@ class ApartmentManagerPage:
         clear_frame(self.box_frame)
 
         container = card(self.box_frame)
-
         styled_label(container, "Add New City", font=FONT_TITLE, fg="#222").pack(pady=(0, 4))
         tk.Frame(container, bg=ACCENT, height=3, width=60).pack(pady=(0, 16))
 
@@ -105,18 +103,13 @@ class ApartmentManagerPage:
 
         def submit_city():
             city_name = city_entry.get()
-            import tkinter.messagebox as messagebox
             if not city_name.isalpha():
                 messagebox.showerror("Input Error", "City names must only contain letters.")
                 return
             try:
                 create_city(city_name)
                 clear_frame(self.box_frame)
-                styled_label(
-                    self.box_frame,
-                    "✓  City added successfully!",
-                    fg="#2E7D32"
-                ).pack(expand=True)
+                styled_label(self.box_frame, "✓  City added successfully!", fg="#2E7D32").pack(expand=True)
                 self.box_frame.after(1200, self.refresh_apartments)
             except Exception as e:
                 messagebox.showerror("Error", str(e))
@@ -142,11 +135,10 @@ class ApartmentManagerPage:
         clear_frame(self.box_frame)
 
         container = card(self.box_frame)
-
         styled_label(container, "Add New Building", font=FONT_TITLE, fg="#222").pack(pady=(0, 4))
         tk.Frame(container, bg=ACCENT, height=3, width=60).pack(pady=(0, 16))
 
-        cities     = fetch_cities()
+        cities     = get_all_cities()
         city_map   = build_city_map(cities)
         city_names = list(city_map.keys())
 
@@ -159,11 +151,7 @@ class ApartmentManagerPage:
                 city_id = city_map[city_cb.get()]
                 create_building(city_id, street_entry.get(), postcode_entry.get())
                 clear_frame(self.box_frame)
-                styled_label(
-                    self.box_frame,
-                    "✓  Building added successfully!",
-                    fg="#2E7D32"
-                ).pack(expand=True)
+                styled_label(self.box_frame, "✓  Building added successfully!", fg="#2E7D32").pack(expand=True)
                 self.box_frame.after(1200, self.refresh_apartments)
             except Exception as e:
                 messagebox.showerror("Error", str(e))
@@ -186,7 +174,6 @@ class ApartmentManagerPage:
 # =======================================================
 # APARTMENT STEPPER
 # =======================================================
-
 class AddApartmentStepper:
 
     TYPES     = ['Studio', 'Apartment', 'Penthouse']
@@ -196,8 +183,8 @@ class AddApartmentStepper:
         self.box_frame        = parent
         self.refresh_callback = refresh_callback
 
-        cities    = fetch_cities()
-        buildings = fetch_buildings()
+        cities    = get_all_cities()
+        buildings = get_all_buildings()
 
         self.city_map          = build_city_map(cities)
         self.city_names        = list(self.city_map.keys())
@@ -210,7 +197,6 @@ class AddApartmentStepper:
         clear_frame(self.box_frame)
 
         container = card(self.box_frame)
-
         styled_label(container, "Add Apartment", font=FONT_TITLE, fg="#222").pack(pady=(0, 4))
         tk.Frame(container, bg=ACCENT, height=3, width=60).pack(pady=(0, 16))
         styled_label(container, "Step 1 of 3 — Select City", fg="#888").pack(pady=(0, 8))
@@ -233,7 +219,6 @@ class AddApartmentStepper:
 
     # ---------------------------------------------------
     def step_address(self, selected_city):
-        import tkinter.messagebox as messagebox
         if not selected_city or selected_city not in self.city_map:
             messagebox.showerror("Selection Error", "Please select a city before proceeding.")
             return
@@ -244,7 +229,6 @@ class AddApartmentStepper:
         clear_frame(self.box_frame)
 
         container = card(self.box_frame)
-
         styled_label(container, "Add Apartment", font=FONT_TITLE, fg="#222").pack(pady=(0, 4))
         tk.Frame(container, bg=ACCENT, height=3, width=60).pack(pady=(0, 16))
         styled_label(container, "Step 2 of 3 — Select Address", fg="#888").pack(pady=(0, 8))
@@ -288,18 +272,15 @@ class AddApartmentStepper:
 
     def _address_next(self, selected_city, selected_address):
         if not selected_address:
-            import tkinter.messagebox as messagebox
             messagebox.showerror("Selection Error", "Please select an address before proceeding.")
             return
         self.step_details(selected_city, selected_address)
 
     # ---------------------------------------------------
     def step_details(self, city, address):
-
         clear_frame(self.box_frame)
 
         container = card(self.box_frame)
-
         styled_label(container, "Add Apartment", font=FONT_TITLE, fg="#222").pack(pady=(0, 4))
         tk.Frame(container, bg=ACCENT, height=3, width=60).pack(pady=(0, 16))
         styled_label(container, "Step 3 of 3 — Details", fg="#888").pack(pady=(0, 8))
@@ -341,11 +322,7 @@ class AddApartmentStepper:
         try:
             create_apartment(city_id, building_id, rooms, apt_type, occ)
             clear_frame(self.box_frame)
-            styled_label(
-                self.box_frame,
-                "✓  Apartment added successfully!",
-                fg="#2E7D32"
-            ).pack(expand=True)
+            styled_label(self.box_frame, "✓  Apartment added successfully!", fg="#2E7D32").pack(expand=True)
             self.box_frame.after(1200, self.refresh_callback)
         except Exception as e:
             messagebox.showerror("Error", str(e))
