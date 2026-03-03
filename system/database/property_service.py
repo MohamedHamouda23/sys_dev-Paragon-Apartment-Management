@@ -28,7 +28,7 @@ def create_city(city_name):
 def build_city_map(cities=None):
     if cities is None:
         cities = get_all_cities()
-    return {city_id: city_name for city_id, city_name in cities}
+    return {city_name: city_id for city_id, city_name in cities}
 
 # -------------------- Buildings --------------------
 def get_all_buildings():

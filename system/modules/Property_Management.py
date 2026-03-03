@@ -46,6 +46,7 @@ class ApartmentManagerPage:
                 current_window=None
             ).pack(side="left", padx=15, pady=50)
 
+
         logout_btn = create_button(
             self.btns_inner_frame,
             text="➜]",
@@ -58,6 +59,8 @@ class ApartmentManagerPage:
             current_window=None
         )
         logout_btn.pack(anchor="ne", padx=10, pady=0)
+
+
 
     # ---------------------------------------------------
     def refresh_apartments(self):
@@ -85,6 +88,8 @@ class ApartmentManagerPage:
     # ---------------------------------------------------
     def on_add_property(self):
         AddApartmentStepper(self.box_frame, self.refresh_apartments)
+
+
 
     # ===================================================
     # ADD CITY
@@ -216,7 +221,22 @@ class AddApartmentStepper:
             next_window_func=None,
             current_window=None
         ).pack()
-
+    # -------------------------------------------------------
+    # LOGOUT FUNCTION
+    # -------------------------------------------------------
+    def logout_page(current_frame, parent_window, LogWindowClass):
+        """
+        Destroys the current frame, shows the parent window, and opens the login window.
+        """
+        try:
+            current_frame.destroy()
+        except Exception:
+            pass
+        try:
+            parent_window.deiconify()
+        except Exception:
+            pass
+        LogWindowClass(parent_window)
     # ---------------------------------------------------
     def step_address(self, selected_city):
         if not selected_city or selected_city not in self.city_map:
@@ -295,6 +315,25 @@ class AddApartmentStepper:
         rooms_entry.config(validate="key", validatecommand=(vcmd, "%P"))
         type_cb     = form_dropdown(container, "Property Type", self.TYPES)
         occ_cb      = form_dropdown(container, "Occupancy Status", self.OCCUPANCY)
+
+        # --- Room entry logic based on property type ---
+        def on_type_change(event=None):
+            selected_type = type_cb.get()
+            if selected_type == "Studio":
+                # Always set to 1 and disable
+                rooms_entry.config(state="normal")  # Enable first to allow setting value
+                rooms_entry.delete(0, tk.END)
+                rooms_entry.insert(0, "1")
+                rooms_entry.config(state="disabled", disabledbackground="#eee", disabledforeground="#888")
+            else:
+                # Enable and clear for other types
+                rooms_entry.config(state="normal")
+                rooms_entry.delete(0, tk.END)
+
+        # Bind the callback to dropdown changes
+        type_cb.bind("<<ComboboxSelected>>", on_type_change)
+        # Set initial state
+        on_type_change()
 
         btn_frame = tk.Frame(container, bg=BG)
         btn_frame.pack(pady=(20, 0))
