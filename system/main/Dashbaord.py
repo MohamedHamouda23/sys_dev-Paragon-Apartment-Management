@@ -16,7 +16,6 @@ def page_template(main_window, user_info):
 
     pages = {}
 
-    # ✅ All available pages in the system
     ALL_PAGES = {
         "Users": User_Management,
         "Properties": Property_Management,
@@ -25,7 +24,6 @@ def page_template(main_window, user_info):
         "Reports": Report_Management,
         "Maintenance": Maintenance_Management,
         "History": Maintenance_History,
-        "Request Details": Request_Details,
         "Payments": Payments,
     }
 
@@ -40,7 +38,7 @@ def page_template(main_window, user_info):
             "Tenants", "Leases", "Maintenance"
         ],
         "Maintenance Staff": [
-            "Maintenance", "History", "Request Details"
+            "Maintenance", "History"
         ],
         "Manager": [
             "Properties", "Tenants",
