@@ -10,7 +10,6 @@ class MaintenancePage:
     def __init__(self, parent):
         self.parent = parent
         self.frame, self.btns_inner_frame, self.box_frame = create_frame(parent)
-        self.is_detail_view = False
 
         self.create_buttons()
         self.create_maintenance_box()
@@ -19,26 +18,23 @@ class MaintenancePage:
 
     # ---------------------------------------------------
     def create_buttons(self):
+        for text, command in [
+                    ("View Details",  self.view_details),
+                    ("View All",      self.view_all),
+                ]:
+            create_button(
+                self.btns_inner_frame,
+                text=text,
+                width=150,
+                height=50,
+                bg="#3B86FF",
+                fg="white",
+                command=command,
+                next_window_func=None,
+                current_window=None
+            ).pack(side="left", padx=15, pady=50)
 
-        # Wrapper frame to hold button + swap its label
-        self.toggle_btn_frame = create_button(
-            self.btns_inner_frame,
-            text="View Details",
-            width=150,
-            height=50,
-            bg="#3B86FF",
-            fg="white",
-            command=self.toggle_view
-        )
-        
-        self.toggle_btn_frame.pack(side="left", padx=15, pady=50)
 
-        # Find the label inside the custom button so we can update its text
-        self.toggle_btn_label = None
-        for widget in self.toggle_btn_frame.winfo_children():
-            if isinstance(widget, tk.Label):
-                self.toggle_btn_label = widget
-                break
 
         logout_btn = create_button(
             self.btns_inner_frame,
@@ -50,12 +46,6 @@ class MaintenancePage:
             command=lambda: messagebox.showinfo("Logout", "Logout function not defined")
         )
         logout_btn.pack(anchor="ne", padx=10)
-
-    # ---------------------------------------------------
-    def _set_toggle_text(self, text):
-        """Update the toggle button label text safely."""
-        if self.toggle_btn_label:
-            self.toggle_btn_label.config(text=text)
 
     # ---------------------------------------------------
     def create_maintenance_box(self):
@@ -74,6 +64,7 @@ class MaintenancePage:
 
     # ---------------------------------------------------
     def populate_maintenance_requests(self):
+
         maintenance = get_all_requests()
         if not maintenance:
             return
@@ -114,9 +105,11 @@ class MaintenancePage:
 
         full_data = viewFull(request_id)
 
-        labels = ("Request ID", "Issue", "Description", "Priority", "Date Submitted",
-                  "Resolved Date", "Status", "Notes", "Tenant", "Apt Type",
-                  "Postcode", "Staff", "Assigned Date", "Is Current")
+        labels = (
+            "Request ID", "Issue", "Description", "Priority", "Date Submitted",
+            "Resolved Date", "Status", "Notes", "Tenant", "Apt Type",
+            "Postcode", "Staff", "Assigned Date", "Is Current"
+        )
 
         self.tree.pack_forget()
 
@@ -126,25 +119,66 @@ class MaintenancePage:
         self.detail_frame = tk.Frame(self.box_frame, bg="white")
         self.detail_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        for i, (label, value) in enumerate(zip(labels, full_data)):
-            tk.Label(self.detail_frame, text=f"{label}:", font=("Arial", 10, "bold"), bg="white").grid(row=i, column=0, sticky="w", padx=10, pady=3)
-            tk.Label(self.detail_frame, text=value, bg="white").grid(row=i, column=1, sticky="w", padx=10, pady=3)
+        # Action buttons
+        action_btn_frame = tk.Frame(self.detail_frame, bg="white")
+        action_btn_frame.grid(row=0, column=0, columnspan=2, sticky="w", padx=10, pady=(5, 15))
 
-        self.is_detail_view = True
-        self._set_toggle_text("View All")
+        assign_btn = create_button(
+            action_btn_frame,
+            text="Assign Staff",
+            width=130,
+            height=40,
+            bg="#3B86FF",
+            fg="white",
+            command=lambda: messagebox.showinfo("Assign Staff", "Assign Staff function not defined")
+        )
+        assign_btn.pack(side="left", padx=(0, 10))
+
+        approve_btn = create_button(
+            action_btn_frame,
+            text="Approve",
+            width=100,
+            height=40,
+            bg="#28A745",
+            fg="white",
+            command=lambda: messagebox.showinfo("Approve", "Approve function not defined")
+        )
+        approve_btn.pack(side="left", padx=(0, 10))
+
+        deny_btn = create_button(
+            action_btn_frame,
+            text="Deny",
+            width=100,
+            height=40,
+            bg="#FF3B3B",
+            fg="white",
+            command=lambda: messagebox.showinfo("Deny", "Deny function not defined")
+        )
+        deny_btn.pack(side="left")
+
+        # Detail fields
+        for i, (label, value) in enumerate(zip(labels, full_data)):
+
+            tk.Label(
+                self.detail_frame,
+                text=f"{label}:",
+                font=("Arial", 10, "bold"),
+                bg="white"
+            ).grid(row=i + 1, column=0, sticky="w", padx=10, pady=3)
+
+            tk.Label(
+                self.detail_frame,
+                text=value,
+                bg="white"
+            ).grid(row=i + 1, column=1, sticky="w", padx=10, pady=3)
 
     # ---------------------------------------------------
     def view_all(self):
-        self.populate_maintenance_requests()
-        self.is_detail_view = False
-        self._set_toggle_text("View All")
 
-    # ---------------------------------------------------
-    def toggle_view(self):
-        if self.is_detail_view:
-            self.view_all()
-        else:
-            self.view_details()
+        if hasattr(self, "detail_frame"):
+            self.detail_frame.destroy()
+
+        self.populate_maintenance_requests()
 
 
 # -------------------------------------------------------
