@@ -286,3 +286,71 @@ def logout_page(current_frame, parent_widget):
         import tkinter.messagebox as messagebox
         messagebox.showerror("Logout Error", f"Could not return to index page: {e}")
 
+        messagebox.showerror("Logout Error", f"Could not show login page: {e}")
+
+def create_logout_button(parent_frame, target_frame, parent_widget, anchor="ne", padx=10, pady=0):
+ 
+    from main.helpers import logout_page
+    btn = create_button(
+        parent_frame,
+        text="➜]",
+        width=35,
+        height=35,
+        bg="#FF3B3B",
+        fg="white",
+        command=lambda: logout_page(target_frame, parent_widget.winfo_toplevel()),
+        next_window_func=None,
+        current_window=None
+    )
+    btn.pack(anchor=anchor, padx=padx, pady=pady)
+    return btn
+
+
+
+
+def create_scrollable_treeview(parent, columns, headings, widths, anchors, height=9):
+ 
+    table_wrap = tk.Frame(parent, bg="white", bd=2, relief="groove")
+    table_wrap.pack(fill="both", expand=True, pady=(0, 12))
+
+    tree = ttk.Treeview(table_wrap, columns=columns, show="headings", height=height)
+
+    for col, heading, width, anchor in zip(columns, headings, widths, anchors):
+        tree.heading(col, text=heading)
+        tree.column(col, width=width, anchor=anchor)
+
+    y_scroll = ttk.Scrollbar(table_wrap, orient="vertical", command=tree.yview)
+    tree.configure(yscrollcommand=y_scroll.set)
+
+    tree.pack(side="left", fill="both", expand=True, padx=(8, 0), pady=8)
+    y_scroll.pack(side="right", fill="y", pady=8, padx=(0, 8))
+
+    return table_wrap, tree
+
+
+def reset_combobox(combobox, names):
+    """
+    Set a combobox to its first item, or clear it if the list is empty.
+
+    Parameters
+    ----------
+    combobox : ttk.Combobox
+    names    : list[str]  – the current values list
+    """
+    combobox.set(names[0] if names else "")
+
+
+
+def show_placeholder(parent, text=""):
+    """Clear a frame and display a centred placeholder message."""
+    for widget in parent.winfo_children():
+        widget.destroy()
+    import tkinter as tk
+    tk.Label(
+        parent,
+        text=text,
+        bg="white",
+        fg="#888888",
+        font=("Arial", 10, "italic"),
+        pady=16,
+    ).pack(expand=True)
