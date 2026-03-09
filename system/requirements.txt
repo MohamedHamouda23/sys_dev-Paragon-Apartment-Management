@@ -1,0 +1,17 @@
+# =======================================================
+# MyTkinterApp Requirements
+# =======================================================
+# Minimum Python version required: 3.10
+# GUI: Tkinter (comes pre-installed with Python)
+# Database: SQLite (built-in with Python)
+# =======================================================
+
+# Core dependencies (no installation needed)
+# Python 3.10+ with tkinter and sqlite3 (built-in)
+
+# Optional: MySQL database support
+mysql-connector-python>=8.1.0
+
+# Optional: Environment variables management
+python-dotenv>=1.0.0
+

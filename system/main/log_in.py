@@ -1,8 +1,8 @@
 # log_in.py
 import tkinter as tk
-from core.helpers import create_button, create_entry, create_navbar
+from main.helpers import create_button, create_entry, create_navbar
 from main.Dashbaord import page_template
-from core.database import check_user, retrive_data
+from database.user_service import check_user, retrive_data
 
 class Log_window:
     def __init__(self, main_window):

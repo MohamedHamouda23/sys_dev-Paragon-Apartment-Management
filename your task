@@ -1,0 +1,71 @@
+### Table 1: User Account Management (Admins & Managers)
+
+
+| ID      | Requirement Description |
+|---------|------------------------|
+| FR1.2   | Manage all user accounts. |
+
+
+
+### Table 1: Apartment Management (Admins & Managers)
+
+| ID      | Requirement Description |
+| FR1.3   | Register new Apartments; view apartment details. |
+| FR2.4   | Expand operations by adding new locations (manager-level function). |
+
+
+
+### Table 2: Tenant Information & Access (Admins & Tenants)
+
+| ID      | Requirement Description |
+|---------|------------------------|
+| FR1.4   | View and update Tenant Information. |
+| FR4.2   | Register new tenants; sign in as tenant and see profile. |
+| FR6.5   | Update contact info. |
+
+### Table 3: Financial & Occupancy Reports (Admins & Financial Staff)
+
+| ID      | Requirement Description |
+|---------|------------------------|
+| FR1.5   | Access all financial and occupancy reports. |
+| FR2.3   | Generate performance, occupancy, and financial comparison reports for their city. |
+| FR2.8   | View system-wide graphical performance analytics for their city. |
+| FR3.1   | Access Level: Financial control only. |
+| FR3.2   | Manage and record payments, invoices, and deposits; view historical maintenance records and performance reports. |
+| FR6.9   | See repair progress and graph of own payments history. |
+
+### Table 4: Lease Management (Admins & Tenants)
+
+| ID      | Requirement Description |
+|---------|------------------------|
+| FR1.6   | Track and manage lease agreements; enter lease details. |
+| FR6.6   | Request early end of lease; system checks notice and adds penalty. |
+
+### Table 5: Maintenance Management (Admins, Staff & Tenants)
+
+| ID      | Requirement Description |
+|---------|------------------------|
+| FR1.7   | Manage the lifecycle of maintenance requests by approving/denying them. |
+| FR2.5   | Assign maintenance staff to new or pending requests. |
+| FR2.6   | Approve or verify completion of maintenance requests. |
+| FR2.7   | Monitor overall maintenance efficiency and costs. |
+| FR4.5   | Register maintenance requests and tenant complaints. |
+| FR4.6   | Maintain logs for tenant registrations and maintenance status. |
+| FR5.2   | View all maintenance requests submitted by tenants or front desk staff. |
+| FR5.3   | Update request status (pending, in progress, completed). |
+| FR5.4   | Add notes on diagnostics, work done, and materials used. |
+| FR5.5   | Log time taken, resolution details, and associated costs. |
+| FR5.6   | Prioritise maintenance tasks based on urgency and importance. |
+| FR5.7   | Schedule maintenance appointments and notify tenants. |
+| FR6.4   | Track maintenance requests and complaints. |
+| FR6.8   | Submit complaints and repair requests. |
+
+### Table 6: Payments & Financial Tracking (Tenants & Admins)
+
+| ID      | Requirement Description |
+|---------|------------------------|
+| FR3.3   | Record and flag late payments; apply late fees or penalties and show graph of late payments per property. |
+| FR3.4   | Create financial reports with graphical representation comparing tenant payments to nearby tenants. |
+| FR3.5   | Review tenant mock payments via the Tenant Dashboard; see payment history and download invoices. |
+| FR6.10  | Make payments; system checks card and records payment. |
+| FR6.7   | See own payment record and get alerts for late payments. |

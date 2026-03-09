@@ -1,43 +1,58 @@
 import tkinter as tk
-from core.helpers import create_button
 
 
+class MaintenanceDetailPanel:
+    """
+    Renders the read-only detail grid for a single maintenance request.
+    Analogous to UserFormStepper in modules/User_Management.py.
+    """
 
-def create_page(parent):
-    frame = tk.Frame(parent, bg='#c9e4c4')
-
-    # Top buttons frame (centered)
-    top_btn_frame = tk.Frame(frame, bg='#c9e4c4')
-    top_btn_frame.pack(side="top", fill="x", pady=(30, 10))
-
-    # Centering inner frame for buttons
-    btns_inner_frame = tk.Frame(top_btn_frame, bg='#c9e4c4')
-    btns_inner_frame.pack(anchor="center")
-
-    btn_view_request = create_button(
-        btns_inner_frame,
-        text="view request",
-        width=150,
-        height=50,
-        bg="#3B86FF",
-        fg="white",
-        command=None
+    LABELS = (
+        "Request ID", "Issue", "Description", "Priority", "Date Submitted",
+        "Resolved Date", "Status", "Notes", "Tenant", "Apt Type",
+        "Postcode", "Staff", "Assigned Date", "Is Current",
     )
-    btn_view_request.pack(side="left", padx=(0, 120))
+
+    def __init__(self, parent, full_data):
+        """
+        parent    – the container frame (detail_wrap)
+        full_data – tuple/list returned by viewFull(request_id)
+        """
+        self.parent = parent
+        self._render(full_data)
+
+    # ------------------------------------------------------------------ render
+
+    def _render(self, full_data):
+        for widget in self.parent.winfo_children():
+            widget.destroy()
+
+        grid_frame = tk.Frame(self.parent, bg="white")
+        grid_frame.pack(fill="x", padx=16, pady=(10, 10))
+
+        for i, (lbl, val) in enumerate(zip(self.LABELS, full_data)):
+            row, col = divmod(i, 2)
+            col_offset = col * 2
+
+            tk.Label(
+                grid_frame,
+                text=f"{lbl}:",
+                font=("Arial", 10, "bold"),
+                bg="white",
+                anchor="w",
+            ).grid(row=row, column=col_offset, sticky="w", padx=(10, 4), pady=3)
+
+            tk.Label(
+                grid_frame,
+                text=val if val is not None else "—",
+                bg="white",
+                anchor="w",
+            ).grid(row=row, column=col_offset + 1, sticky="w", padx=(0, 24), pady=3)
+
+        grid_frame.grid_columnconfigure(1, weight=1)
+        grid_frame.grid_columnconfigure(3, weight=1)
 
 
-
-    # Big box for apartments
-    box_frame = tk.Frame(frame, bg="white", bd=2, relief="groove")
-    box_frame.pack(fill="both", expand=True, padx=40, pady=(10, 40))
-
-    placeholder_label = tk.Label(
-        box_frame,
-        text="requests will appear here",
-        font=("Arial", 16),
-        bg="white",
-        fg="#888"
-    )
-    placeholder_label.place(relx=0.5, rely=0.5, anchor="center")
-
-    return frame
+def create_page(parent, user_info=None):
+    from main.Maintenance_page import MaintenanceManagementPage
+    return MaintenanceManagementPage(parent, user_info=user_info).frame

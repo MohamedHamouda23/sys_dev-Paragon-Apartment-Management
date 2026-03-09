@@ -1,13 +1,10 @@
-from core.helpers import create_side_navbar   # absolute import
+from main.helpers import create_side_navbar   # absolute import
 
 import tkinter as tk
-from modules import User_Management, Property_Management, Tenant_Management
-from modules import Lease_Management, Report_Management, Maintenance_Management
+from modules import User_Management, Property_Management, Tenant_Management,Payments,complaints
+from modules import Lease_Management, Report_Management, Maintenance_Management,Maintenance_History
 
-
-
-
-def page_template(main_window,user_info): 
+def page_template(main_window, user_info): 
     root = tk.Tk()
     root.title("Dashboard")
     root.geometry("850x650")
@@ -19,23 +16,60 @@ def page_template(main_window,user_info):
 
     pages = {}
 
-    page_modules = {
+    ALL_PAGES = {
         "Users": User_Management,
         "Properties": Property_Management,
         "Tenants": Tenant_Management,
         "Leases": Lease_Management,
         "Reports": Report_Management,
-        "Maintenance": Maintenance_Management
+        "Maintenance": Maintenance_Management,
+        "History": Maintenance_History,
+        "Payments": Payments,
+        "complaints": complaints,
     }
 
+    role = user_info[4]
 
+    ROLE_PAGES = {
+        "Administrators": [
+            "Users", "Properties", "Tenants",
+            "Leases", "Reports", "Maintenance"
+        ],
+        "Front-desk Staff": [
+            "Tenants", "Leases", "Maintenance"
+        ],
+        "Maintenance Staff": [
+            "Maintenance", "History","complaints"
+        ],
+        "Manager": [
+            "Properties", "Tenants",
+            "Leases", "Reports", "Maintenance"
+        ],
+        "Finance Manager": [
+            "Reports", "Payments"
+        ]
+    }
+
+    allowed_pages = ROLE_PAGES.get(role, [])
+
+    page_modules = {
+        name: ALL_PAGES[name]
+        for name in allowed_pages
+        if name in ALL_PAGES
+    }
 
     for name, module in page_modules.items():
-        frame = module.create_page(content_frame)
+        if name == "Users":
+            frame = module.create_page(content_frame, user_info=user_info)
+        else:
+            frame = module.create_page(content_frame)
         frame.place(relwidth=1, relheight=1)
         pages[name] = frame
 
-
+    def show_page(page_name):
+        frame = pages.get(page_name)
+        if frame:
+            frame.tkraise()
 
     button_commands = [
         lambda n=name: show_page(n)
@@ -48,14 +82,9 @@ def page_template(main_window,user_info):
         user_info=user_info,
         button_command=button_commands
     )
-    
-    def show_page(page_name):
-        frame = pages.get(page_name)
-        if frame:
-            frame.tkraise()
 
-    show_page("Users")  
+    if page_modules:
+        first_page = list(page_modules.keys())[0]
+        show_page(first_page)
 
     root.mainloop()
-
-

@@ -1,4 +1,5 @@
 import tkinter as tk
+<<<<<<< HEAD
 from tkinter import messagebox
 from datetime import date, timedelta
 
@@ -12,7 +13,6 @@ from core.lease_service import (
     fetch_leases, fetch_tenants, fetch_available_apartments,
     create_lease, build_tenant_map, build_apartment_map,
 )
-
 
 class LeaseManagerPage:
 
