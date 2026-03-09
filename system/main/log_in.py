@@ -1,5 +1,6 @@
 # log_in.py
 import tkinter as tk
+from tkinter import messagebox
 from main.helpers import create_button, create_entry, create_navbar
 from main.Dashbaord import page_template
 from database.user_service import check_user, retrive_data
@@ -62,5 +63,9 @@ class Log_window:
             self.login_root.destroy()
             page_template(self.main_window, user_info)
         else:
-            print("Invalid login")
+            messagebox.showerror(
+                "Login Failed",
+                "Invalid credentials. Please check your email and password and try again.",
+                parent=self.login_root,
+            )
 
