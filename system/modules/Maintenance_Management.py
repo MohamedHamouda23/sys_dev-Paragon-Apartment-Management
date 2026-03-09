@@ -10,7 +10,6 @@ class MaintenancePage:
     def __init__(self, parent):
         self.parent = parent
         self.frame, self.btns_inner_frame, self.box_frame = create_frame(parent)
-#JCFJFVDJJ
         self.create_buttons()
         self.create_maintenance_box()
 
