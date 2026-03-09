@@ -29,10 +29,9 @@ class MaintenanceManagementPage:
         btns_inner_frame = tk.Frame(top_btn_frame, bg="#c9e4c4")
         btns_inner_frame.pack(anchor="center")
 
+        # Approve and Deny removed — now live inside the detail panel
         for text, cmd, w in [
             ("Assign Staff", self._assign_staff, 140),
-            ("Approve",      self._approve,      110),
-            ("Deny",         self._deny,         110),
             ("View All",     self._view_all,     110),
         ]:
             create_button(
@@ -81,8 +80,10 @@ class MaintenanceManagementPage:
 
         full_data = viewFull(self.selected_request_id)
         self._panel = MaintenanceDetailPanel(
-            parent    = self.detail_wrap,
-            full_data = full_data,
+            parent     = self.detail_wrap,
+            full_data  = full_data,
+            on_approve = self._approve,   # ← passed as callbacks
+            on_deny    = self._deny,
         )
 
     # ------------------------------------------------------------------ actions
