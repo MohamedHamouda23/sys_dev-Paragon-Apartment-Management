@@ -59,7 +59,10 @@ def page_template(main_window, user_info):
     }
 
     for name, module in page_modules.items():
-        frame = module.create_page(content_frame)
+        if name == "Users":
+            frame = module.create_page(content_frame, user_info=user_info)
+        else:
+            frame = module.create_page(content_frame)
         frame.place(relwidth=1, relheight=1)
         pages[name] = frame
 

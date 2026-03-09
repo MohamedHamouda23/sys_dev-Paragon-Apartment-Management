@@ -13,9 +13,17 @@ from database.user_service import (
 
 
 class UserManagementPage:
-    def __init__(self, parent):
+    def __init__(self, parent, user_info=None):
         self.frame = tk.Frame(parent, bg="#c9e4c4")
         self.selected_user_id = None
+        self.user_info = user_info
+
+        self.logged_in_role = None
+        self.admin_scope_city_id = None
+        if user_info and len(user_info) >= 6:
+            self.logged_in_role = user_info[4]
+            if self.logged_in_role == "Administrators":
+                self.admin_scope_city_id = user_info[5]
 
         self.roles = []
         self.role_name_to_id = {}
@@ -29,6 +37,18 @@ class UserManagementPage:
     def _build_layout(self):
         top_btn_frame = tk.Frame(self.frame, bg="#c9e4c4")
         top_btn_frame.pack(side="top", fill="x", pady=(20, 8))
+
+        if self.logged_in_role == "Administrators":
+            branch_name = ""
+            if self.user_info and len(self.user_info) >= 4:
+                branch_name = self.user_info[3]
+            tk.Label(
+                top_btn_frame,
+                text=f"Admin Branch: {branch_name}",
+                bg="#c9e4c4",
+                fg="#1f3b63",
+                font=("Arial", 12, "bold")
+            ).pack(anchor="center", pady=(0, 8))
 
         btns_inner_frame = tk.Frame(top_btn_frame, bg="#c9e4c4")
         btns_inner_frame.pack(anchor="center")
@@ -141,7 +161,7 @@ class UserManagementPage:
         role_names = list(self.role_name_to_id.keys())
         self.role_combobox["values"] = role_names
 
-        self.cities = get_all_locations()
+        self.cities = get_all_locations(scope_city_id=self.admin_scope_city_id)
         self.city_name_to_id = {name: city_id for city_id, name in self.cities}
         city_names = list(self.city_name_to_id.keys())
         self.city_combobox["values"] = city_names
@@ -155,7 +175,7 @@ class UserManagementPage:
         for row in self.tree.get_children():
             self.tree.delete(row)
 
-        for user in get_all_users():
+        for user in get_all_users(scope_city_id=self.admin_scope_city_id):
             self.tree.insert("", "end", values=user)
 
     def _on_row_select(self, _event=None):
@@ -209,7 +229,15 @@ class UserManagementPage:
     def add_user(self):
         try:
             first_name, surname, email, password, role_id, city_id = self._collect_form_data(require_password=True)
-            create_user(first_name, surname, email, password, role_id, city_id)
+            create_user(
+                first_name,
+                surname,
+                email,
+                password,
+                role_id,
+                city_id,
+                scope_city_id=self.admin_scope_city_id,
+            )
             self._load_users()
             self.clear_form()
             messagebox.showinfo("Success", "User added successfully.")
@@ -231,6 +259,7 @@ class UserManagementPage:
                 role_id,
                 city_id,
                 password_hash=password if password else None,
+                scope_city_id=self.admin_scope_city_id,
             )
             self._load_users()
             messagebox.showinfo("Success", "User updated successfully.")
@@ -247,7 +276,13 @@ class UserManagementPage:
             return
 
         try:
-            delete_user(self.selected_user_id)
+            current_user_id = self.user_info[0] if self.user_info else None
+            delete_user(
+                self.selected_user_id,
+                scope_city_id=self.admin_scope_city_id,
+                acting_user_id=current_user_id,
+                acting_role=self.logged_in_role,
+            )
             self._load_users()
             self.clear_form()
             messagebox.showinfo("Success", "User deleted successfully.")
@@ -277,5 +312,5 @@ class UserManagementPage:
             self.city_combobox.set("")
 
 
-def create_page(parent):
-    return UserManagementPage(parent).frame
+def create_page(parent, user_info=None):
+    return UserManagementPage(parent, user_info=user_info).frame
