@@ -21,10 +21,24 @@ from modules.Property_Management import AddApartmentStepper
 # -------------------------------------------------------
 class ApartmentManagerPage:
 
-    def __init__(self, parent):
+    def __init__(self, parent, user_info=None):
         self.parent = parent
-        self.frame, self.btns_inner_frame, self.box_frame = create_frame(parent)
+        self.user_info = user_info
+        self.frame = tk.Frame(parent, bg="#c9e4c4")
+
+        # Top button frame (like UserManagementPage)
+        top_btn_frame = tk.Frame(self.frame, bg="#c9e4c4")
+        top_btn_frame.pack(side="top", fill="x", pady=(20, 8))
+
+        btns_inner_frame = tk.Frame(top_btn_frame, bg="#c9e4c4")
+        btns_inner_frame.pack(anchor="center")
+        self.btns_inner_frame = btns_inner_frame
         self.create_buttons()
+
+        # Content frame with padding and white table wrap
+        content_frame = tk.Frame(self.frame, bg="#c9e4c4")
+        content_frame.pack(fill="both", expand=True, padx=20, pady=(6, 20))
+        self.box_frame = content_frame
         self.refresh_apartments()
 
     # ---------------------------------------------------
@@ -37,40 +51,63 @@ class ApartmentManagerPage:
             create_button(
                 self.btns_inner_frame,
                 text=text,
-                width=150,
-                height=50,
+                width=140,
+                height=45,
                 bg="#3B86FF",
                 fg="white",
                 command=command,
                 next_window_func=None,
                 current_window=None
-            ).pack(side="left", padx=15, pady=50)
+            ).pack(side="left", padx=8)
 
-        from main.helpers import create_logout_button
-        create_logout_button(self.btns_inner_frame, self.frame, self.parent)
 
     # ---------------------------------------------------
+
     def refresh_apartments(self):
         clear_frame(self.box_frame)
         apartments = get_all_apartments()
 
-        container = card(self.box_frame)
+        from tkinter import ttk
+        table_wrap = tk.Frame(self.box_frame, bg="white", bd=2, relief="groove")
+        table_wrap.pack(fill="both", expand=True, pady=(0, 12))
 
         if not apartments:
+            from main.helpers import styled_label, FONT_LABEL
             styled_label(
-                container,
+                table_wrap,
                 "Registered apartments will appear here",
                 font=FONT_LABEL,
                 fg="#888"
             ).pack(expand=True, pady=20)
             return
 
+        columns = ("id", "city", "address", "postcode", "rooms", "type", "status")
+        self.apt_tree = ttk.Treeview(table_wrap, columns=columns, show="headings", height=9)
+
+        self.apt_tree.heading("id", text="ID")
+        self.apt_tree.heading("city", text="City")
+        self.apt_tree.heading("address", text="Address")
+        self.apt_tree.heading("postcode", text="Postcode")
+        self.apt_tree.heading("rooms", text="Rooms")
+        self.apt_tree.heading("type", text="Type")
+        self.apt_tree.heading("status", text="Status")
+
+        self.apt_tree.column("id", width=55, anchor="center")
+        self.apt_tree.column("city", width=120, anchor="w")
+        self.apt_tree.column("address", width=180, anchor="w")
+        self.apt_tree.column("postcode", width=110, anchor="w")
+        self.apt_tree.column("rooms", width=70, anchor="center")
+        self.apt_tree.column("type", width=110, anchor="w")
+        self.apt_tree.column("status", width=110, anchor="w")
+
+        y_scroll = ttk.Scrollbar(table_wrap, orient="vertical", command=self.apt_tree.yview)
+        self.apt_tree.configure(yscrollcommand=y_scroll.set)
+
+        self.apt_tree.pack(side="left", fill="both", expand=True, padx=(8, 0), pady=8)
+        y_scroll.pack(side="right", fill="y", pady=8, padx=(0, 8))
+
         for apt in apartments:
-            text = (
-                f"{apt[1]} | {apt[2]} ({apt[3]}) | "
-                f"Rooms: {apt[4]} | Type: {apt[5]} | Status: {apt[6]}"
-            )
-            styled_label(container, text, fg="#333").pack(pady=5, anchor="w")
+            self.apt_tree.insert("", "end", values=apt)
 
     # ---------------------------------------------------
     def on_add_property(self):

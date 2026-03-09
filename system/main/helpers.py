@@ -127,15 +127,22 @@ def create_side_navbar(parent, button_text, user_info, button_command=None):
     for widget, kw in [(user_img, {"pady": (0, 5)}), (user_name, {}), (user_email, {})]:
         widget.pack(side="top", **kw)
 
-    # Sidebar buttons
+    # Sidebar navigation buttons (excluding logout)
+
+    nav_buttons = []
+    # Only add navigation buttons (no logout)
     for i, text in enumerate(button_text):
+        if text.strip().lower() == "logout":
+            continue
         cmd = button_command[i] if isinstance(button_command, list) else button_command
         btn = create_button(frame, text=text, width=sidebar_width, height=50,
-                            bg=NAV_BG, fg="black", command=cmd, current_window=parent)
+                           bg=NAV_BG, fg="black", command=cmd, current_window=parent)
         btn.pack_configure(pady=(5 if i > 0 else 0))
+        nav_buttons.append(btn)
         frame.buttons.append(btn)
 
     collapsed = False
+
 
     def toggle_navbar():
         nonlocal collapsed
@@ -144,17 +151,36 @@ def create_side_navbar(parent, button_text, user_info, button_command=None):
         info_widgets = [user_img, user_name, user_email]
         if collapsed:
             for w in info_widgets: w.pack_forget()
-            for btn in frame.buttons: btn.pack_forget()
+            for btn in nav_buttons: btn.pack_forget()
         else:
             user_img.pack(side="top", pady=(0, 5))
             for w in [user_name, user_email]: w.pack(side="top")
-            for btn in frame.buttons: btn.pack(fill="x", expand=True, pady=10)
+            for btn in nav_buttons: btn.pack(fill="x", expand=True, pady=10)
         toggle_btn.configure(text="→" if collapsed else "←")
         frame.update_idletasks()
 
+    # Place nav buttons at the top
+    for btn in nav_buttons:
+        btn.pack(fill="x", expand=True, pady=10)
+    # Place toggle and logout buttons at the bottom (logout always last)
     toggle_btn = tk.Button(frame, text="←", command=toggle_navbar,
                            bg=NAV_BTN, fg=BTN_FG, bd=0, font=FONT_BTN)
-    toggle_btn.pack(side="bottom", fill="x", pady=5)
+    toggle_btn.pack(side="bottom", fill="x", pady=(0, 10))
+
+    def toggle_navbar():
+        nonlocal collapsed
+        collapsed = not collapsed
+        frame.configure(width=50 if collapsed else sidebar_width)
+        info_widgets = [user_img, user_name, user_email]
+        if collapsed:
+            for w in info_widgets: w.pack_forget()
+            for btn in nav_buttons: btn.pack_forget()
+        else:
+            user_img.pack(side="top", pady=(0, 5))
+            for w in [user_name, user_email]: w.pack(side="top")
+            for btn in nav_buttons: btn.pack(fill="x", expand=True, pady=10)
+        toggle_btn.configure(text="→" if collapsed else "←")
+        frame.update_idletasks()
 
     return frame
 
@@ -252,26 +278,4 @@ def logout_page(current_frame, parent_widget):
     except Exception as e:
         import tkinter.messagebox as messagebox
         messagebox.showerror("Logout Error", f"Could not show login page: {e}")
-
-def create_logout_button(parent_frame, target_frame, parent_widget, anchor="ne", padx=10, pady=0):
-    """
-    Creates and packs a styled logout button that logs out and shows the login page.
-    parent_frame: where the button will be placed (e.g., self.btns_inner_frame)
-    target_frame: the frame to destroy on logout (e.g., self.frame)
-    parent_widget: any widget in the window (e.g., self.parent), used to find the root window
-    """
-    from main.helpers import logout_page
-    btn = create_button(
-        parent_frame,
-        text="➜]",
-        width=35,
-        height=35,
-        bg="#FF3B3B",
-        fg="white",
-        command=lambda: logout_page(target_frame, parent_widget.winfo_toplevel()),
-        next_window_func=None,
-        current_window=None
-    )
-    btn.pack(anchor=anchor, padx=padx, pady=pady)
-    return btn
 
