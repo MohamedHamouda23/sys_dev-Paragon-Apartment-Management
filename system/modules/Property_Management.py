@@ -38,6 +38,20 @@ class AddApartmentStepper:
 
         self.step_city()
 
+    def _show_success_state(self, title, detail):
+        clear_frame(self.box_frame)
+
+        wrap = tk.Frame(self.box_frame, bg="#c9e4c4")
+        wrap.pack(expand=True)
+
+        card_frame = tk.Frame(wrap, bg="white", bd=2, relief="groove", padx=24, pady=18)
+        card_frame.pack()
+
+        tk.Label(card_frame, text="SUCCESS", bg="white", fg="#2E7D32", font=("Arial", 11, "bold")).pack(anchor="w")
+        tk.Label(card_frame, text=title, bg="white", fg="#1f3b63", font=("Arial", 16, "bold")).pack(anchor="w", pady=(4, 2))
+        tk.Label(card_frame, text=detail, bg="white", fg="#4f5d73", font=("Arial", 11), justify="left").pack(anchor="w")
+        tk.Label(card_frame, text="Returning to apartment list...", bg="white", fg="#777", font=("Arial", 10, "italic")).pack(anchor="w", pady=(10, 0))
+
     # ---------------------------------------------------
     def step_city(self):
         clear_frame(self.box_frame)
@@ -66,10 +80,10 @@ class AddApartmentStepper:
     # ---------------------------------------------------
     def step_address(self, selected_city):
         if not selected_city:
-            messagebox.showerror("Selection Error", "Please select a city before proceeding.")
+            messagebox.showerror("Selection Error", "Please select a city before proceeding.", parent=self.box_frame)
             return
         if any(char.isdigit() for char in selected_city):
-            messagebox.showerror("Input Error", "City names must only contain letters.")
+            messagebox.showerror("Input Error", "City names must only contain letters.", parent=self.box_frame)
             return
 
         clear_frame(self.box_frame)
@@ -118,7 +132,7 @@ class AddApartmentStepper:
 
     def _address_next(self, selected_city, selected_address):
         if not selected_address:
-            messagebox.showerror("Selection Error", "Please select an address before proceeding.")
+            messagebox.showerror("Selection Error", "Please select an address before proceeding.", parent=self.box_frame)
             return
         self.step_details(selected_city, selected_address)
 
@@ -178,15 +192,57 @@ class AddApartmentStepper:
 
     # ---------------------------------------------------
     def _submit(self, rooms, apt_type, occ, city, address):
+        rooms = (rooms or "").strip()
+        apt_type = (apt_type or "").strip()
+        occ = (occ or "").strip()
+
+        missing_fields = []
+        if not rooms:
+            missing_fields.append("Number of Rooms")
+        if not apt_type:
+            missing_fields.append("Property Type")
+        if not occ:
+            missing_fields.append("Occupancy Status")
+
+        if missing_fields:
+            messagebox.showerror(
+                "Missing Required Fields",
+                "Please fill in all required fields:\n- " + "\n- ".join(missing_fields),
+                parent=self.box_frame,
+            )
+            return
+
+        if not rooms.isdigit() or int(rooms) <= 0:
+            messagebox.showerror("Input Error", "Number of Rooms must be a positive number.", parent=self.box_frame)
+            return
+
+        if apt_type not in self.TYPES:
+            messagebox.showerror("Input Error", "Please select a valid Property Type.", parent=self.box_frame)
+            return
+
+        if occ not in self.OCCUPANCY:
+            messagebox.showerror("Input Error", "Please select a valid Occupancy Status.", parent=self.box_frame)
+            return
+
         building_id = self.display_to_id.get(address)
         city_id     = self.city_map[city]
+        if building_id is None:
+            messagebox.showerror("Selection Error", "Please select a valid address.", parent=self.box_frame)
+            return
+
         try:
             create_apartment(city_id, building_id, rooms, apt_type, occ)
-            clear_frame(self.box_frame)
-            styled_label(self.box_frame, "✓  Apartment added successfully!", fg="#2E7D32").pack(expand=True)
+            self._show_success_state(
+                "Apartment Added",
+                f"{apt_type} with {rooms} room(s) was added as {occ} in {city}.",
+            )
             self.box_frame.after(1200, self.refresh_callback)
         except Exception as e:
-            messagebox.showerror("Error", str(e))
+            error_text = str(e)
+            if "CHECK constraint failed" in error_text and "occupancy_status" in error_text:
+                messagebox.showerror("Input Error", "Please select a valid Occupancy Status.", parent=self.box_frame)
+            else:
+                messagebox.showerror("Error", error_text, parent=self.box_frame)
 
 
 def create_page(parent):

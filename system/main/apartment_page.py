@@ -60,6 +60,20 @@ class ApartmentManagerPage:
                 current_window=None
             ).pack(side="left", padx=8)
 
+    def _show_success_state(self, title, detail):
+        clear_frame(self.box_frame)
+
+        wrap = tk.Frame(self.box_frame, bg="#c9e4c4")
+        wrap.pack(expand=True)
+
+        card_frame = tk.Frame(wrap, bg="white", bd=2, relief="groove", padx=24, pady=18)
+        card_frame.pack()
+
+        tk.Label(card_frame, text="SUCCESS", bg="white", fg="#2E7D32", font=("Arial", 11, "bold")).pack(anchor="w")
+        tk.Label(card_frame, text=title, bg="white", fg="#1f3b63", font=("Arial", 16, "bold")).pack(anchor="w", pady=(4, 2))
+        tk.Label(card_frame, text=detail, bg="white", fg="#4f5d73", font=("Arial", 11), justify="left").pack(anchor="w")
+        tk.Label(card_frame, text="Returning to apartment list...", bg="white", fg="#777", font=("Arial", 10, "italic")).pack(anchor="w", pady=(10, 0))
+
 
     # ---------------------------------------------------
 
@@ -131,15 +145,17 @@ class ApartmentManagerPage:
         def submit_city():
             city_name = city_entry.get()
             if not city_name.isalpha():
-                messagebox.showerror("Input Error", "City names must only contain letters.")
+                messagebox.showerror("Input Error", "City names must only contain letters.", parent=self.frame)
                 return
             try:
                 create_city(city_name)
-                clear_frame(self.box_frame)
-                styled_label(self.box_frame, "✓  City added successfully!", fg="#2E7D32").pack(expand=True)
+                self._show_success_state(
+                    "City Added",
+                    f"The city '{city_name}' was added successfully.",
+                )
                 self.box_frame.after(1200, self.refresh_apartments)
             except Exception as e:
-                messagebox.showerror("Error", str(e))
+                messagebox.showerror("Error", str(e), parent=self.frame)
 
         btn_frame = tk.Frame(container, bg=BG)
         btn_frame.pack(pady=(20, 0))
@@ -174,14 +190,72 @@ class ApartmentManagerPage:
         postcode_entry = form_field(container, "Postcode", [0])
 
         def submit_building():
+            selected_city = city_cb.get().strip()
+            street = street_entry.get().strip()
+            postcode = postcode_entry.get().strip()
+
+            missing_fields = []
+            if not selected_city:
+                missing_fields.append("City")
+            if not street:
+                missing_fields.append("Street")
+            if not postcode:
+                missing_fields.append("Postcode")
+
+            if missing_fields:
+                messagebox.showerror(
+                    "Missing Required Fields",
+                    "Please fill in all required fields:\n- " + "\n- ".join(missing_fields),
+                    parent=self.frame,
+                )
+                return
+
+            if selected_city not in city_map:
+                messagebox.showerror("Selection Error", "Please select a valid city.", parent=self.frame)
+                return
+
+            if " " in postcode:
+                messagebox.showerror(
+                    "Input Error",
+                    "Postcode cannot contain spaces.",
+                    parent=self.frame,
+                )
+                return
+
+            if not postcode.isalnum():
+                messagebox.showerror(
+                    "Input Error",
+                    "Postcode cannot contain special characters.",
+                    parent=self.frame,
+                )
+                return
+
+            if not postcode.isalnum():
+                messagebox.showerror(
+                    "Input Error",
+                    "Postcode must contain letters and numbers only.",
+                    parent=self.frame,
+                )
+                return
+
+            if len(postcode) != 7:
+                messagebox.showerror(
+                    "Input Error",
+                    "Postcode must be exactly 7 characters.",
+                    parent=self.frame,
+                )
+                return
+
             try:
-                city_id = city_map[city_cb.get()]
-                create_building(city_id, street_entry.get(), postcode_entry.get())
-                clear_frame(self.box_frame)
-                styled_label(self.box_frame, "✓  Building added successfully!", fg="#2E7D32").pack(expand=True)
+                city_id = city_map[selected_city]
+                create_building(city_id, street, postcode)
+                self._show_success_state(
+                    "Building Added",
+                    f"Building at {street} ({postcode}) was added for {selected_city}.",
+                )
                 self.box_frame.after(1200, self.refresh_apartments)
             except Exception as e:
-                messagebox.showerror("Error", str(e))
+                messagebox.showerror("Error", str(e), parent=self.frame)
 
         btn_frame = tk.Frame(container, bg=BG)
         btn_frame.pack(pady=(20, 0))

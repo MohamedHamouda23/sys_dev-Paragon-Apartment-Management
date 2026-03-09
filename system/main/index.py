@@ -1,9 +1,9 @@
 import tkinter as tk
 from main.helpers import create_window, create_navbar
-from .log_in import Log_window
+from main.log_in import Log_window
 def main_window():
     root = create_window("Paragon Apartments Management System")
-    root.icon_image = tk.PhotoImage(file="assets/Pams-logo.png").subsample(2, 2)
+    root.icon_image = tk.PhotoImage(master=root, file="assets/Pams-logo.png").subsample(2, 2)
     root.iconphoto(True, root.icon_image)
 
     # ---- NAVBAR ----
@@ -15,7 +15,7 @@ def main_window():
     )
 
     # ---- MAIN IMAGE ----
-    root.main_img = tk.PhotoImage(file="assets/main.png").subsample(2, 2)
+    root.main_img = tk.PhotoImage(master=root, file="assets/main.png").subsample(2, 2)
     tk.Label(root, image=root.main_img, bg="#c9e4c4").pack(pady=15)
 
     # ---- DESCRIPTION ----
@@ -60,7 +60,7 @@ def main_window():
         card.pack(side="left", padx=15)
 
         try:
-            img = tk.PhotoImage(file=img_file).subsample(subsample_size, subsample_size)
+            img = tk.PhotoImage(master=root, file=img_file).subsample(subsample_size, subsample_size)
         except tk.TclError:
             print(f"Cannot load image: {img_file}")
             continue

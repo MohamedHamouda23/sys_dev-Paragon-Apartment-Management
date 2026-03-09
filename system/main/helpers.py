@@ -97,7 +97,7 @@ def create_navbar(parent, logo_path, button_text, button_command=None):
     frame.pack_propagate(False)
 
     left_frame = _nav_frame(frame, side="left", padx=20, pady=20)
-    frame.logo_image = tk.PhotoImage(file=logo_path).subsample(2, 2)
+    frame.logo_image = tk.PhotoImage(master=frame, file=logo_path).subsample(2, 2)
     tk.Label(left_frame, image=frame.logo_image, bg=NAV_BG).pack(side="left")
 
     center_frame = _nav_frame(frame, side="left", expand=True)
@@ -112,12 +112,31 @@ def create_navbar(parent, logo_path, button_text, button_command=None):
 
 
 def create_side_navbar(parent, button_text, user_info, button_command=None):
+
     sidebar_width = 190
     frame = tk.Frame(parent, bg=NAV_BG, width=sidebar_width)
     frame.pack(side="left", fill="y")
     frame.pack_propagate(False)
     frame.update()
     frame.buttons = []
+
+    # Footer controls area keeps bottom controls stable.
+    footer_frame = tk.Frame(frame, bg=NAV_BG)
+    footer_frame.pack(side="bottom", fill="x", pady=(0, 10))
+
+    def logout_command():
+        logout_page(frame, parent)
+
+    logout_btn = create_button(
+        footer_frame,
+        text="Logout",
+        width=sidebar_width,
+        height=36,
+        bg="#E53935",
+        fg="white",
+        command=logout_command,
+        current_window=parent,
+    )
 
     # User info section
     info_frame = _nav_frame(frame, side="top", fill="x", pady=(20, 10))
@@ -143,7 +162,6 @@ def create_side_navbar(parent, button_text, user_info, button_command=None):
 
     collapsed = False
 
-
     def toggle_navbar():
         nonlocal collapsed
         collapsed = not collapsed
@@ -152,35 +170,24 @@ def create_side_navbar(parent, button_text, user_info, button_command=None):
         if collapsed:
             for w in info_widgets: w.pack_forget()
             for btn in nav_buttons: btn.pack_forget()
+            logout_btn.pack_forget()
         else:
             user_img.pack(side="top", pady=(0, 5))
             for w in [user_name, user_email]: w.pack(side="top")
             for btn in nav_buttons: btn.pack(fill="x", expand=True, pady=10)
+            logout_btn.pack(side="top", fill="x", pady=(0, 2), before=toggle_btn)
         toggle_btn.configure(text="→" if collapsed else "←")
         frame.update_idletasks()
 
     # Place nav buttons at the top
     for btn in nav_buttons:
         btn.pack(fill="x", expand=True, pady=10)
-    # Place toggle and logout buttons at the bottom (logout always last)
-    toggle_btn = tk.Button(frame, text="←", command=toggle_navbar,
-                           bg=NAV_BTN, fg=BTN_FG, bd=0, font=FONT_BTN)
-    toggle_btn.pack(side="bottom", fill="x", pady=(0, 10))
 
-    def toggle_navbar():
-        nonlocal collapsed
-        collapsed = not collapsed
-        frame.configure(width=50 if collapsed else sidebar_width)
-        info_widgets = [user_img, user_name, user_email]
-        if collapsed:
-            for w in info_widgets: w.pack_forget()
-            for btn in nav_buttons: btn.pack_forget()
-        else:
-            user_img.pack(side="top", pady=(0, 5))
-            for w in [user_name, user_email]: w.pack(side="top")
-            for btn in nav_buttons: btn.pack(fill="x", expand=True, pady=10)
-        toggle_btn.configure(text="→" if collapsed else "←")
-        frame.update_idletasks()
+    # Place footer buttons with deterministic order: logout above collapse.
+    toggle_btn = tk.Button(footer_frame, text="←", command=toggle_navbar,
+                           bg=NAV_BTN, fg=BTN_FG, bd=0, font=FONT_BTN)
+    toggle_btn.pack(side="top", fill="x", pady=(0, 0))
+    logout_btn.pack(side="top", fill="x", pady=(0, 2), before=toggle_btn)
 
     return frame
 
@@ -259,23 +266,23 @@ def card(parent):
 
 def logout_page(current_frame, parent_widget):
     """
-    Destroys the current frame, shows the root window, and opens the login window.
-    parent_widget should be any widget in the window; root is found via winfo_toplevel().
+    Log out the current user and return to the index page.
     """
     try:
-        current_frame.destroy()
-    except Exception:
-        pass
-    try:
         root = parent_widget.winfo_toplevel()
-        root.deiconify()
     except Exception:
         root = None
+
     try:
-        from main.log_in import Log_window
         if root:
-            Log_window(root)
+            root.destroy()
+    except Exception:
+        pass
+
+    try:
+        from main.index import main_window
+        main_window()
     except Exception as e:
         import tkinter.messagebox as messagebox
-        messagebox.showerror("Logout Error", f"Could not show login page: {e}")
+        messagebox.showerror("Logout Error", f"Could not return to index page: {e}")
 
