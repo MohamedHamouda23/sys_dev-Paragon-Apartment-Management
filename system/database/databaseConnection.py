@@ -7,3 +7,22 @@ def check_connection(db_path="database/database.db"):
         print("Connection failed:", e)
         return None
 
+
+
+# -------------------- Generic Helpers --------------------
+def fetch_all(query):
+    """Fetch all rows from a query."""
+    conn = check_connection()
+    cursor = conn.cursor()
+    cursor.execute(query)
+    result = cursor.fetchall()
+    conn.close()
+    return result
+
+def insert(query, params):
+    """Insert data into the database."""
+    conn = check_connection()
+    cursor = conn.cursor()
+    cursor.execute(query, params)
+    conn.commit()
+    conn.close()

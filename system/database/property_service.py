@@ -1,22 +1,5 @@
-from database.databaseConnection import check_connection
+from database.databaseConnection import check_connection,fetch_all, insert
 
-# -------------------- Generic Helpers --------------------
-def fetch_all(query):
-    """Fetch all rows from a query."""
-    conn = check_connection()
-    cursor = conn.cursor()
-    cursor.execute(query)
-    result = cursor.fetchall()
-    conn.close()
-    return result
-
-def insert(query, params):
-    """Insert data into the database."""
-    conn = check_connection()
-    cursor = conn.cursor()
-    cursor.execute(query, params)
-    conn.commit()
-    conn.close()
 
 # -------------------- Cities --------------------
 def get_all_cities():
@@ -68,3 +51,14 @@ def create_apartment(city_id, building_id, num_rooms, apt_type, occupancy_status
         (city_id, building_id, num_rooms, apt_type, occupancy_status)
     )
 
+def fetch_available_apartments():
+    apartments = get_all_apartments()
+    return [
+        (apt[0], f"{apt[1]} ({apt[2]}) - {apt[4]}")
+        for apt in apartments
+        if apt[6] == "Vacant"
+    ]
+
+def build_apartment_map(apartments):
+    """Returns {display_str: apartment_id} dict."""
+    return {display: apt_id for apt_id, display in apartments}

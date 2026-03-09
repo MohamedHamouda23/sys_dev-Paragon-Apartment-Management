@@ -1,18 +1,19 @@
 import tkinter as tk
-<<<<<<< HEAD
 from tkinter import messagebox
 from datetime import date, timedelta
 
-from core.helpers import (
+from main.helpers import (
     create_button, create_frame, clear_frame,
     styled_label, form_field, form_dropdown, card,
     BG, ACCENT, FONT_TITLE, FONT_LABEL,
 )
 
-from core.lease_service import (
-    fetch_leases, fetch_tenants, fetch_available_apartments,
-    create_lease, build_tenant_map, build_apartment_map,
+from database.lease_service import (
+    fetch_leases, fetch_tenants,
+    create_lease, build_tenant_map,
 )
+
+from database.property_service import build_apartment_map,fetch_all,fetch_available_apartments
 
 class LeaseManagerPage:
 
