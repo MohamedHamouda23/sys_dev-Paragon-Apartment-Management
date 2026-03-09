@@ -1,14 +1,12 @@
 import tkinter as tk
-<<<<<<< HEAD
 from main.helpers import create_button
-=======
 from tkinter import messagebox
 
 #-- core imports for shared ui helpers
-from core.helpers import (
+from main.helpers import (
     create_button, create_frame, clear_frame, styled_label, form_field, form_dropdown, card, BG, ACCENT, FONT_TITLE, FONT_LABEL 
 )
->>>>>>> 3076b38 (test)
+
 
 
 class TenantManagerPage: #initialise tenant managment page
