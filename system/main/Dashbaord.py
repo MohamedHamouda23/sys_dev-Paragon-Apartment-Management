@@ -1,7 +1,7 @@
 from main.helpers import create_side_navbar   # absolute import
 
 import tkinter as tk
-from modules import User_Management, Property_Management, Tenant_Management,Payments,complaints
+from modules import User_Management, Property_Management, Tenant_Management,Payments_Management,complaints
 from modules import Lease_Management, Report_Management, Maintenance_Management,Maintenance_History
 
 def page_template(main_window, user_info): 
@@ -24,7 +24,7 @@ def page_template(main_window, user_info):
         "Reports": Report_Management,
         "Maintenance": Maintenance_Management,
         "History": Maintenance_History,
-        "Payments": Payments,
+        "Payments": Payments_Management,
         "complaints": complaints,
     }
 
