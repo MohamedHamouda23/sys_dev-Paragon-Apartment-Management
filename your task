@@ -1,26 +1,64 @@
-Ava
 
-- Email addresses must include a domain after the @ symbol.
-- When updating a record, if nothing has changed, do not perform the update.
-- Remove the city column from user forms and tables.
-- When adding or updating a user, delete  the option to of city (useless) 
+------------------------------------------------------------------------------------------------------------------------------------------------
+User Management Notes (Ava)
+Email addresses must include a domain after the @ symbol.
+When updating a record, if nothing has changed, do not perform the update.
+Remove the city column from user forms and tables.
+When adding or updating a user, delete the option for city (useless — city is always the user’s assigned city).
 
+------------------------------------------------------------------------------------------------------------------------------------------------
 
-chiko
+Apartment & Building Notes (Chiko)
+Register apartment – option should only be visible to Administrators.
+Register building – option should also only be visible to Administrators.
+Do not ask for city when adding an apartment or building.
+The city is always the user’s assigned city.
+Addresses should be shown for the user’s assigned city.
+All apartments and buildings added should automatically be associated with the same city as the user.
 
-- Register apartment – option should only be visible to Administrators.
-- Register building – option should also only be visible to Administrators.
-- Do not ask for city when adding an apartment or building.
-- The city is always the user’s assigned city.
-- Addresses chocie should be shown based on user’s assigned city.
-- All apartments and buildings added should automatically be associated with the same city as the user.
-
-- Create a button to view apartments.
+Viewing Apartments
+Create a button to view apartments.
 Apartment list visibility:
--Administrators → can see apartments only for their assigned city.
-- Managers → can see apartments for all cities.
-- Filtering for Managers:
-- When reviewing apartments, Managers should be able to choose a city to filter by.
+Administrators → can see apartments only for their assigned city.
+Managers → can see apartments for all cities.
+Filtering for Managers:
+When reviewing apartments, Managers should be able to choose a city to filter by.
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+
+Lease Management Notes(Leyla)
+Keep the design of Add and Remove leases, but use the same layout/design as the user page for tracking leases.
+Lease operations (Add, Remove) should only display data related to the user’s assigned city, including:
+Tenant
+Apartment
+City
+Lease details
+
+Administrators:
+Can see all leases in their assigned city only.
+Can add, remove, and update leases.
+Prevent acceptance of empty fields when adding or updating leases.
+Fix the style for removing a lease — currently, the whole lease appears in one line; improve selection UI.
+
+Managers:
+Can view all leases across all cities.
+Can filter leases by city.
+Cannot add, update, or remove leases.
+
+Front-desk Staff:
+Can add leases only for their assigned city.
+Cannot remove or update existing leases.
+
+System / Database Notes:
+Change queries so that Administrators only see leases related to their city.
+Include city, tenant, and apartment info when listing leases.
+Do not show all-city/global data for Administrators — show only one city’s data.
+Fix errors when fields are empty; prevent submission of empty fields.
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
 
 
 ### Table 1: Apartment Management (Admins & Managers)
