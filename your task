@@ -6,6 +6,8 @@ When updating a record, if nothing has changed, do not perform the update.
 Remove the city column from user forms and tables.
 When adding or updating a user, delete the option for city (useless — city is always the user’s assigned city).
 
+
+-Gantt chart     
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
 Apartment & Building Notes (Chiko)
