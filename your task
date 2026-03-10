@@ -12,9 +12,8 @@ chiko
 - Register building – option should also only be visible to Administrators.
 - Do not ask for city when adding an apartment or building.
 - The city is always the user’s assigned city.
-- Addresses should be shown for the user’s assigned city.
+- Addresses chocie should be shown based on user’s assigned city.
 - All apartments and buildings added should automatically be associated with the same city as the user.
-- Viewing Apartments
 
 - Create a button to view apartments.
 Apartment list visibility:
