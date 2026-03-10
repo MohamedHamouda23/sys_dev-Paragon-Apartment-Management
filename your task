@@ -35,6 +35,8 @@ Apartment
 City
 Lease details
 
+
+
 Administrators:
 Can see all leases in their assigned city only.
 Can add, remove, and update leases.
@@ -50,11 +52,6 @@ Front-desk Staff:
 Can add leases only for their assigned city.
 Cannot remove or update existing leases.
 
-System / Database Notes:
-Change queries so that Administrators only see leases related to their city.
-Include city, tenant, and apartment info when listing leases.
-Do not show all-city/global data for Administrators — show only one city’s data.
-Fix errors when fields are empty; prevent submission of empty fields.
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
