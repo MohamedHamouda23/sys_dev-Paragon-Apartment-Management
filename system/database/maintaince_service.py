@@ -1,4 +1,5 @@
-from database.databaseConnection import check_connection,fetch_all, insert
+from database.databaseConnection import check_connection, fetch_all, insert
+from datetime import datetime
 
 
 def get_all_requests():
@@ -63,3 +64,97 @@ def viewFull(request_id):
     result = cursor.fetchone()
     conn.close()
     return result
+
+
+def update_request_status(request_id, action):
+    action_map = {
+        "approve": "Approved",
+        "reject":  "Denied"
+    }
+    if action.lower() not in action_map:
+        raise ValueError("Action must be 'approve' or 'reject'")
+
+    new_status = action_map[action.lower()]
+    conn = check_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE Maintenance_Request
+        SET Maintenance_status = ?
+        WHERE request_id = ?
+    """, (new_status, request_id))
+    conn.commit()
+    cursor.execute("""
+        SELECT request_id, Maintenance_status
+        FROM Maintenance_Request
+        WHERE request_id = ?
+    """, (request_id,))
+    result = cursor.fetchone()
+    conn.close()
+    return result
+
+
+
+def get_all_staff():
+    conn = check_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT e.employee_id,
+               u.first_name || ' ' || u.surname AS full_name
+        FROM Employee e
+        JOIN User u ON e.employee_id = u.user_id
+        ORDER BY full_name
+    """)
+    results = cursor.fetchall()
+    conn.close()
+    return results
+
+
+def assign_staff(request_id, employee_id, notes=None):
+
+    conn = check_connection()
+    cursor = conn.cursor()
+    try:
+        assigned_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        cursor.execute("""
+            UPDATE Maintenance_Assignment
+            SET is_current = 0
+            WHERE request_id = ? AND is_current = 1
+        """, (request_id,))
+
+        cursor.execute("""
+            INSERT INTO Maintenance_Assignment (request_id, employee_id, assigned_date, is_current)
+            VALUES (?, ?, ?, 1)
+        """, (request_id, employee_id, assigned_date))
+
+        cursor.execute("""
+            UPDATE Maintenance_Request
+            SET Maintenance_status = 'In Progress'
+            WHERE request_id = ?
+        """, (request_id,))
+
+        if notes:
+            cursor.execute("""
+                UPDATE Maintenance_Request
+                SET notes = ?
+                WHERE request_id = ?
+            """, (notes, request_id))
+
+        conn.commit()
+
+        cursor.execute("""
+            SELECT ma.request_id, ma.employee_id, ma.assigned_date, ma.is_current,
+                   u.first_name || ' ' || u.surname AS staff_name
+            FROM Maintenance_Assignment ma
+            JOIN Employee e ON ma.employee_id = e.employee_id
+            JOIN User u ON e.employee_id = u.user_id
+            WHERE ma.request_id = ? AND ma.is_current = 1
+        """, (request_id,))
+        result = cursor.fetchone()
+        return result
+
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()

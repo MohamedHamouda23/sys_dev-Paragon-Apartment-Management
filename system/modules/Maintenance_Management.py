@@ -1,5 +1,7 @@
 import tkinter as tk
+from tkinter import ttk, messagebox
 from main.helpers import create_button
+from modules.Assign_Staff import AssignStaffPanel
 
 
 class MaintenanceDetailPanel:
@@ -19,58 +21,38 @@ class MaintenanceDetailPanel:
         for widget in self.parent.winfo_children():
             widget.destroy()
 
-        # ── Detail grid ───────────────────────────────────────────────────────
         grid_frame = tk.Frame(self.parent, bg="white")
         grid_frame.pack(fill="x", padx=16, pady=(10, 6))
 
         for i, (lbl, val) in enumerate(zip(self.LABELS, full_data)):
             row, col = divmod(i, 2)
-            col_offset = col * 2
-            tk.Label(
-                grid_frame,
-                text=f"{lbl}:",
-                font=("Arial", 10, "bold"),
-                bg="white",
-                anchor="w",
-            ).grid(row=row, column=col_offset, sticky="w", padx=(10, 4), pady=3)
-            tk.Label(
-                grid_frame,
-                text=val if val is not None else "—",
-                bg="white",
-                anchor="w",
-            ).grid(row=row, column=col_offset + 1, sticky="w", padx=(0, 24), pady=3)
+            tk.Label(grid_frame, text=f"{lbl}:", font=("Arial", 10, "bold"), bg="white", anchor="w"
+                        ).grid(row=row, column=col*2,   sticky="w", padx=(10, 4),  pady=3)
+
+            tk.Label(grid_frame, text=val or "—",   bg="white", anchor="w"
+                        ).grid(row=row, column=col*2+1, sticky="w", padx=(0, 24), pady=3)
 
         grid_frame.grid_columnconfigure(1, weight=1)
         grid_frame.grid_columnconfigure(3, weight=1)
 
-        # ── Approve / Deny buttons ─────────────────────────────────────────────
         btn_frame = tk.Frame(self.parent, bg="white")
         btn_frame.pack(anchor="e", padx=16, pady=(4, 12))
 
-        create_button(
-            btn_frame,
-            text="Approve",
-            width=140,
-            height=45,
-            bg="#28a745",       # ← green
-            fg="white",
-            command=self.on_approve if self.on_approve else lambda: None,
-            next_window_func=None,
-            current_window=None,
-        ).pack(side="left", padx=(0, 8))
+        for text, bg, cmd in [
+            ("Approve", "#28a745", self.on_approve),
+            ("Deny",    "#dc3545", self.on_deny),
+        ]:
+            create_button(
+                btn_frame, text=text, width=140, height=45,
+                bg=bg, fg="white",
+                command=cmd if cmd else lambda: None,
+                next_window_func=None, current_window=None,
+            ).pack(side="left", padx=(0, 8))
 
-        create_button(
-            btn_frame,
-            text="Deny",
-            width=140,
-            height=45,
-            bg="#dc3545",       # ← red
-            fg="white",
-            command=self.on_deny if self.on_deny else lambda: None,
-            next_window_func=None,
-            current_window=None,
-        ).pack(side="left")
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Page factory
+# ─────────────────────────────────────────────────────────────────────────────
 
 def create_page(parent, user_info=None):
     from main.Maintenance_page import MaintenanceManagementPage
