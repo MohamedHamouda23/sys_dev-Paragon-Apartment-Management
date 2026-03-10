@@ -1,10 +1,11 @@
 ### Table 1: User Account Management (Admins & Managers)
 
+Ava
 
-| ID      | Requirement Description |
-|---------|------------------------|
-| FR1.2   | Manage all user accounts. |
-
+- Email addresses must include a domain after the @ symbol.
+- When updating a record, if nothing has changed, do not perform the update.
+- Remove the city column from user forms and tables.
+- When adding or updating a user, delete  the option to of city (useless) 
 
 
 ### Table 1: Apartment Management (Admins & Managers)
