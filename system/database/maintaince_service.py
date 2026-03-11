@@ -10,7 +10,7 @@ def get_all_requests():
             mr.request_id,
             u.first_name || ' ' || u.surname AS tenant_name,
             mr.issue,
-            DATE(mr.created_date) AS created_date,  
+            DATE(mr.created_date) AS created_date,
             mr.Maintenance_status
         FROM Maintenance_Request mr
         JOIN Tenant t ON mr.tenant_id = t.tenant_id
@@ -29,13 +29,13 @@ def viewFull(request_id):
     cursor.execute("""
         SELECT
             mr.request_id,
-            mr.issue,
             mr.description,
             mr.priority,
             mr.created_date,
             mr.resolved_date,
             mr.Maintenance_status,
             mr.notes,
+            mr.issue,
             u.first_name || ' ' || u.surname AS tenant_name,
             a.type,
             b.postcode,
@@ -70,19 +70,15 @@ def update_request_status(request_id, action):
     action_map = {
         "approve": "In Progress",
         "reject":  "Denied",
-        "resolve": "Resolved",      # ← added
+        "resolve": "Resolved",
     }
-
     if action.lower() not in action_map:
         raise ValueError("Action must be 'approve', 'reject', or 'resolve'")
 
     new_status = action_map[action.lower()]
-
     try:
         with check_connection() as conn:
             cursor = conn.cursor()
-
-            # Set resolved_date when marking as Resolved
             if new_status == "Resolved":
                 cursor.execute("""
                     UPDATE Maintenance_Request
@@ -96,19 +92,13 @@ def update_request_status(request_id, action):
                     SET Maintenance_status = ?
                     WHERE request_id = ?
                 """, (new_status, request_id))
-
             conn.commit()
-
             cursor.execute("""
                 SELECT request_id, Maintenance_status
                 FROM Maintenance_Request
                 WHERE request_id = ?
             """, (request_id,))
-
-            result = cursor.fetchone()
-
-        return result
-
+            return cursor.fetchone()
     except Exception as e:
         print("Database error:", e)
         return None
@@ -129,12 +119,13 @@ def get_all_staff():
     return results
 
 
-def assign_staff(request_id, employee_id, notes=None):
+def assign_staff(request_id, employee_id, priority=None):
     conn = check_connection()
     cursor = conn.cursor()
     try:
         assigned_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+        # Retire any existing current assignment
         cursor.execute("""
             UPDATE Maintenance_Assignment
             SET is_current = 0
@@ -146,19 +137,22 @@ def assign_staff(request_id, employee_id, notes=None):
             VALUES (?, ?, ?, 1)
         """, (request_id, employee_id, assigned_date))
 
-        cursor.execute("""
-            UPDATE Maintenance_Request
-            SET Maintenance_status = 'In Progress'
-            WHERE request_id = ?
-        """, (request_id,))
-
-        if notes:
+      
+        if priority:
             cursor.execute("""
                 UPDATE Maintenance_Request
-                SET notes = ?
+                SET Maintenance_status = 'In Progress',
+                    priority           = ?
                 WHERE request_id = ?
-            """, (notes, request_id))
+            """, (priority, request_id))
+        else:
+            cursor.execute("""
+                UPDATE Maintenance_Request
+                SET Maintenance_status = 'In Progress'
+                WHERE request_id = ?
+            """, (request_id,))
 
+        # Single commit covers all steps above
         conn.commit()
 
         cursor.execute("""
@@ -169,8 +163,7 @@ def assign_staff(request_id, employee_id, notes=None):
             JOIN User u ON e.employee_id = u.user_id
             WHERE ma.request_id = ? AND ma.is_current = 1
         """, (request_id,))
-        result = cursor.fetchone()
-        return result
+        return cursor.fetchone()
 
     except Exception as e:
         conn.rollback()
@@ -179,9 +172,8 @@ def assign_staff(request_id, employee_id, notes=None):
         conn.close()
 
 
-def resolve_request(request_id, description, repair_time=None, repair_cost=None):
-    """Mark a request as Resolved and save resolution details."""
-    from datetime import datetime
+def resolve_request(request_id, issue, description, repair_time=None, repair_cost=None):
+    """Mark a request as Resolved, saving updated issue and resolution notes."""
     try:
         with check_connection() as conn:
             cursor = conn.cursor()
@@ -189,12 +181,14 @@ def resolve_request(request_id, description, repair_time=None, repair_cost=None)
                 UPDATE Maintenance_Request
                 SET Maintenance_status = 'Resolved',
                     resolved_date      = ?,
-                    description        = ?,
+                    issue              = ?,
+                    notes              = ?,
                     repair_time        = ?,
                     repair_cost        = ?
                 WHERE request_id = ?
             """, (
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                issue,
                 description,
                 repair_time,
                 repair_cost,

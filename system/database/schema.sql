@@ -247,7 +247,7 @@ INSERT INTO User_Access (user_id, password_hash, role_id, email) VALUES
 (2, 'hash_finance123', 2, 'ava@company.com'),
 (3, 'hash_maint123', 3, 'leyla@company.com'),
 (4, 'hash_admin123', 4, 'erin@company.com'),
-(5, 'hash_manager123', 5, 'chiko@company.com'),
+(5, 'hash_manager123', 5, 'chiko@company.com'), 
 (6, 'hash_admin123', 6, 'Tenant@company.com'),
 (7, '123', 4, '123'),
 (8, 'admin123', 4, 'bristol_admin@company.com'),
@@ -282,12 +282,14 @@ INSERT INTO Payment (lease_id, due_date, payment_date, amount, Is_late) VALUES
 
 
 
-INSERT INTO Maintenance_Request (apartment_id, tenant_id, issue, description, Maintenance_status, priority, created_date, resolved_date, repair_time, repair_cost, notes) VALUES
-(2, 1, 'Heating malfunction', 'Radiator not working in living room', 'Open', 'High', '2026-03-08 09:30:00', NULL, NULL, NULL, ''),
-(3, 1, 'Water pressure low', 'Bathroom shower has weak water flow', 'Open', 'Medium', '2026-03-09 11:00:00', NULL, NULL, NULL, ''),
-(2, 1, 'Door lock broken', 'Front door lock is jammed', 'Resolved', 'High', '2026-02-20 08:15:00', NULL, NULL, NULL, ''),
-(4, 1, 'Light flickering', 'Kitchen light flickers intermittently', 'Resolved', 'Low', '2026-02-25 14:00:00', NULL, NULL, NULL, ''),
-(1, 1, 'Mold in bathroom', 'Mold appears near shower', 'Open', 'Medium', '2026-03-01 10:45:00',NULL, NULL, NULL, '');
+INSERT INTO Maintenance_Request
+(apartment_id, tenant_id, issue, description, Maintenance_status, priority, created_date, resolved_date, repair_time, repair_cost, notes)
+VALUES
+(2, 1, NULL, 'Radiator not working in living room', 'Open', NULL, '2026-03-08 09:30:00', NULL, NULL, NULL, ''),
+(3, 1, NULL, 'Bathroom shower has weak water flow', 'Open', NULL, '2026-03-09 11:00:00', NULL, NULL, NULL, ''),
+(2, 1, NULL, 'Front door lock is jammed', 'Open', NULL, '2026-02-20 08:15:00', NULL, NULL, NULL, ''),
+(4, 1, NULL, 'Kitchen light flickers intermittently', 'Open', NULL, '2026-02-25 14:00:00', NULL, NULL, NULL, ''),
+(1, 1, NULL, 'Mold appears near shower', 'Open', NULL, '2026-03-01 10:45:00', NULL, NULL, NULL, '');
 
 INSERT INTO Complaints (description, date_submitted, tenant_id) VALUES
 ('No hot water in apartment', '2026-03-02', 1),

@@ -1,24 +1,19 @@
 import tkinter as tk
 from tkinter import messagebox
-
 from database.maintaince_service import get_all_requests, viewFull, update_request_status
 from main.helpers import create_button, create_scrollable_treeview, show_placeholder, clear_frame
-
 from modules.Maintenance_Management import LoggingAndRecordsPage
 from modules.Maintaince_Scheduling import TasksAndTenantPage
-
 from modules.Request_Lifecycle import AssignStaffPanel, MaintenanceDetailPanel
 
 
 class MaintenanceManagementPage:
-
     def __init__(self, parent, user_info=None):
-        self.parent = parent
-        self.user_info = user_info
-        self.selected_request_id = None
-        self._panel = None
-
-        self.frame = tk.Frame(parent, bg="#c9e4c4")
+        self.parent               = parent
+        self.user_info            = user_info
+        self.selected_request_id  = None
+        self._panel               = None
+        self.frame                = tk.Frame(parent, bg="#c9e4c4")
         self._build_layout()
         self._load_requests()
 
@@ -31,7 +26,7 @@ class MaintenanceManagementPage:
 
         for text, cmd, w in [
             ("Assign Staff", self._assign_staff, 140),
-            ("clear Form",     self._clearForm,     110),
+            ("Clear Form",   self._clearForm,    110),
         ]:
             create_button(
                 btns_inner_frame, text=text, width=w, height=45,
@@ -52,7 +47,6 @@ class MaintenanceManagementPage:
 
         self.detail_wrap = tk.Frame(content_frame, bg="white", bd=2, relief="groove")
         self.detail_wrap.pack(fill="x", padx=0, pady=(10, 0))
-
         show_placeholder(self.detail_wrap, "Select a request to view details")
 
     # ------------------------------------------------------------------ data
@@ -62,7 +56,6 @@ class MaintenanceManagementPage:
             self.tree.delete(row)
         for row in (get_all_requests() or []):
             self.tree.insert("", "end", values=row)
-
         if reselect_id is not None:
             for item in self.tree.get_children():
                 if str(self.tree.item(item, "values")[0]) == str(reselect_id):
@@ -79,7 +72,6 @@ class MaintenanceManagementPage:
             return
         values = self.tree.item(selected[0], "values")
         self.selected_request_id = values[0]
-
         self._panel = MaintenanceDetailPanel(
             parent     = self.detail_wrap,
             full_data  = viewFull(self.selected_request_id),
@@ -130,13 +122,13 @@ class MaintenanceManagementPage:
     def _deny(self):
         self._update_status("reject", "Request denied.")
 
-    def _resolve(self, description, repair_time, repair_cost):
-        """Called from the resolution form with the filled-in details."""
+    def _resolve(self, issue, description, repair_time, repair_cost):
+        """Called from the resolution form — now receives updated issue too."""
         if not self._require_selection():
             return
         rid = self.selected_request_id
         from database.maintaince_service import resolve_request
-        if resolve_request(rid, description, repair_time, repair_cost):
+        if resolve_request(rid, issue, description, repair_time, repair_cost):
             messagebox.showinfo("Success", "Request marked as Resolved.")
             self._load_requests(reselect_id=rid)
         else:
@@ -144,7 +136,7 @@ class MaintenanceManagementPage:
 
     def _clearForm(self):
         self.selected_request_id = None
-        self._panel = None
+        self._panel              = None
         self.tree.selection_remove(self.tree.selection())
         show_placeholder(self.detail_wrap, "Select a request to view details")
         self._load_requests()
@@ -153,6 +145,7 @@ class MaintenanceManagementPage:
 # ---------------------------------------------------------------------------
 # Page factory
 # ---------------------------------------------------------------------------
+
 def create_page(parent, user_info=None):
     page = MaintenanceManagementPage(parent, user_info=user_info)
     return page.frame
