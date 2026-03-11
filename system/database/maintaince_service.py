@@ -177,3 +177,35 @@ def assign_staff(request_id, employee_id, notes=None):
         raise e
     finally:
         conn.close()
+
+
+def resolve_request(request_id, description, repair_time=None, repair_cost=None):
+    """Mark a request as Resolved and save resolution details."""
+    from datetime import datetime
+    try:
+        with check_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE Maintenance_Request
+                SET Maintenance_status = 'Resolved',
+                    resolved_date      = ?,
+                    description        = ?,
+                    repair_time        = ?,
+                    repair_cost        = ?
+                WHERE request_id = ?
+            """, (
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                description,
+                repair_time,
+                repair_cost,
+                request_id,
+            ))
+            conn.commit()
+            cursor.execute(
+                "SELECT request_id FROM Maintenance_Request WHERE request_id = ?",
+                (request_id,)
+            )
+            return cursor.fetchone()
+    except Exception as e:
+        print("Database error:", e)
+        return None

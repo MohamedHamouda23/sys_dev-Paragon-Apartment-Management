@@ -54,13 +54,11 @@ class MaintenanceManagementPage:
     # ------------------------------------------------------------------ data
 
     def _load_requests(self, reselect_id=None):
-        """Reload tree rows. If reselect_id given, re-select that row after reload."""
         for row in self.tree.get_children():
             self.tree.delete(row)
         for row in (get_all_requests() or []):
             self.tree.insert("", "end", values=row)
 
-        # Re-select the previously selected row so the detail panel stays in sync
         if reselect_id is not None:
             for item in self.tree.get_children():
                 if str(self.tree.item(item, "values")[0]) == str(reselect_id):
@@ -128,8 +126,17 @@ class MaintenanceManagementPage:
     def _deny(self):
         self._update_status("reject", "Request denied.")
 
-    def _resolve(self):
-        self._update_status("resolve", "Request marked as Resolved.")
+    def _resolve(self, description, repair_time, repair_cost):
+        """Called from the resolution form with the filled-in details."""
+        if not self._require_selection():
+            return
+        rid = self.selected_request_id
+        from database.maintaince_service import resolve_request
+        if resolve_request(rid, description, repair_time, repair_cost):
+            messagebox.showinfo("Success", "Request marked as Resolved.")
+            self._load_requests(reselect_id=rid)
+        else:
+            messagebox.showerror("Error", "Could not resolve request.")
 
     def _view_all(self):
         self.selected_request_id = None
