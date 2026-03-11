@@ -264,10 +264,52 @@ INSERT INTO Tenant_Reference (tenant_id, reference)
 VALUES (1, 'Previous landlord — paid rent on time');
 
 
+INSERT INTO Apartments (city_id, building_id, num_rooms, type, occupancy_status) VALUES
+(1, 1, 1, 'Studio', 'Vacant'),
+(1, 1, 3, 'Apartment', 'Occupied'),
+(2, 2, 2, 'Apartment', 'Occupied'),
+(3, 3, 4, 'Penthouse', 'Vacant'),
+(4, 4, 2, 'Apartment', 'Unavailable');
+
+
+INSERT INTO Payment (lease_id, due_date, payment_date, amount, Is_late) VALUES
+(1, '2026-04-01', '2026-04-01', 1200, 0),
+(1, '2026-05-01', '2026-05-02', 1200, 1),
+(1, '2026-06-01', NULL, 1200, 0),
+(1, '2026-07-01', NULL, 1200, 0),
+(1, '2026-08-01', NULL, 1200, 0);
 
 
 
 
+INSERT INTO Maintenance_Request (apartment_id, tenant_id, issue, description, Maintenance_status, priority, created_date, resolved_date, repair_time, repair_cost, notes) VALUES
+(2, 1, 'Heating malfunction', 'Radiator not working in living room', 'Open', 'High', '2026-03-08 09:30:00', NULL, NULL, NULL, ''),
+(3, 1, 'Water pressure low', 'Bathroom shower has weak water flow', 'In Progress', 'Medium', '2026-03-09 11:00:00', NULL, NULL, NULL, ''),
+(2, 1, 'Door lock broken', 'Front door lock is jammed', 'Resolved', 'High', '2026-02-20 08:15:00', '2026-02-22 12:00:00', 2, 50, 'Lock replaced'),
+(4, 1, 'Light flickering', 'Kitchen light flickers intermittently', 'Closed', 'Low', '2026-02-25 14:00:00', '2026-02-26 10:00:00', 1, 15, 'Replaced bulb'),
+(1, 1, 'Mold in bathroom', 'Mold appears near shower', 'Denied', 'Medium', '2026-03-01 10:45:00', NULL, NULL, NULL, 'Tenant responsible for cleaning');
 
 
+INSERT INTO Complaints (description, date_submitted, tenant_id) VALUES
+('No hot water in apartment', '2026-03-02', 1),
+('Noise complaint from upstairs neighbor', '2026-03-03', 1),
+('Lift not working for two days', '2026-03-05', 1),
+('Trash collection delayed', '2026-03-06', 1),
+('Parking space dispute', '2026-03-07', 1);
 
+INSERT INTO Employee (request_id, salary, hire_date) VALUES
+(1, 2500, '2025-06-01'),
+(2, 2600, '2025-07-01'),
+(3, 2700, '2025-08-01'),
+(4, 2400, '2025-09-01'),
+(5, 2550, '2025-10-01');
+
+INSERT INTO Lease (apartment_id, tenant_id, start_date, end_date, deposit, early_termination_fee, Agreed_rent) VALUES
+-- Existing tenant
+(2, 1, '2026-01-01', '2026-12-31', 1000, 500, 1200),
+
+-- New tenants
+(3, 1, '2026-02-01', '2026-11-30', 900, 450, 1000),
+(1, 1, '2026-03-01', '2026-09-30', 800, 400, 900),
+(4, 1, '2026-04-01', '2026-12-31', 1200, 600, 1300),
+(5, 1, '2026-05-01', '2026-10-31', 950, 475, 1100);
