@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
 
-# -- core imports for shared ui helpers
 from main.helpers import (
     create_button, create_frame, clear_frame, styled_label,
     form_field, form_dropdown, card,
@@ -15,11 +14,28 @@ class UserFormStepper:
         self.parent          = parent
         self.role_name_to_id = role_name_to_id
         self.city_name_to_id = city_name_to_id
-        self._render_form(prefill)
+        self._prefill        = prefill
+
+        # Widget references — populated in _do_render
+        self.first_name_entry = None
+        self.surname_entry    = None
+        self.email_entry      = None
+        self.password_entry   = None
+        self.role_combobox    = None
+        self.city_combobox    = None
+
+        # Defer rendering to the next event-loop tick (avoids macOS autorelease crash)
+        self.parent.after(0, lambda: self._do_render(prefill))
 
     # ------------------------------------------------------------------ render
 
     def _render_form(self, prefill=None):
+        """Public-facing entry point — defers to main loop."""
+        self._prefill = prefill
+        self.parent.after(0, lambda: self._do_render(prefill))
+
+    def _do_render(self, prefill=None):
+        """Actual widget construction — always runs on the main loop tick."""
         for widget in self.parent.winfo_children():
             widget.destroy()
 
@@ -76,6 +92,9 @@ class UserFormStepper:
     # ------------------------------------------------------------------ collect
 
     def collect(self, require_password=False):
+        if self.first_name_entry is None:
+            raise ValueError("Form is not ready yet. Please try again.")
+
         first_name = self.first_name_entry.get().strip()
         surname    = self.surname_entry.get().strip()
         email      = self.email_entry.get().strip()
@@ -97,6 +116,5 @@ class UserFormStepper:
 
 
 def create_page(parent, user_info=None):
-    # Local import to avoid circular import; fixed case
     from main.user_page import UserManagementPage
     return UserManagementPage(parent, user_info=user_info).frame

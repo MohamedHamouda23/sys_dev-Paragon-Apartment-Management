@@ -37,7 +37,6 @@ class UserManagementPage:
         self._load_lookups()
         self._load_users()
 
-
     def _build_layout(self):
         top_btn_frame = tk.Frame(self.frame, bg="#c9e4c4")
         top_btn_frame.pack(side="top", fill="x", pady=(20, 8))
@@ -73,7 +72,6 @@ class UserManagementPage:
         self.detail_wrap.pack(fill="x", padx=0, pady=(10, 0))
 
         show_placeholder(self.detail_wrap, "Select a user to view or edit details")
-
 
     def _load_lookups(self):
         roles = get_all_roles()
@@ -174,5 +172,7 @@ class UserManagementPage:
         self.selected_user_id = None
         self._stepper = None
         self.tree.selection_remove(self.tree.selection())
-        show_placeholder(self.detail_wrap, "Select a user to view or edit details")
-
+        # Defer placeholder restore to avoid autorelease pool crash on macOS
+        self.detail_wrap.after(0, lambda: show_placeholder(
+            self.detail_wrap, "Select a user to view or edit details"
+        ))
