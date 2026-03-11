@@ -67,30 +67,31 @@ def viewFull(request_id):
 
 
 def update_request_status(request_id, action):
-    action_map = {
-        "approve": "Approved",
-        "reject":  "Denied"
-    }
-    if action.lower() not in action_map:
-        raise ValueError("Action must be 'approve' or 'reject'")
+    # action_map = {
+    #     "approve": "Approved",
+    #     "reject":  "Denied"
+    # }
+    # if action.lower() not in action_map:
+    #     raise ValueError("Action must be 'approve' or 'reject'")
 
-    new_status = action_map[action.lower()]
-    conn = check_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        UPDATE Maintenance_Request
-        SET Maintenance_status = ?
-        WHERE request_id = ?
-    """, (new_status, request_id))
-    conn.commit()
-    cursor.execute("""
-        SELECT request_id, Maintenance_status
-        FROM Maintenance_Request
-        WHERE request_id = ?
-    """, (request_id,))
-    result = cursor.fetchone()
-    conn.close()
-    return result
+    # new_status = action_map[action.lower()]
+    # conn = check_connection()
+    # cursor = conn.cursor()
+    # cursor.execute("""
+    #     UPDATE Maintenance_Request
+    #     SET Maintenance_status = ?
+    #     WHERE request_id = ?
+    # """, (new_status, request_id))
+    # conn.commit()
+    # cursor.execute("""
+    #     SELECT request_id, Maintenance_status
+    #     FROM Maintenance_Request
+    #     WHERE request_id = ?
+    # """, (request_id,))
+    # result = cursor.fetchone()
+    # conn.close()
+    # return result
+    pass
 
 
 
