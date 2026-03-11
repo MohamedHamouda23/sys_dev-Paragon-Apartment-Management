@@ -18,10 +18,8 @@ class MaintenanceManagementPage:
         self._build_layout()
         self._load_requests()
 
-    # ------------------------------------------------------------------ layout
 
     def _build_layout(self):
-        # ── Top buttons ───────────────────────────────────────────────────────
         top_btn_frame = tk.Frame(self.frame, bg="#c9e4c4")
         top_btn_frame.pack(side="top", fill="x", pady=(20, 8))
 

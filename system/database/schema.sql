@@ -132,6 +132,8 @@ CREATE TABLE IF NOT EXISTS Maintenance_Request
     priority TEXT check(priority IN ('Low', 'Medium', 'High')),
     created_date	DATETIME,
     resolved_date	DATETIME,
+    repair_time INTEGER,     
+    repair_cost REAL,       
     notes	VARCHAR(255),
     FOREIGN KEY (apartment_id) REFERENCES Apartments(apartment_id),
     FOREIGN KEY (tenant_id) REFERENCES Tenant(tenant_id));
