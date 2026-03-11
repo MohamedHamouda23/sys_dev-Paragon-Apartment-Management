@@ -18,7 +18,6 @@ class MaintenanceManagementPage:
         self._build_layout()
         self._load_requests()
 
-
     def _build_layout(self):
         top_btn_frame = tk.Frame(self.frame, bg="#c9e4c4")
         top_btn_frame.pack(side="top", fill="x", pady=(20, 8))
@@ -35,11 +34,9 @@ class MaintenanceManagementPage:
                 bg="#3B86FF", fg="white", command=cmd,
             ).pack(side="left", padx=8)
 
-        # ── Content area ──────────────────────────────────────────────────────
         content_frame = tk.Frame(self.frame, bg="#c9e4c4")
         content_frame.pack(fill="both", expand=True, padx=20, pady=(6, 20))
 
-        # ── Treeview ──────────────────────────────────────────────────────────
         _table_wrap, self.tree = create_scrollable_treeview(
             parent   = content_frame,
             columns  = ("id", "tenant", "issue", "date_submitted", "status"),
@@ -49,7 +46,6 @@ class MaintenanceManagementPage:
         )
         self.tree.bind("<<TreeviewSelect>>", self._on_row_select)
 
-        # ── Detail panel ──────────────────────────────────────────────────────
         self.detail_wrap = tk.Frame(content_frame, bg="white", bd=2, relief="groove")
         self.detail_wrap.pack(fill="x", padx=0, pady=(10, 0))
 
@@ -57,12 +53,21 @@ class MaintenanceManagementPage:
 
     # ------------------------------------------------------------------ data
 
-    def _load_requests(self):
-        clear_frame(self.tree)  # clears only tree rows
+    def _load_requests(self, reselect_id=None):
+        """Reload tree rows. If reselect_id given, re-select that row after reload."""
         for row in self.tree.get_children():
             self.tree.delete(row)
         for row in (get_all_requests() or []):
             self.tree.insert("", "end", values=row)
+
+        # Re-select the previously selected row so the detail panel stays in sync
+        if reselect_id is not None:
+            for item in self.tree.get_children():
+                if str(self.tree.item(item, "values")[0]) == str(reselect_id):
+                    self.tree.selection_set(item)
+                    self.tree.focus(item)
+                    self.tree.see(item)
+                    break
 
     # ------------------------------------------------------------------ events
 
@@ -78,6 +83,7 @@ class MaintenanceManagementPage:
             full_data  = viewFull(self.selected_request_id),
             on_approve = self._approve,
             on_deny    = self._deny,
+            on_resolve = self._resolve,
         )
 
     # ------------------------------------------------------------------ actions
@@ -104,24 +110,26 @@ class MaintenanceManagementPage:
             f"'{staff_name}' has been assigned to request #{request_id}.\n"
             f"Status updated to 'In Progress'."
         )
-        self._load_requests()
-        self._on_row_select()
+        self._load_requests(reselect_id=request_id)
 
     def _update_status(self, action, success_msg, error_msg="Request not found."):
-        """Shared logic for approve/deny — avoids duplicating the same pattern."""
         if not self._require_selection():
             return
-        if update_request_status(self.selected_request_id, action):
+        rid = self.selected_request_id
+        if update_request_status(rid, action):
             messagebox.showinfo("Success", success_msg)
-            self._on_row_select()
+            self._load_requests(reselect_id=rid)
         else:
             messagebox.showerror("Error", error_msg)
 
     def _approve(self):
-        self._update_status("approve", "Request approved.")
+        self._update_status("approve", "Request approved — status set to In Progress.")
 
     def _deny(self):
         self._update_status("reject", "Request denied.")
+
+    def _resolve(self):
+        self._update_status("resolve", "Request marked as Resolved.")
 
     def _view_all(self):
         self.selected_request_id = None

@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS Maintenance_Request
     tenant_id 	int,
     issue	VARCHAR(255),
     description	VARCHAR(255),
-    Maintenance_status TEXT CHECK(Maintenance_status IN ('Open', 'In Progress', 'Resolved', 'Closed', 'Denied')),
+    Maintenance_status TEXT DEFAULT 'Open' CHECK(Maintenance_status IN ('Open', 'In Progress', 'Resolved', 'Denied')),
     priority TEXT check(priority IN ('Low', 'Medium', 'High')),
     created_date	DATETIME,
     resolved_date	DATETIME,
@@ -284,11 +284,10 @@ INSERT INTO Payment (lease_id, due_date, payment_date, amount, Is_late) VALUES
 
 INSERT INTO Maintenance_Request (apartment_id, tenant_id, issue, description, Maintenance_status, priority, created_date, resolved_date, repair_time, repair_cost, notes) VALUES
 (2, 1, 'Heating malfunction', 'Radiator not working in living room', 'Open', 'High', '2026-03-08 09:30:00', NULL, NULL, NULL, ''),
-(3, 1, 'Water pressure low', 'Bathroom shower has weak water flow', 'In Progress', 'Medium', '2026-03-09 11:00:00', NULL, NULL, NULL, ''),
-(2, 1, 'Door lock broken', 'Front door lock is jammed', 'Resolved', 'High', '2026-02-20 08:15:00', '2026-02-22 12:00:00', 2, 50, 'Lock replaced'),
-(4, 1, 'Light flickering', 'Kitchen light flickers intermittently', 'Closed', 'Low', '2026-02-25 14:00:00', '2026-02-26 10:00:00', 1, 15, 'Replaced bulb'),
-(1, 1, 'Mold in bathroom', 'Mold appears near shower', 'Denied', 'Medium', '2026-03-01 10:45:00', NULL, NULL, NULL, 'Tenant responsible for cleaning');
-
+(3, 1, 'Water pressure low', 'Bathroom shower has weak water flow', 'Open', 'Medium', '2026-03-09 11:00:00', NULL, NULL, NULL, ''),
+(2, 1, 'Door lock broken', 'Front door lock is jammed', 'Resolved', 'High', '2026-02-20 08:15:00', NULL, NULL, NULL, ''),
+(4, 1, 'Light flickering', 'Kitchen light flickers intermittently', 'Resolved', 'Low', '2026-02-25 14:00:00', NULL, NULL, NULL, ''),
+(1, 1, 'Mold in bathroom', 'Mold appears near shower', 'Open', 'Medium', '2026-03-01 10:45:00',NULL, NULL, NULL, '');
 
 INSERT INTO Complaints (description, date_submitted, tenant_id) VALUES
 ('No hot water in apartment', '2026-03-02', 1),

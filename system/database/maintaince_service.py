@@ -69,11 +69,12 @@ def viewFull(request_id):
 def update_request_status(request_id, action):
     action_map = {
         "approve": "In Progress",
-        "reject": "Denied"
+        "reject":  "Denied",
+        "resolve": "Resolved",      # ← added
     }
 
     if action.lower() not in action_map:
-        raise ValueError("Action must be 'approve' or 'reject'")
+        raise ValueError("Action must be 'approve', 'reject', or 'resolve'")
 
     new_status = action_map[action.lower()]
 
@@ -81,11 +82,20 @@ def update_request_status(request_id, action):
         with check_connection() as conn:
             cursor = conn.cursor()
 
-            cursor.execute("""
-                UPDATE Maintenance_Request
-                SET Maintenance_status = ?
-                WHERE request_id = ?
-            """, (new_status, request_id))
+            # Set resolved_date when marking as Resolved
+            if new_status == "Resolved":
+                cursor.execute("""
+                    UPDATE Maintenance_Request
+                    SET Maintenance_status = ?,
+                        resolved_date = ?
+                    WHERE request_id = ?
+                """, (new_status, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), request_id))
+            else:
+                cursor.execute("""
+                    UPDATE Maintenance_Request
+                    SET Maintenance_status = ?
+                    WHERE request_id = ?
+                """, (new_status, request_id))
 
             conn.commit()
 
@@ -104,7 +114,6 @@ def update_request_status(request_id, action):
         return None
 
 
-
 def get_all_staff():
     conn = check_connection()
     cursor = conn.cursor()
@@ -121,7 +130,6 @@ def get_all_staff():
 
 
 def assign_staff(request_id, employee_id, notes=None):
-
     conn = check_connection()
     cursor = conn.cursor()
     try:
