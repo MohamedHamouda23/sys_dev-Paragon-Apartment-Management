@@ -3,7 +3,11 @@ from tkinter import messagebox
 
 from database.maintaince_service import get_all_requests, viewFull, update_request_status
 from main.helpers import create_button, create_scrollable_treeview, show_placeholder, clear_frame
-from modules.Maintenance_Management import MaintenanceDetailPanel, AssignStaffPanel
+
+from modules.Maintenance_Management import LoggingAndRecordsPage
+from modules.Maintaince_Scheduling import TasksAndTenantPage
+
+from modules.Request_Lifecycle import AssignStaffPanel, MaintenanceDetailPanel
 
 
 class MaintenanceManagementPage:
@@ -27,7 +31,7 @@ class MaintenanceManagementPage:
 
         for text, cmd, w in [
             ("Assign Staff", self._assign_staff, 140),
-            ("View All",     self._view_all,     110),
+            ("clear Form",     self._clearForm,     110),
         ]:
             create_button(
                 btns_inner_frame, text=text, width=w, height=45,
@@ -138,9 +142,17 @@ class MaintenanceManagementPage:
         else:
             messagebox.showerror("Error", "Could not resolve request.")
 
-    def _view_all(self):
+    def _clearForm(self):
         self.selected_request_id = None
         self._panel = None
         self.tree.selection_remove(self.tree.selection())
         show_placeholder(self.detail_wrap, "Select a request to view details")
         self._load_requests()
+
+
+# ---------------------------------------------------------------------------
+# Page factory
+# ---------------------------------------------------------------------------
+def create_page(parent, user_info=None):
+    page = MaintenanceManagementPage(parent, user_info=user_info)
+    return page.frame
