@@ -7,8 +7,8 @@ from modules import Lease_Management, Report_Management, Lifecycle_Management,Re
 def page_template(main_window, user_info): 
     root = tk.Tk()
     root.title("Dashboard")
-    root.geometry("850x650")
-    root.minsize(850, 650)
+    root.geometry("850x800")
+    root.minsize(850, 800)
     root.configure(bg='#c9e4c4')
 
     content_frame = tk.Frame(root, bg='#c9e4c4')

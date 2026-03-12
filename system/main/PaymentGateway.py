@@ -11,8 +11,8 @@ class PaymentWindow:
         
         self.root = tk.Toplevel()
         self.root.title("Secure Payment")
-        self.root.geometry("750x650")
-        self.root.minsize(750, 650)
+        self.root.geometry("850x800")
+        self.root.minsize(850, 800)
         self.root.configure(bg='#c9e4c4')
 
         self.setup_ui()

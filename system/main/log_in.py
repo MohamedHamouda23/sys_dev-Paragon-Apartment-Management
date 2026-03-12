@@ -11,8 +11,8 @@ class Log_window:
 
         self.login_root = tk.Toplevel()
         self.login_root.title("Login")
-        self.login_root.geometry("750x650")
-        self.login_root.minsize(750, 650)
+        self.login_root.geometry("850x800")
+        self.login_root.minsize(850, 800)
         self.login_root.configure(bg='#c9e4c4')
 
         self._create_navbar()
