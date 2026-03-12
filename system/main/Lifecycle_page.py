@@ -251,5 +251,3 @@ class MaintenanceManagementPage:
         self.assign_btn.config(bg="#dc3545", state="disabled")
         show_placeholder(self.detail_wrap, "Select a request to view details")
         self._load_requests()
-
-

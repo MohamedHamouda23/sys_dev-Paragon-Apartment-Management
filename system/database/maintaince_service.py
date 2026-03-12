@@ -173,25 +173,23 @@ def get_staff_task_count_for_date(staff_name, date_str):
     for assignment in assignments:
         if assignment[0]:
             # Extract time portion (HH:MM)
-            time_part = assignment[0][11:16]if ' ' in assignment[0] else assignment[0][:5]
+            time_part = assignment[0][11:16] if ' ' in assignment[0] else assignment[0][:5]
             slot_counts[time_part] = slot_counts.get(time_part, 0) + 1
     
     return slot_counts
 
 
-def assign_and_schedule(request_id, employee_id, priority, date_str, comment):
+def assign_and_schedule(request_id, employee_id, priority, scheduled_datetime, comment):
+    """
+    Assign staff and schedule maintenance with correct date and time.
+    scheduled_datetime should be in format: 'YYYY-MM-DD HH:MM:SS'
+    """
     conn = check_connection()
     cursor = conn.cursor()
     
     try:
-        assigned_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        # You need to get the selected time slot from somewhere
-        # This assumes you'll pass it as an additional parameter
-        # For now, let's use a default or you need to modify the function signature
-        
-        # For demonstration, I'll assume you'll pass scheduled_datetime
-        # But you'll need to modify the calling code to include the time slot
+        # Current timestamp for assignment record (optional - can be used for audit)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         # Retire any existing current assignment
         cursor.execute("""
@@ -200,12 +198,12 @@ def assign_and_schedule(request_id, employee_id, priority, date_str, comment):
             WHERE request_id = ? AND is_current = 1
         """, (request_id,))
 
-        # Insert new assignment
+        # Insert new assignment with the SCHEDULED datetime (not current time)
         cursor.execute("""
             INSERT INTO Maintenance_Assignment 
             (request_id, employee_id, assigned_date, is_current)
             VALUES (?, ?, ?, 1)
-        """, (request_id, employee_id, assigned_date))
+        """, (request_id, employee_id, scheduled_datetime))  # Use scheduled_datetime here!
 
         # Update request with priority and status
         cursor.execute("""
@@ -217,7 +215,7 @@ def assign_and_schedule(request_id, employee_id, priority, date_str, comment):
 
         conn.commit()
 
-        # Return the assignment details
+        # Return the assignment details with the scheduled datetime
         cursor.execute("""
             SELECT ma.request_id, ma.employee_id, ma.assigned_date,
                    u.first_name || ' ' || u.surname AS staff_name
@@ -234,6 +232,7 @@ def assign_and_schedule(request_id, employee_id, priority, date_str, comment):
         conn.rollback()
         conn.close()
         raise e
+
 
 def resolve_request(request_id, issue, description, repair_time=None, repair_cost=None):
     """Mark a request as Resolved, saving updated issue and resolution notes."""
