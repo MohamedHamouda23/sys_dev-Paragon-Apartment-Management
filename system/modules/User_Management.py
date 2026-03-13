@@ -1,3 +1,8 @@
+# ============================================================================
+# USER MANAGEMENT MODULE
+# Handles user form creation and validation
+# ============================================================================
+
 import tkinter as tk
 from tkinter import ttk
 
@@ -6,17 +11,24 @@ from main.helpers import (
     form_field, form_dropdown, card,
     BG, ACCENT, FONT_TITLE, FONT_LABEL,
 )
+from validations import validate_user_form
 
+
+# ============================================================================
+# USER FORM STEPPER CLASS
+# ============================================================================
 
 class UserFormStepper:
+    """Multi-step form for creating/editing users"""
 
     def __init__(self, parent, role_name_to_id, city_name_to_id, prefill=None):
+        # Store parent and lookup dictionaries
         self.parent          = parent
         self.role_name_to_id = role_name_to_id
         self.city_name_to_id = city_name_to_id
         self._prefill        = prefill
 
-        # Widget references — populated in _do_render
+        # Initialize widget references
         self.first_name_entry = None
         self.surname_entry    = None
         self.email_entry      = None
@@ -24,40 +36,44 @@ class UserFormStepper:
         self.role_combobox    = None
         self.city_combobox    = None
 
-        # Defer rendering to the next event-loop tick (avoids macOS autorelease crash)
+        # Defer rendering to avoid macOS autorelease crash
         self.parent.after(0, lambda: self._do_render(prefill))
 
-    # ------------------------------------------------------------------ render
+    # ========================================================================
+    # RENDER METHODS
+    # ========================================================================
 
     def _render_form(self, prefill=None):
-        """Public-facing entry point — defers to main loop."""
+        """Public entry point for rendering"""
         self._prefill = prefill
         self.parent.after(0, lambda: self._do_render(prefill))
 
     def _do_render(self, prefill=None):
-        """Actual widget construction — always runs on the main loop tick."""
+        """Build form widgets on main loop tick"""
+        # Clear existing widgets
         for widget in self.parent.winfo_children():
             widget.destroy()
 
+        # Create main form container
         form = tk.Frame(self.parent, bg="white")
         form.pack(fill="x", padx=16, pady=(10, 10))
 
-        # ── Text fields ───────────────────────────────────────────────────────
+        # Create text input fields
         self.first_name_entry = self._field(form, "First Name", 0, 0)
         self.surname_entry    = self._field(form, "Surname",    0, 2)
         self.email_entry      = self._field(form, "Email",      1, 0)
         self.password_entry   = self._field(form, "Password",   1, 2, show="*")
 
-        # ── Dropdowns ─────────────────────────────────────────────────────────
+        # Create dropdown fields
         self.role_combobox = self._dropdown(form, "Role", self.role_name_to_id, 2, 0)
         self.city_combobox = self._dropdown(form, "City", self.city_name_to_id, 2, 2)
 
+        # Configure column weights for responsiveness
         form.grid_columnconfigure(1, weight=1)
         form.grid_columnconfigure(3, weight=1)
 
-        # ── Pre-populate if editing an existing user ──────────────────────────
+        # Pre-fill form if editing existing user
         if prefill:
-            # prefill: (id, first_name, surname, email, city, role)
             self.first_name_entry.insert(0, prefill[1])
             self.surname_entry.insert(0, prefill[2])
             self.email_entry.insert(0, prefill[3])
@@ -69,7 +85,7 @@ class UserFormStepper:
                 self.role_combobox.set(role_name)
 
     def _field(self, parent, label, row, col, show=None):
-        """Render a label + Entry pair and return the Entry widget."""
+        """Create label and entry field pair"""
         tk.Label(
             parent, text=label, bg="white", font=("Arial", 10, "bold"),
         ).grid(row=row, column=col, padx=(0, 6), pady=3, sticky="w")
@@ -79,7 +95,7 @@ class UserFormStepper:
         return entry
 
     def _dropdown(self, parent, label, name_to_id, row, col):
-        """Render a label + read-only Combobox pair and return the Combobox."""
+        """Create label and combobox pair"""
         tk.Label(
             parent, text=label, bg="white", font=("Arial", 10, "bold"),
         ).grid(row=row, column=col, padx=(0, 6), pady=3, sticky="w")
@@ -89,12 +105,17 @@ class UserFormStepper:
         combo.grid(row=row, column=col + 1, padx=(0, 24), pady=3, sticky="we")
         return combo
 
-    # ------------------------------------------------------------------ collect
+    # ========================================================================
+    # DATA COLLECTION
+    # ========================================================================
 
     def collect(self, require_password=False):
+        """Collect and validate form data"""
+        # Check if form is ready
         if self.first_name_entry is None:
             raise ValueError("Form is not ready yet. Please try again.")
 
+        # Get form values
         first_name = self.first_name_entry.get().strip()
         surname    = self.surname_entry.get().strip()
         email      = self.email_entry.get().strip()
@@ -102,19 +123,25 @@ class UserFormStepper:
         role_name  = self.role_combobox.get().strip()
         city_name  = self.city_combobox.get().strip()
 
-        if not first_name or not surname or not email or not role_name:
-            raise ValueError("First name, surname, email and role are required.")
-        if require_password and not password:
-            raise ValueError("Password is required when adding a user.")
+        # Validate using centralized validation
+        validate_user_form(first_name, surname, email, role_name, require_password, password)
 
+        # Get role ID
         role_id = self.role_name_to_id.get(role_name)
         if role_id is None:
             raise ValueError("Please select a valid role.")
 
+        # Get city ID (optional)
         city_id = self.city_name_to_id.get(city_name)
+        
         return first_name, surname, email, password, role_id, city_id
 
 
+# ============================================================================
+# PAGE FACTORY
+# ============================================================================
+
 def create_page(parent, user_info=None):
+    """Create and return user management page"""
     from main.user_page import UserManagementPage
     return UserManagementPage(parent, user_info=user_info).frame
