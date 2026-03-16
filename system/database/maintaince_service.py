@@ -357,3 +357,16 @@ def register_request(apartment_id, tenant_id, issue, priority):
         conn.close()
         print("Database error:", e)
         return None
+
+def update_request_priority(request_id, new_priority):
+    conn = check_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "UPDATE Maintenance_Request SET priority = ? WHERE request_id = ?",
+            (new_priority, request_id)
+        )
+        conn.commit()
+    finally:
+        cursor.close()
+        conn.close()

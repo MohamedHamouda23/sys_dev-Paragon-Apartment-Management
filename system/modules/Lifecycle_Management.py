@@ -6,10 +6,14 @@
 import re
 import tkinter as tk
 from tkinter import ttk, messagebox
-from datetime import datetime, timedelta
+from datetime import datetime
 from main.helpers import create_button
 from validations import validate_staff_assignment, validate_resolution_form
 
+
+# ============================================================================
+# STAFF ASSIGNMENT PANEL
+# ============================================================================
 
 class StaffAssignmentPanel:
     """Combined staff assignment and scheduling with 3 fixed time slots per day"""
@@ -25,7 +29,6 @@ class StaffAssignmentPanel:
         self.on_submit = on_submit
         self.on_cancel = on_cancel
         
-        # Load staff list
         try:
             from database.maintaince_service import get_maintenance_staff
             self._staff_list = get_maintenance_staff(user_info=user_info) or []
@@ -41,14 +44,12 @@ class StaffAssignmentPanel:
         self._render()
 
     def _render(self):
-        """Render the panel UI"""
         for widget in self.parent.winfo_children():
             widget.destroy()
 
         wrapper = tk.Frame(self.parent, bg="white")
         wrapper.pack(fill="x", padx=16, pady=12)
 
-        # Header
         tk.Label(wrapper, text=f"Assign & Schedule — Request #{self.request_id}", 
                 font=("Arial", 12, "bold"), bg="white", anchor="w").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
 
@@ -90,9 +91,6 @@ class StaffAssignmentPanel:
         self.comment_text = tk.Text(wrapper, width=40, height=3, font=("Arial", 10))
         self.comment_text.grid(row=6, column=1, columnspan=2, sticky="ew", pady=4)
 
-        if self.tenant_name:
-            self.comment_text.insert("1.0", f"Dear {self.tenant_name},\nMaintenance scheduled for request #{self.request_id}.")
-
         wrapper.grid_columnconfigure(1, weight=1)
 
         # Buttons
@@ -108,7 +106,6 @@ class StaffAssignmentPanel:
         self._check_availability()
 
     def _check_availability(self, event=None):
-        """Check staff availability and show available slots"""
         date_str = self.date_entry.get().strip()
         staff_name = self.staff_dropdown.get().strip()
         if not date_str or not re.match(r"^\d{4}-\d{2}-\d{2}$", date_str) or not staff_name:
@@ -116,7 +113,6 @@ class StaffAssignmentPanel:
 
         try:
             from database.maintaince_service import get_staff_task_count_for_date
-            
             task_counts = get_staff_task_count_for_date(staff_name, date_str) or {}
 
             for widget in self.slots_frame.winfo_children():
@@ -131,11 +127,8 @@ class StaffAssignmentPanel:
             self._available_slots = available
 
             if not available:
-                tk.Label(self.slots_frame, text="No available slots - all slots booked for this date", 
+                tk.Label(self.slots_frame, text="No available slots - all slots booked", 
                         bg="white", fg="#dc3545", font=("Arial", 10)).pack(anchor="w")
-                if len(task_counts) >= 3:
-                    tk.Label(self.slots_frame, text="(Staff has reached maximum 3 tasks for this day)", 
-                            bg="white", fg="#dc3545", font=("Arial", 9, "italic")).pack(anchor="w")
                 return
 
             tk.Label(self.slots_frame, text=f"{len(available)} slot(s) available:", 
@@ -144,9 +137,8 @@ class StaffAssignmentPanel:
             btn_container = tk.Frame(self.slots_frame, bg="white")
             btn_container.pack(anchor="w", fill="x")
             
-            for i, slot in enumerate(available):
-                slot_display = self._format_slot_display(slot)
-                btn = tk.Button(btn_container, text=slot_display, bg="#d4edda", fg="#155724", 
+            for slot in available:
+                btn = tk.Button(btn_container, text=self._format_slot_display(slot), bg="#d4edda", fg="#155724", 
                                width=20, height=3, font=("Arial", 10, "bold"), relief="raised",
                                bd=2, cursor="hand2", command=lambda s=slot: self._select_slot(s))
                 btn.pack(side="left", padx=8, pady=4, expand=True, fill="x")
@@ -158,27 +150,23 @@ class StaffAssignmentPanel:
             messagebox.showerror("Error", f"Could not check availability:\n{e}")
 
     def _format_slot_display(self, slot):
-        """Format slot for display"""
         periods = {
-            "09:00": "Morning\n9:00 AM",
-            "13:00": "Afternoon\n1:00 PM", 
-            "17:00": "Evening\n5:00 PM"
+            "09:00": "Morning 9:00 AM",
+            "13:00": "Afternoon 1:00 PM", 
+            "17:00": "Evening 5:00 PM"
         }
         return periods.get(slot, slot)
 
     def _select_slot(self, slot):
-        """Handle slot selection"""
         self.selected_slot = slot
-        self.slot_label.config(text=self._format_slot_display(slot).replace('\n', ' '), fg="#28a745")
+        self.slot_label.config(text=self._format_slot_display(slot), fg="#28a745")
 
     def _submit(self):
-        """Submit staff assignment"""
         staff_name = self.staff_dropdown.get().strip()
         priority = self.priority_dropdown.get().strip()
         date_str = self.date_entry.get().strip()
         comment = self.comment_text.get("1.0", "end").strip()
 
-        # Validate using centralized validation
         try:
             validate_staff_assignment(staff_name, priority, date_str, self.selected_slot, comment)
         except ValueError as e:
@@ -201,48 +189,76 @@ class StaffAssignmentPanel:
 
 
 # ============================================================================
-# MAINTENANCE DETAIL PANEL
+# MAINTENANCE DETAIL PANEL (HORIZONTAL 3-COLUMN DESIGN)
 # ============================================================================
 
 class MaintenanceDetailPanel:
-    """Display full request details with conditional buttons"""
+    """Display request details in 3 side-by-side columns"""
     
-    LABELS = ("Request ID", "Description", "Priority", "Date Submitted", "Resolved Date", 
-              "Status", "Notes", "Issue", "Tenant", "Apt Type", "Postcode", "Staff", "Assigned Date")
+    INITIAL_FIELDS = ["Request ID", "Date Submitted", "Issue", "Tenant", "Apt Type", "Postcode", "Assigned Date"]
+    ASSIGN_FIELDS = ["Description", "Priority", "Staff"]
+    RESOLVE_FIELDS = ["Resolved Date", "Status", "Notes"]
 
     def __init__(self, parent, full_data, on_approve=None, on_deny=None, on_resolve=None):
         self.parent = parent
-        self.full_data = full_data
+        self.full_data = list(full_data)
         self.on_approve = on_approve
         self.on_deny = on_deny
         self.on_resolve = on_resolve
+        self.priority_update_dropdown = None
         self._render()
 
     def _render(self):
-        """Render detail view"""
         for widget in self.parent.winfo_children():
             widget.destroy()
 
-        grid = tk.Frame(self.parent, bg="white")
-        grid.pack(fill="x", padx=16, pady=10)
+        container = tk.Frame(self.parent, bg="#f8f9fa")
+        container.pack(fill="both", expand=True, padx=16, pady=12)
 
-        # Display fields in two columns
-        for i, (lbl, val) in enumerate(zip(self.LABELS, self.full_data[:13])):
-            row, col = divmod(i, 2)
-            tk.Label(grid, text=f"{lbl}:", font=("Arial", 10, "bold"), bg="white").grid(row=row, column=col*2, sticky="w", padx=5, pady=2)
-            tk.Label(grid, text=val or "—", bg="white").grid(row=row, column=col*2+1, sticky="w", padx=5, pady=2)
+        column_frame = tk.Frame(container, bg="#f8f9fa")
+        column_frame.pack(fill="both", expand=True)
 
-        grid.grid_columnconfigure(1, weight=1)
-        grid.grid_columnconfigure(3, weight=1)
+        # Initial Info
+        initial_frame = tk.Frame(column_frame, bg="#ffffff", bd=1, relief="solid")
+        initial_frame.pack(side="left", fill="both", expand=True, padx=(0,5))
+        tk.Label(initial_frame, text="Initial Information", font=("Arial", 12, "bold"), bg="#ffffff").pack(anchor="w", pady=5)
+        for i, field in enumerate(self.INITIAL_FIELDS):
+            val = self.full_data[i] if i < len(self.full_data) else "—"
+            row_frame = tk.Frame(initial_frame, bg="#f1f3f5")
+            row_frame.pack(fill="x", pady=2, padx=5)
+            tk.Label(row_frame, text=f"{field}:", font=("Arial", 10, "bold"), width=15, anchor="w", bg="#f1f3f5").pack(side="left")
+            tk.Label(row_frame, text=val or "—", bg="#f1f3f5").pack(side="left")
 
+        # Assignment Info
+        assign_frame = tk.Frame(column_frame, bg="#ffffff", bd=1, relief="solid")
+        assign_frame.pack(side="left", fill="both", expand=True, padx=5)
+        tk.Label(assign_frame, text="Assignment Information", font=("Arial", 12, "bold"), bg="#ffffff").pack(anchor="w", pady=5)
+        for i, field in enumerate(self.ASSIGN_FIELDS, start=len(self.INITIAL_FIELDS)):
+            val = self.full_data[i] if i < len(self.full_data) else "—"
+            row_frame = tk.Frame(assign_frame, bg="#e9ecef")
+            row_frame.pack(fill="x", pady=2, padx=5)
+            tk.Label(row_frame, text=f"{field}:", font=("Arial", 10, "bold"), width=15, anchor="w", bg="#e9ecef").pack(side="left")
+            tk.Label(row_frame, text=val or "—", bg="#e9ecef").pack(side="left")
+
+        # Resolution Info
+        resolve_frame = tk.Frame(column_frame, bg="#ffffff", bd=1, relief="solid")
+        resolve_frame.pack(side="left", fill="both", expand=True, padx=(5,0))
+        tk.Label(resolve_frame, text="Resolution / Status", font=("Arial", 12, "bold"), bg="#ffffff").pack(anchor="w", pady=5)
+        for i, field in enumerate(self.RESOLVE_FIELDS, start=len(self.INITIAL_FIELDS)+len(self.ASSIGN_FIELDS)):
+            val = self.full_data[i] if i < len(self.full_data) else "—"
+            row_frame = tk.Frame(resolve_frame, bg="#f1f3f5")
+            row_frame.pack(fill="x", pady=2, padx=5)
+            tk.Label(row_frame, text=f"{field}:", font=("Arial", 10, "bold"), width=15, anchor="w", bg="#f1f3f5").pack(side="left")
+            tk.Label(row_frame, text=val or "—", bg="#f1f3f5").pack(side="left")
+
+        # Buttons
         status = self.full_data[5] if len(self.full_data) > 5 else ""
         staff = self.full_data[11] if len(self.full_data) > 11 else ""
         assigned_date = self.full_data[12] if len(self.full_data) > 12 else ""
 
-        btn_frame = tk.Frame(self.parent, bg="white")
-        btn_frame.pack(anchor="e", padx=16, pady=10)
+        btn_frame = tk.Frame(container, bg="#f8f9fa")
+        btn_frame.pack(anchor="e", pady=10)
 
-        # Show Approve/Deny for Open requests
         if status == "Open":
             create_button(btn_frame, text="Approve", width=120, height=40, bg="#28a745", fg="white", 
                           command=self.on_approve if self.on_approve else lambda: None,
@@ -251,43 +267,59 @@ class MaintenanceDetailPanel:
                           command=self.on_deny if self.on_deny else lambda: None,
                           next_window_func=None, current_window=None).pack(side="left", padx=5)
         
-        # Show Mark Resolved for In Progress with staff assigned
         elif status == "In Progress" and staff and assigned_date:
-            create_button(btn_frame, text="Mark Resolved", width=140, height=40, bg="#17a2b8", fg="white",
-                          command=self._open_resolve, next_window_func=None, current_window=None).pack(side="left", padx=5)
+            mark_btn = create_button(btn_frame, text="Mark Resolved", width=140, height=40, bg="#17a2b8", fg="white",
+                          command=self._open_resolve, next_window_func=None, current_window=None)
+            mark_btn.pack(side="left", padx=5)
+
+            self.priority_update_dropdown = ttk.Combobox(btn_frame, values=["High", "Medium", "Low"], state="readonly",
+                                                         width=10, font=("Arial", 10, "bold"))
+            current_priority = self.full_data[2] if len(self.full_data) > 2 else "Medium"
+            self.priority_update_dropdown.set(current_priority)
+            self.priority_update_dropdown.pack(side="left", padx=5, pady=2, ipadx=5, ipady=6)
+            self.priority_update_dropdown.bind("<<ComboboxSelected>>", self._update_priority_immediate)
+
+    def _update_priority_immediate(self, event):
+        new_priority = self.priority_update_dropdown.get()
+        request_id = self.full_data[0]
+        if not new_priority:
+            return
+        try:
+            from database.maintaince_service import update_request_priority
+            update_request_priority(request_id, new_priority)
+            self.full_data[2] = new_priority
+            self._render()
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not update priority:\n{e}")
+
 
     def _open_resolve(self):
-        """Show resolution form"""
         for widget in self.parent.winfo_children():
             widget.destroy()
 
-        frame = tk.Frame(self.parent, bg="white")
+        frame = tk.Frame(self.parent, bg="#f8f9fa", bd=1, relief="solid")
         frame.pack(fill="x", padx=16, pady=10)
 
-        tk.Label(frame, text="Resolution Details", font=("Arial", 13, "bold"), bg="white").pack(anchor="w", pady=5)
-
-        # Show current issue
+        tk.Label(frame, text="Resolution Details", font=("Arial", 13, "bold"), bg="#f8f9fa").pack(anchor="w", pady=5)
         current_issue = self.full_data[7] if len(self.full_data) > 7 else ""
-        tk.Label(frame, text=f"Issue: {current_issue}", font=("Arial", 10), bg="white", fg="#555").pack(anchor="w", pady=2)
-
-        # Show assigned date
+        tk.Label(frame, text=f"Issue: {current_issue}", font=("Arial", 10), bg="#f8f9fa", fg="#555").pack(anchor="w", pady=2)
         assigned_date = self.full_data[12] if len(self.full_data) > 12 else ""
         if assigned_date:
-            tk.Label(frame, text=f"Assigned Date: {assigned_date}", font=("Arial", 10), bg="white", fg="#555").pack(anchor="w", pady=2)
+            tk.Label(frame, text=f"Assigned Date: {assigned_date}", font=("Arial", 10), bg="#f8f9fa", fg="#555").pack(anchor="w", pady=2)
 
-        tk.Label(frame, text="Resolution Notes:", font=("Arial", 10, "bold"), bg="white").pack(anchor="w", pady=(10, 0))
+        tk.Label(frame, text="Resolution Notes:", font=("Arial", 10, "bold"), bg="#f8f9fa").pack(anchor="w", pady=(10, 0))
         self.resolve_text = tk.Text(frame, height=3, width=50)
         self.resolve_text.pack(fill="x", pady=5)
 
-        tk.Label(frame, text="Repair Time (hours):", font=("Arial", 10, "bold"), bg="white").pack(anchor="w")
+        tk.Label(frame, text="Repair Time (hours):", font=("Arial", 10, "bold"), bg="#f8f9fa").pack(anchor="w")
         self.time_entry = tk.Entry(frame, width=15)
         self.time_entry.pack(anchor="w", pady=2)
 
-        tk.Label(frame, text="Repair Cost (£):", font=("Arial", 10, "bold"), bg="white").pack(anchor="w")
+        tk.Label(frame, text="Repair Cost (£):", font=("Arial", 10, "bold"), bg="#f8f9fa").pack(anchor="w")
         self.cost_entry = tk.Entry(frame, width=15)
         self.cost_entry.pack(anchor="w", pady=2)
 
-        btn_frame = tk.Frame(frame, bg="white")
+        btn_frame = tk.Frame(frame, bg="#f8f9fa")
         btn_frame.pack(anchor="e", pady=10)
 
         create_button(btn_frame, text="Submit", width=100, height=35, bg="#28a745", fg="white", 
@@ -295,8 +327,8 @@ class MaintenanceDetailPanel:
         create_button(btn_frame, text="Cancel", width=100, height=35, bg="#6c757d", fg="white",
                       command=self._render, next_window_func=None, current_window=None).pack(side="left", padx=5)
 
+
     def _submit_resolve(self):
-        """Submit resolution"""
         notes = self.resolve_text.get("1.0", "end").strip()
         time_str = self.time_entry.get().strip()
         cost_str = self.cost_entry.get().strip()
@@ -308,7 +340,6 @@ class MaintenanceDetailPanel:
             messagebox.showerror("Error", "Invalid number format for time or cost")
             return
 
-        # Validate using centralized validation
         try:
             validate_resolution_form(notes, time_str, cost_str)
         except ValueError as e:
@@ -324,11 +355,9 @@ class MaintenanceDetailPanel:
 # ============================================================================
 
 def create_page(parent, user_info=None):
-    """Create lifecycle management page"""
     from main.Lifecycle_page import MaintenanceManagementPage
     page = MaintenanceManagementPage(parent, user_info=user_info)
     
-    # Add on_show method to the frame for the main app to call
     def on_show():
         page.refresh_data()
     
