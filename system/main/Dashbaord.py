@@ -38,6 +38,7 @@ def page_template(main_window, user_info):
         "Maintenance": Request_Management,
         "Request Lifecycle": Lifecycle_Management,
         "Payments": Payments_Management,
+        "Payment": Payments_Management,
         "complaints": complaints,
     }
 
@@ -62,6 +63,9 @@ def page_template(main_window, user_info):
         ],
         "Finance Manager": [
             "Reports", "Payments"
+        ],
+        "Tenant": [
+            "Payment"
         ]
     }
 
@@ -77,7 +81,7 @@ def page_template(main_window, user_info):
 
     # Create all page frames
     for name, module in page_modules.items():
-        if name == "Users":
+        if name in ("Users", "Payment", "Payments"):
             # Users page needs user_info parameter
             frame = module.create_page(content_frame, user_info=user_info)
         else:

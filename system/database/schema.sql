@@ -242,13 +242,14 @@ INSERT INTO User (city_id, first_name, surname) VALUES
 (3, 'London', 'Admin'),
 (4, 'Manchester', 'Admin');
 
+
 INSERT INTO User_Access (user_id, password_hash, role_id, email) VALUES
 (1, 'hash_frontdesk123', 1, 'mohamed@company.com'),
 (2, 'hash_finance123', 2, 'ava@company.com'),
 (3, 'hash_maint123', 3, 'leyla@company.com'),
 (4, 'hash_admin123', 4, 'erin@company.com'),
 (5, 'hash_manager123', 5, 'chiko@company.com'), 
-(6, 'hash_admin123', 6, 'Tenant@company.com'),
+(6, '12', 6, '12'),
 (7, '123', 4, '123'),
 (8, 'admin123', 4, 'bristol_admin@company.com'),
 (9, 'admin123', 4, 'cardiff_admin@company.com'),
