@@ -17,8 +17,8 @@ def page_template(main_window, user_info):
     # Create main window
     root = tk.Tk()
     root.title("Dashboard")
-    root.geometry("850x800")
-    root.minsize(850, 800)
+    root.geometry("900x900")  
+    root.minsize(1000, 800)    
     root.configure(bg='#c9e4c4')
 
     # Create content area
