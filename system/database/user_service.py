@@ -1,4 +1,8 @@
-from database.databaseConnection import check_connection,fetch_all, insert
+import hashlib
+import hmac
+import secrets
+
+from database.databaseConnection import check_connection, fetch_all, insert
 
 
 PROTECTED_ADMIN_EMAILS = {
@@ -8,12 +12,65 @@ PROTECTED_ADMIN_EMAILS = {
     "manchester_admin@company.com",
 }
 
+PASSWORD_SCHEME = "pbkdf2_sha256"
+PASSWORD_ITERATIONS = 120000
+
 
 def _validate_email(email):
     normalized = (email or "").strip()
     if "@" not in normalized:
         raise ValueError("Email must contain '@'.")
     return normalized
+
+
+def _name_key(first_name, surname):
+    """Build a deterministic key material from user name fields."""
+    first = (first_name or "").strip().lower()
+    last = (surname or "").strip().lower()
+    return f"{first}:{last}".encode("utf-8")
+
+
+def _hash_password_with_name_key(password_plain, first_name, surname):
+    """Hash password with random salt and name-derived key material."""
+    if password_plain is None:
+        raise ValueError("Password is required.")
+
+    password_bytes = str(password_plain).encode("utf-8")
+    salt = secrets.token_bytes(16)
+    name_material = _name_key(first_name, surname)
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password_bytes,
+        salt + name_material,
+        PASSWORD_ITERATIONS,
+    )
+    return f"{PASSWORD_SCHEME}${PASSWORD_ITERATIONS}${salt.hex()}${digest.hex()}"
+
+
+def _verify_password(stored_password, password_plain, first_name, surname):
+    """Verify both new hashed format and legacy plaintext passwords."""
+    if stored_password is None:
+        return False
+
+    parts = str(stored_password).split("$")
+    if len(parts) == 4 and parts[0] == PASSWORD_SCHEME:
+        try:
+            iterations = int(parts[1])
+            salt = bytes.fromhex(parts[2])
+            stored_digest = bytes.fromhex(parts[3])
+        except (ValueError, TypeError):
+            return False
+
+        computed = hashlib.pbkdf2_hmac(
+            "sha256",
+            str(password_plain).encode("utf-8"),
+            salt + _name_key(first_name, surname),
+            iterations,
+        )
+        return hmac.compare_digest(computed, stored_digest)
+
+    # Backward compatibility for existing demo records stored in plaintext.
+    return str(stored_password) == str(password_plain)
 
 
 def get_all_users(scope_city_id=None):
@@ -108,9 +165,11 @@ def create_user(first_name, surname, email, password_hash, role_id, city_id=None
     )
     new_user_id = cursor.lastrowid
 
+    stored_password = _hash_password_with_name_key(password_hash, first_name, surname)
+
     cursor.execute(
         "INSERT INTO User_Access (user_id, password_hash, role_id, email) VALUES (?, ?, ?, ?)",
-        (new_user_id, password_hash, role_id, email)
+        (new_user_id, stored_password, role_id, email)
     )
     conn.commit()
     conn.close()
@@ -152,9 +211,10 @@ def update_user(user_id, first_name, surname, email, role_id, city_id=None, pass
     )
 
     if password_hash:
+        stored_password = _hash_password_with_name_key(password_hash, first_name, surname)
         cursor.execute(
             "UPDATE User_Access SET email = ?, role_id = ?, password_hash = ? WHERE user_id = ?",
-            (email, role_id, password_hash, user_id)
+            (email, role_id, stored_password, user_id)
         )
     else:
         cursor.execute(
@@ -213,18 +273,23 @@ def check_user(email, password):
     
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT 1
-        FROM User_Access
-        WHERE email = ? AND password_hash = ?
-    """, (email, password))
+        SELECT ua.password_hash, u.first_name, u.surname
+        FROM User_Access ua
+        JOIN User u ON u.user_id = ua.user_id
+        WHERE ua.email = ?
+    """, (email,))
 
-    user = cursor.fetchone()
+    row = cursor.fetchone()
 
     conn.close()
 
-    return user
+    if not row:
+        return None
 
-def retrive_data(email, password):
+    stored_password, first_name, surname = row
+    return 1 if _verify_password(stored_password, password, first_name, surname) else None
+
+def retrive_data(email, password=None):
     
     conn = check_connection()
     if conn is None:
@@ -243,9 +308,28 @@ def retrive_data(email, password):
         JOIN User_Access ua ON u.user_id = ua.user_id
         JOIN Role r ON ua.role_id = r.role_id
         JOIN Location l ON u.city_id = l.city_id
-        WHERE ua.email = ? AND ua.password_hash = ?
-    """, (email, password))
+        WHERE ua.email = ?
+    """, (email,))
 
     user_data = cursor.fetchone()
     conn.close()
     return user_data
+
+
+def get_login_debug_details(email):
+    """Return minimal login debug info including stored password value."""
+    conn = check_connection()
+    if conn is None:
+        return None
+
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT u.first_name, u.surname, r.role_name, ua.password_hash
+        FROM User u
+        JOIN User_Access ua ON u.user_id = ua.user_id
+        JOIN Role r ON ua.role_id = r.role_id
+        WHERE ua.email = ?
+    """, (email,))
+    details = cursor.fetchone()
+    conn.close()
+    return details

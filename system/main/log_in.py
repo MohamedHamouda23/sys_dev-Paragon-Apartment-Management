@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import messagebox
 from main.helpers import create_button, create_entry, create_navbar
 from main.Dashbaord import page_template
-from database.user_service import check_user, retrive_data
+from database.user_service import check_user, retrive_data, get_login_debug_details
 
 class Log_window:
     def __init__(self, main_window):
@@ -59,7 +59,11 @@ class Log_window:
         user = check_user(email, password)
 
         if user:
-            user_info = retrive_data(email, password)
+            '''
+            Debugging: Print user info and login details
+            '''
+            user_info = retrive_data(email)
+            # print(f"LOGIN DEBUG: {get_login_debug_details(email)}")
             self.login_root.destroy()
             page_template(self.main_window, user_info)
         else:
