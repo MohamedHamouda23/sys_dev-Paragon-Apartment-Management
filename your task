@@ -8,23 +8,8 @@ When adding or updating a user, delete the option for city (useless — city is 
 
 
 -Gantt chart     
-------------------------------------------------------------------------------------------------------------------------------------------------
 
-Apartment & Building Notes (Chiko)
-Register apartment – option should only be visible to Administrators.
-Register building – option should also only be visible to Administrators.
-Do not ask for city when adding an apartment or building.
-The city is always the user’s assigned city.
-Addresses should be shown for the user’s assigned city.
-All apartments and buildings added should automatically be associated with the same city as the user.
 
-Viewing Apartments
-Create a button to view apartments.
-Apartment list visibility:
-Administrators → can see apartments only for their assigned city.
-Managers → can see apartments for all cities.
-Filtering for Managers:
-When reviewing apartments, Managers should be able to choose a city to filter by.
 
 
 ------------------------------------------------------------------------------------------------------------------------------------------------
