@@ -285,11 +285,11 @@ INSERT INTO Payment (lease_id, due_date, payment_date, amount, Is_late) VALUES
 INSERT INTO Maintenance_Request
 (apartment_id, tenant_id, issue, description, Maintenance_status, priority, created_date, resolved_date, repair_time, repair_cost, notes)
 VALUES
-(2, 1, NULL, 'Radiator not working in living room', 'Open', NULL, '2026-03-08 09:30:00', NULL, NULL, NULL, ''),
-(3, 1, NULL, 'Bathroom shower has weak water flow', 'Open', NULL, '2026-03-09 11:00:00', NULL, NULL, NULL, ''),
-(2, 1, NULL, 'Front door lock is jammed', 'Open', NULL, '2026-02-20 08:15:00', NULL, NULL, NULL, ''),
-(4, 1, NULL, 'Kitchen light flickers intermittently', 'Open', NULL, '2026-02-25 14:00:00', NULL, NULL, NULL, ''),
-(1, 1, NULL, 'Mold appears near shower', 'Open', NULL, '2026-03-01 10:45:00', NULL, NULL, NULL, '');
+(2, 1, 'Radiator Fault', NULL, 'Open', NULL, '2026-03-08 09:30:00', NULL, NULL, NULL, ''),
+(3, 1, 'Weak Shower', NULL, 'Open', NULL, '2026-03-09 11:00:00', NULL, NULL, NULL, ''),
+(2, 1, 'Door Lock', NULL, 'Open', NULL, '2026-02-20 08:15:00', NULL, NULL, NULL, ''),
+(4, 1, 'Light Flicker', NULL, 'Open', NULL, '2026-02-25 14:00:00', NULL, NULL, NULL, ''),
+(1, 1, 'Mold Growth', NULL, 'Open', NULL, '2026-03-01 10:45:00', NULL, NULL, NULL, '');
 
 INSERT INTO Complaints (description, date_submitted, tenant_id) VALUES
 ('No hot water in apartment', '2026-03-02', 1),

@@ -183,14 +183,12 @@ def assign_and_schedule(request_id, employee_id, priority, scheduled_datetime, c
     """
     Assign staff and schedule maintenance with correct date and time.
     scheduled_datetime should be in format: 'YYYY-MM-DD HH:MM:SS'
+    comment = staff assignment description saved in Maintenance_Request.description
     """
     conn = check_connection()
     cursor = conn.cursor()
     
     try:
-        # Current timestamp for assignment record (optional - can be used for audit)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
         # Retire any existing current assignment
         cursor.execute("""
             UPDATE Maintenance_Assignment
@@ -198,32 +196,36 @@ def assign_and_schedule(request_id, employee_id, priority, scheduled_datetime, c
             WHERE request_id = ? AND is_current = 1
         """, (request_id,))
 
-        # Insert new assignment with the SCHEDULED datetime (not current time)
+        # Insert new assignment using scheduled date
         cursor.execute("""
             INSERT INTO Maintenance_Assignment 
             (request_id, employee_id, assigned_date, is_current)
             VALUES (?, ?, ?, 1)
-        """, (request_id, employee_id, scheduled_datetime))  # Use scheduled_datetime here!
+        """, (request_id, employee_id, scheduled_datetime))
 
-        # Update request with priority and status
+        # Update request with priority, status, AND staff comment in description
         cursor.execute("""
             UPDATE Maintenance_Request
             SET Maintenance_status = 'In Progress',
-                priority = ?
+                priority = ?,
+                description = ?
             WHERE request_id = ?
-        """, (priority, request_id))
+        """, (priority, comment, request_id))
 
         conn.commit()
 
-        # Return the assignment details with the scheduled datetime
+        # Return assignment details including the description
         cursor.execute("""
             SELECT ma.request_id, ma.employee_id, ma.assigned_date,
-                   u.first_name || ' ' || u.surname AS staff_name
+                   u.first_name || ' ' || u.surname AS staff_name,
+                   mr.description
             FROM Maintenance_Assignment ma
             JOIN Employee e ON ma.employee_id = e.employee_id
             JOIN User u ON e.employee_id = u.user_id
+            JOIN Maintenance_Request mr ON ma.request_id = mr.request_id
             WHERE ma.request_id = ? AND ma.is_current = 1
         """, (request_id,))
+        
         result = cursor.fetchone()
         conn.close()
         return result
@@ -232,7 +234,6 @@ def assign_and_schedule(request_id, employee_id, priority, scheduled_datetime, c
         conn.rollback()
         conn.close()
         raise e
-
 
 def resolve_request(request_id, issue, description, repair_time=None, repair_cost=None):
     """Mark a request as Resolved, saving updated issue and resolution notes."""
@@ -331,22 +332,20 @@ def get_all_apartments(user_info=None):
     return [(r[0], r[1]) for r in rows]
 
 
-def register_request(apartment_id, tenant_id, issue, description, priority):
-    """
-    FR4.5 — Insert a new Maintenance_Request row with status 'Open'.
-    Returns the new request_id on success, or None on failure.
-    """
+
+
+def register_request(apartment_id, tenant_id, issue, priority):
     conn = check_connection()
     cursor = conn.cursor()
     
     try:
         cursor.execute("""
             INSERT INTO Maintenance_Request
-                (apartment_id, tenant_id, issue, description,
+                (apartment_id, tenant_id, issue, 
                  Maintenance_status, priority, created_date)
-            VALUES (?, ?, ?, ?, 'Open', ?, ?)
+            VALUES (?, ?, ?, 'Open', ?, ?)
         """, (
-            apartment_id, tenant_id, issue, description,
+            apartment_id, tenant_id, issue,
             priority, datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         ))
         conn.commit()

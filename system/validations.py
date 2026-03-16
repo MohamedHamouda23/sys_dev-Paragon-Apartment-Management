@@ -157,7 +157,7 @@ def validate_lease_details(start_date, end_date, rent):
 # REQUEST VALIDATIONS
 # ============================================================================
 
-def validate_request_form(tenant_name, apt_label, issue, description, priority):
+def validate_request_form(tenant_name, apt_label, issue, priority):
     """Validate maintenance request form inputs"""
     errors = []
     
@@ -168,8 +168,6 @@ def validate_request_form(tenant_name, apt_label, issue, description, priority):
         errors.append("• Please select an apartment")
     if not issue:
         errors.append("• Issue title is required")
-    if not description:
-        errors.append("• Description is required")
     if not priority:
         errors.append("• Please select a priority")
     
