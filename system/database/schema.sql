@@ -56,6 +56,10 @@ CREATE TABLE IF NOT EXISTS Tenant (
     occupation VARCHAR(120),
     FOREIGN KEY (user_id) REFERENCES User(user_id)
 );
+/*added for ten man*/
+ALTER TABLE Tenant ADD COLUMN apartment_type VARCHAR(50);
+ALTER TABLE Tenant ADD COLUMN lease_period VARCHAR(50);
+
 
 
 CREATE TABLE IF NOT EXISTS Tenant_Reference (
@@ -65,6 +69,9 @@ CREATE TABLE IF NOT EXISTS Tenant_Reference (
     FOREIGN KEY (tenant_id) REFERENCES Tenant(tenant_id)
 
 );
+/*for ten man*/
+ALTER TABLE Tenant_Reference ADD COLUMN reference_email VARCHAR(255);
+
 
 
 

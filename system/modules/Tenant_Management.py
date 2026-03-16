@@ -1,187 +1,244 @@
 import tkinter as tk
-from main.helpers import create_button
-from tkinter import messagebox
+from tkinter import ttk, messagebox
 
+<<<<<<< HEAD
 from main.helpers import (
     create_button, create_frame, clear_frame, styled_label, form_field, form_dropdown, card, BG, ACCENT, FONT_TITLE, FONT_LABEL 
+=======
+from main.helpers import create_button
+from database.tenant_management_service import (
+    get_all_tenants,
+    create_tenant,
+    update_tenant,
+    delete_tenant,
+    get_all_complaints_with_tenant
+>>>>>>> 0d082a1 (updated tenant managment page and patched db)
 )
 
 
-
-class TenantManagerPage: #initialise tenant managment page
+class TenantManagementPage:
     def __init__(self, parent):
-        self.parent=parent 
-        self.frame, self.btns_inner_frame, self.box_frame = create_frame(parent) #gives standard 3 section layout
-        self.box_frame.pack_propagate(False)
+        print("TENANT PAGE LOADED FROM:", __file__)
+        self.frame = tk.Frame(parent, bg="#c9e4c4")
+        self.selected_tenant_id = None
 
-        self.tenants=[ #temporary dummy data until data base integration
-            {"Name":"emily jones", "Email": "em.jones@gmail.com", "Phone Number": "07635244267", "Occupation":"retail", 
-             "Reference Name":"Mark Hudson", "Reference Email":"mark.hudson@icloud.com", 
-             "Apartment Requirements": "1 Bedroom", "National Insurance Number":"QQ123456A","Lease Period":"36 months" }
+        self._build_layout()
+        self._load_tenants()
+
+    # ---------------------------------------------------
+    def _build_layout(self):
+        top_btn_frame = tk.Frame(self.frame, bg="#c9e4c4")
+        top_btn_frame.pack(side="top", fill="x", pady=(20, 8))
+
+        btns_inner_frame = tk.Frame(top_btn_frame, bg="#c9e4c4")
+        btns_inner_frame.pack(anchor="center")
+
+        create_button(btns_inner_frame, "Add Tenant", 140, 45, "#3B86FF", "white", self.add_tenant).pack(side="left", padx=8)
+        create_button(btns_inner_frame, "Update Tenant", 140, 45, "#3B86FF", "white", self.update_tenant).pack(side="left", padx=8)
+        create_button(btns_inner_frame, "Delete Tenant", 140, 45, "#3B86FF", "white", self.delete_tenant).pack(side="left", padx=8)
+        create_button(btns_inner_frame, "View Complaints", 160, 45, "#3B86FF", "white", self.view_complaints).pack(side="left", padx=8)
+
+        content_frame = tk.Frame(self.frame, bg="#c9e4c4")
+        content_frame.pack(fill="both", expand=True, padx=20, pady=(6, 20))
+
+        tk.Label(content_frame, text="Tenant Information", bg="#c9e4c4", font=("Arial", 16, "bold")).pack(pady=(0, 10))
+
+        table_wrap = tk.Frame(content_frame, bg="white", bd=2, relief="groove")
+        table_wrap.pack(fill="both", expand=True, pady=(0, 12))
+
+        columns = (
+            "tenant_id", "first_name", "surname", "email", "telephone",
+            "reference_name", "reference_email", "ni_number",
+            "lease_period", "apartment_type", "occupation"
+        )
+
+        self.tree = ttk.Treeview(table_wrap, columns=columns, show="headings", height=9)
+
+        for col in columns:
+            self.tree.heading(col, text=col.replace("_", " ").title())
+
+        self.tree.column("tenant_id", width=55, anchor="center")
+        self.tree.column("first_name", width=120)
+        self.tree.column("surname", width=120)
+        self.tree.column("email", width=180)
+        self.tree.column("telephone", width=120)
+        self.tree.column("reference_name", width=150)
+        self.tree.column("reference_email", width=180)
+        self.tree.column("ni_number", width=150)
+        self.tree.column("lease_period", width=120)
+        self.tree.column("apartment_type", width=140)
+        self.tree.column("occupation", width=140)
+
+        y_scroll = ttk.Scrollbar(table_wrap, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=y_scroll.set)
+
+        self.tree.pack(side="left", fill="both", expand=True, padx=(8, 0), pady=8)
+        y_scroll.pack(side="right", fill="y", pady=8, padx=(0, 8))
+
+        self.tree.bind("<<TreeviewSelect>>", self._on_row_select)
+
+        form = tk.Frame(content_frame, bg="white", bd=2, relief="groove")
+        form.pack(fill="x", padx=0)
+
+        self.first_name_entry = self._form_field(form, "First Name", 0, 0)
+        self.surname_entry = self._form_field(form, "Surname", 0, 2)
+        self.email_entry = self._form_field(form, "Email", 0, 4)
+
+        self.telephone_entry = self._form_field(form, "Telephone", 1, 0)
+        self.reference_name_entry = self._form_field(form, "Reference Name", 1, 2)
+        self.reference_email_entry = self._form_field(form, "Reference Email", 1, 4)
+
+        self.ni_entry = self._form_field(form, "National Insurance Number", 2, 0)
+        self.lease_period_entry = self._form_field(form, "Lease Period", 2, 2)
+        self.apartment_type_entry = self._form_field(form, "Apartment Type", 2, 4)
+
+        self.occupation_entry = self._form_field(form, "Occupation", 3, 0)
+
+        form.grid_columnconfigure(1, weight=1)
+        form.grid_columnconfigure(3, weight=1)
+        form.grid_columnconfigure(5, weight=1)
+
+    # ---------------------------------------------------
+    def _form_field(self, parent, label, row, col):
+        tk.Label(parent, text=label, bg="white", font=("Arial", 11, "bold")).grid(
+            row=row, column=col, padx=(16, 6), pady=8, sticky="w"
+        )
+        entry = tk.Entry(parent, width=30)
+        entry.grid(row=row, column=col + 1, padx=(0, 16), pady=8, sticky="we")
+        return entry
+
+    # ---------------------------------------------------
+    def _load_tenants(self):
+        for row in self.tree.get_children():
+            self.tree.delete(row)
+
+        for tenant in get_all_tenants():
+            self.tree.insert("", "end", values=tenant)
+
+    # ---------------------------------------------------
+    def _on_row_select(self, _event=None):
+        selected = self.tree.selection()
+        if not selected:
+            return
+
+        values = self.tree.item(selected[0], "values")
+        self.selected_tenant_id = int(values[0])
+
+        entries = [
+            self.first_name_entry, self.surname_entry, self.email_entry,
+            self.telephone_entry, self.reference_name_entry, self.reference_email_entry,
+            self.ni_entry, self.lease_period_entry, self.apartment_type_entry,
+            self.occupation_entry
         ]
 
-        self.create_buttons() #builds top buttons
-        self.show_home() #loads tenant "home" page
+        for entry, value in zip(entries, values[1:]):
+            entry.delete(0, tk.END)
+            entry.insert(0, value)
 
-    #---------------------------
-
-    def create_buttons(self): #creates top button bar using create_button from helpers.py
-        for text, command in [
-            ("View Tenant Info", self.view_tenant_info),
-            ("Add Tenant", self.add_tenant),
-            ("View Complaints", self.complaints),
-        ]:
-            create_button(
-                self.btns_inner_frame,
-                text=text,
-                width=150,
-                height=50,
-                bg="#3B86FF",
-                fg="white",
-                command=command
-            ).pack(side="left", padx=15, pady=50)
-
-    #---------------------------
-
-    def clear_box(self):
-        clear_frame(self.box_frame)
-
-    #---------------------------
-
-    def show_home(self):
-        self.clear_box()
-
-        container = card(self.box_frame)
-        container.config(width=600, height=150)
-
-        styled_label(container, "Tenant Management", font=FONT_TITLE, fg="#222").pack(pady=10)
-
-    #--------------------------------
-
-    def view_tenant_info(self):
-        self.clear_box()
-
-        container = card(self.box_frame)
-        container.config(width=900, height=500)
-
-        styled_label(container, "Tenant Info", font=FONT_TITLE, fg="#222").pack(pady=10)
-
-        columns_frame = tk.Frame(container, bg="white")
-        columns_frame.pack(pady=10)
-
-        floors = {
-            "Floor 1": ["A1","A2","A3","A4","A5","A6","A7","A8"],
-            "Floor 2": ["A9","A10","A11","A12","A13","A14","A15","A16"],
-            "Floor 3": ["A17","A18","A19","A20"],
-            "Floor 4": ["A21","A22","A23","A24"]
-        }
-
-        col_index = 0
-        for floor_name, apartments in floors.items():
-            col = tk.Frame(columns_frame, bg="white")
-            col.grid(row=0, column=col_index, padx=25)
-
-            styled_label(col, floor_name, fg="#333", font=FONT_LABEL).pack(pady=(0, 5))
-
-            for apt in apartments:
-                styled_label(col, f"{apt} - (empty)", fg="#555").pack(anchor="w")
-
-            col_index += 1
-
-    #---------------------------------
-
-    def refresh_tenants(self): #main tenant list view
-        self.clear_box()
-        container = card(self.box_frame)
-        container.config(width=900, height=500)
-
-        if not self.tenants:
-            styled_label(container, "No tenants found", fg="#888").pack(pady=20)
-            return
-        
-        for t in self.tenants:
-            text=f"{t['Name']} | {t['Email']} | {t['Phone Number']} | {t['Occupation']} | {t['Reference Name']} | {t['Reference Email']} | {t['Apartment Requirements']} | {t['National Insurance Number']} | {t['Lease Period']}"
-            styled_label(container, text, fg="#333").pack(pady=5, anchor="w")
-
-    #-----------------------------------
+    # ---------------------------------------------------
     def add_tenant(self):
-        self.clear_box()
+        try:
+            data = self._collect_form_data()
+            create_tenant(*data)
+            self._load_tenants()
+            messagebox.showinfo("Success", "Tenant added successfully.")
+        except Exception as error:
+            messagebox.showerror("Error", str(error))
 
-        # MUCH bigger card
-        container = card(self.box_frame)
-        container.config(width=950, height=550)
+    # ---------------------------------------------------
+    def update_tenant(self):
+        if self.selected_tenant_id is None:
+            messagebox.showerror("Selection Error", "Please select a tenant first.")
+            return
 
-        styled_label(container, "Add New Tenant", font=FONT_TITLE, fg="#222").pack(pady=(0,4))
-        tk.Frame(container, bg=ACCENT, height=3, width=80).pack(pady=(0,16))
+        try:
+            data = self._collect_form_data()
+            update_tenant(self.selected_tenant_id, *data)
+            self._load_tenants()
+            messagebox.showinfo("Success", "Tenant updated successfully.")
+        except Exception as error:
+            messagebox.showerror("Error", str(error))
 
-        # 3-column layout for form fields
-        form_frame = tk.Frame(container, bg="white")
-        form_frame.pack(pady=10)
+    # ---------------------------------------------------
+    def delete_tenant(self):
+        if self.selected_tenant_id is None:
+            messagebox.showerror("Selection Error", "Please select a tenant first.")
+            return
 
-        # column frames
-        col1 = tk.Frame(form_frame, bg="white")
-        col2 = tk.Frame(form_frame, bg="white")
-        col3 = tk.Frame(form_frame, bg="white")
+        if not messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this tenant?"):
+            return
 
-        col1.grid(row=0, column=0, padx=25)
-        col2.grid(row=0, column=1, padx=25)
-        col3.grid(row=0, column=2, padx=25)
+        try:
+            delete_tenant(self.selected_tenant_id)
+            self.selected_tenant_id = None
+            self._load_tenants()
+            messagebox.showinfo("Success", "Tenant deleted successfully.")
+        except Exception as error:
+            messagebox.showerror("Error", str(error))
 
-        # form fields
-        first_name = form_field(col1, "First Name")
-        surname = form_field(col1, "Surname")
-        email = form_field(col1, "Email")
+    # ---------------------------------------------------
+    def _collect_form_data(self):
+        return (
+            self.first_name_entry.get().strip(),
+            self.surname_entry.get().strip(),
+            self.email_entry.get().strip(),
+            self.telephone_entry.get().strip(),
+            self.reference_name_entry.get().strip(),
+            self.reference_email_entry.get().strip(),
+            self.ni_entry.get().strip(),
+            self.lease_period_entry.get().strip(),
+            self.apartment_type_entry.get().strip(),
+            self.occupation_entry.get().strip(),
+        )
 
-        phone_number = form_field(col2, "Phone Number")
-        occupation = form_field(col2, "Occupation")
-        reference_name = form_field(col2, "Reference Name")
+    # ---------------------------------------------------
+    # GLOBAL COMPLAINT VIEWER (NO TENANT SELECTION REQUIRED)
+    # ---------------------------------------------------
+    def view_complaints(self):
+        win = tk.Toplevel(self.frame)
+        win.title("All Tenant Complaints")
+        win.geometry("900x500")
+        win.config(bg="#c9e4c4")
 
-        reference_email = form_field(col3, "Reference Email")
-        apartment_requirments = form_field(col3, "Apartment Requirements")
-        national_insurance_number = form_field(col3, "National Insurance Number")
-        lease_period = form_field(col3, "Lease Period")
+        tk.Label(win, text="All Tenant Complaints",
+                 bg="#c9e4c4", font=("Arial", 16, "bold")).pack(pady=10)
 
-        #submit handler
-        def submit():
-            full_name=f"{first_name.get()} {surname.get()}"
-            self.tenants.append({
-                "Name": full_name,
-                "Email": email.get(),
-                "Phone Number": phone_number.get(),
-                "Occupation": occupation.get(),
-                "Reference Name": reference_name.get(), 
-                "Reference Email": reference_email.get(), 
-                "Apartment Requirements": apartment_requirments.get(), 
-                "National Insurance Number": national_insurance_number.get(), 
-                "Lease Period": lease_period.get()
-            })
+        table_wrap = tk.Frame(win, bg="white", bd=2, relief="groove")
+        table_wrap.pack(fill="both", expand=True, padx=20, pady=10)
 
-            self.clear_box()
-            styled_label(self.box_frame, "Tenant added successfully", fg="#2E7D32").pack(expand=True)
-            self.box_frame.after(1200, self.refresh_tenants)
+        columns = ("complaint_id", "tenant_id", "name", "description", "date_submitted")
+        tree = ttk.Treeview(table_wrap, columns=columns, show="headings", height=15)
 
-        # submit button
-        create_button(
-            container,
-            text="Create Tenant",
-            width=200,
-            height=50,
-            bg="#3B86FF",
-            fg="white",
-            command=submit
-        ).pack(pady=20)
+        tree.heading("complaint_id", text="Complaint ID")
+        tree.heading("tenant_id", text="Tenant ID")
+        tree.heading("name", text="Tenant Name")
+        tree.heading("description", text="Complaint")
+        tree.heading("date_submitted", text="Date Submitted")
 
-    #----------------------------------------
-            
-    def complaints(self):
-        self.clear_box()
-        container = card(self.box_frame)
-        container.config(width=900, height=500)
+        tree.column("complaint_id", width=100, anchor="center")
+        tree.column("tenant_id", width=100, anchor="center")
+        tree.column("name", width=180)
+        tree.column("description", width=350)
+        tree.column("date_submitted", width=150)
 
-        styled_label(container,"Tenant Complaints", font=FONT_TITLE,fg="#222").pack(pady=10)
-        styled_label(container,"No complaints",fg="#888").pack(pady=20)
+        y_scroll = ttk.Scrollbar(table_wrap, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=y_scroll.set)
 
-#--------------------------------------            
+        tree.pack(side="left", fill="both", expand=True, padx=(8, 0), pady=8)
+        y_scroll.pack(side="right", fill="y", pady=8, padx=(0, 8))
+
+        complaints = get_all_complaints_with_tenant()
+
+        for c in complaints:
+            complaint_id, tenant_id, first, surname, desc, date = c
+            tree.insert("", "end", values=(
+                complaint_id,
+                tenant_id,
+                f"{first} {surname}",
+                desc,
+                date
+            ))
+
 
 def create_page(parent):
-    return TenantManagerPage(parent).frame
+    return TenantManagementPage(parent).frame
