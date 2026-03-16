@@ -5,6 +5,8 @@
 
 import re
 from tkinter import messagebox
+from datetime import datetime
+
 
 
 # ============================================================================
@@ -157,46 +159,33 @@ def validate_lease_details(start_date, end_date, rent):
 # REQUEST VALIDATIONS
 # ============================================================================
 
-def validate_request_form(tenant_name, apt_label, issue, priority):
-    """Validate maintenance request form inputs"""
-    errors = []
-    
-    # Check required fields
-    if not tenant_name:
-        errors.append("• Please select a tenant")
-    if not apt_label:
-        errors.append("• Please select an apartment")
-    if not issue:
-        errors.append("• Issue title is required")
-    if not priority:
-        errors.append("• Please select a priority")
-    
-    if errors:
-        raise ValueError("\n".join(errors))
-    
-    return True
-
-
-# ============================================================================
-# LIFECYCLE VALIDATIONS
-# ============================================================================
 
 def validate_staff_assignment(staff_name, priority, date_str, selected_slot, comment):
     """Validate staff assignment and scheduling form inputs"""
-    import re
     errors = []
     
     # Check required fields
     if not staff_name:
         errors.append("• Select staff member")
+    
     if not priority:
         errors.append("• Select priority")
-    if not date_str or not re.match(r'^\d{4}-\d{2}-\d{2}$', date_str):
+    
+    if not date_str:
+        errors.append("• Date is required")
+    elif not re.match(r'^\d{4}-\d{2}-\d{2}$', date_str):
         errors.append("• Valid date required (YYYY-MM-DD)")
+    else:
+        try:
+            datetime.strptime(date_str, "%Y-%m-%d")
+        except ValueError:
+            errors.append("• Invalid date")
+    
     if not selected_slot:
         errors.append("• Please select an available time slot")
-    if not comment:
-        errors.append("• Comment required")
+    
+    if not comment or not comment.strip():
+        errors.append("• Assignment description is required")
     
     if errors:
         raise ValueError("\n".join(errors))
@@ -208,21 +197,47 @@ def validate_resolution_form(notes, repair_time, repair_cost):
     """Validate resolution form inputs"""
     errors = []
     
-    if not notes:
+    if not notes or not notes.strip():
         errors.append("• Resolution notes are required")
     
     # Validate numeric fields
     if repair_time:
         try:
-            int(repair_time)
+            time_val = float(repair_time)
+            if time_val < 0:
+                errors.append("• Repair time cannot be negative")
         except ValueError:
             errors.append("• Repair time must be a valid number")
     
     if repair_cost:
         try:
-            float(repair_cost)
+            cost_val = float(repair_cost)
+            if cost_val < 0:
+                errors.append("• Repair cost cannot be negative")
         except ValueError:
             errors.append("• Repair cost must be a valid number")
+    
+    if errors:
+        raise ValueError("\n".join(errors))
+    
+    return True
+
+
+def validate_maintenance_request(apartment_id, tenant_id, issue, priority):
+    """Validate new maintenance request form"""
+    errors = []
+    
+    if not apartment_id:
+        errors.append("• Please select an apartment")
+    
+    if not tenant_id:
+        errors.append("• Please select a tenant")
+    
+    if not issue or not issue.strip():
+        errors.append("• Issue description is required")
+    
+    if not priority:
+        errors.append("• Please select a priority")
     
     if errors:
         raise ValueError("\n".join(errors))

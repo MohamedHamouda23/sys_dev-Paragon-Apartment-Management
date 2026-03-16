@@ -2,7 +2,7 @@ import re
 import tkinter as tk
 from tkinter import ttk, messagebox
 from main.helpers import create_button
-from validations import validate_request_form
+from validations import validate_maintenance_request
 
 
 class RegisterRequestPanel:

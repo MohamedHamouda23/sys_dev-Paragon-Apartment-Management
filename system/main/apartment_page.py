@@ -7,7 +7,7 @@ import tkinter as tk
 from tkinter import messagebox
 
 from main.helpers import (
-    create_button, create_frame, clear_frame,
+    create_button, clear_frame,
     styled_label, form_field, form_dropdown, card,
     BG, ACCENT, FONT_TITLE, FONT_LABEL
 )
