@@ -1,9 +1,22 @@
-from database.databaseConnection import check_connection,fetch_all, insert
+from database.databaseConnection import check_connection, fetch_all, insert
 
 
 # -------------------- Cities --------------------
-def get_all_cities():
-    return fetch_all("SELECT city_id, city_name FROM Location")
+def get_all_cities(scope_city_id=None):
+    if scope_city_id is None:
+        return fetch_all("SELECT city_id, city_name FROM Location ORDER BY city_name")
+
+    conn = check_connection()
+    if conn is None:
+        return []
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT city_id, city_name FROM Location WHERE city_id = ? ORDER BY city_name",
+        (scope_city_id,)
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
 
 def create_city(city_name):
     insert("INSERT INTO Location (city_name) VALUES (?)", (city_name,))
@@ -14,8 +27,21 @@ def build_city_map(cities=None):
     return {city_name: city_id for city_id, city_name in cities}
 
 # -------------------- Buildings --------------------
-def get_all_buildings():
-    return fetch_all("SELECT building_id, city_id, street, postcode FROM Buildings")
+def get_all_buildings(scope_city_id=None):
+    if scope_city_id is None:
+        return fetch_all("SELECT building_id, city_id, street, postcode FROM Buildings")
+
+    conn = check_connection()
+    if conn is None:
+        return []
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT building_id, city_id, street, postcode FROM Buildings WHERE city_id = ?",
+        (scope_city_id,)
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
 
 def create_building(city_id, street, postcode):
     insert(
@@ -37,13 +63,24 @@ def build_buildings_by_city(buildings=None):
     return buildings_by_city, display_to_id
 
 # -------------------- Apartments --------------------
-def get_all_apartments():
-    return fetch_all("""
+def get_all_apartments(scope_city_id=None):
+    query = """
         SELECT a.apartment_id, l.city_name, b.street, b.postcode, a.num_rooms, a.type, a.occupancy_status
         FROM Apartments a
         JOIN Location l ON a.city_id = l.city_id
         JOIN Buildings b ON a.building_id = b.building_id
-    """)
+    """
+    if scope_city_id is None:
+        return fetch_all(query)
+
+    conn = check_connection()
+    if conn is None:
+        return []
+    cursor = conn.cursor()
+    cursor.execute(query + " WHERE a.city_id = ?", (scope_city_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
 
 def create_apartment(city_id, building_id, num_rooms, apt_type, occupancy_status):
     insert(

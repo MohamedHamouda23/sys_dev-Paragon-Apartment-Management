@@ -31,6 +31,23 @@ class ApartmentManagerPage:
         # Store parent and user info
         self.parent = parent
         self.user_info = user_info
+
+        # Parse logged-in role and assigned city details
+        self.user_role = None
+        self.assigned_city_name = None
+        self.assigned_city_id = None
+        if user_info and len(user_info) >= 6:
+            self.user_role = user_info[4]
+            self.assigned_city_name = user_info[3]
+            self.assigned_city_id = user_info[5]
+        self.is_admin = self.user_role == "Administrators"
+        self.is_manager = self.user_role == "Manager"
+
+        self._all_apartments = []
+        self._manager_city_filter_var = None
+        self._manager_city_filter_cb = None
+        self.apt_tree = None
+        self.top_buttons = {}
         
         # Create main frame
         self.frame = tk.Frame(parent, bg="#c9e4c4")
@@ -60,12 +77,16 @@ class ApartmentManagerPage:
 
     def create_buttons(self):
         """Create action buttons"""
-        for text, command in [
-            ("Add Property",  self.on_add_property),
-            ("Add City",      self.show_add_city_stepper),
-            ("Add Building",  self.show_add_building_stepper),
-        ]:
-            create_button(
+        actions = [
+            ("Add Property", self.on_add_property),
+            ("Add Building", self.show_add_building_stepper),
+            ("Apartments", self.refresh_apartments),
+        ]
+        if not self.is_admin:
+            actions.insert(1, ("Add City", self.show_add_city_stepper))
+
+        for text, command in actions:
+            btn = create_button(
                 self.btns_inner_frame,
                 text=text,
                 width=140,
@@ -75,7 +96,21 @@ class ApartmentManagerPage:
                 command=command,
                 next_window_func=None,
                 current_window=None
-            ).pack(side="left", padx=8)
+            )
+            btn.pack(side="left", padx=8)
+            self.top_buttons[text] = btn
+
+    def _toggle_apartments_button(self, show):
+        """Show or hide the Apartments top button based on current view"""
+        apartments_btn = self.top_buttons.get("Apartments")
+        if not apartments_btn:
+            return
+
+        is_visible = apartments_btn.winfo_manager() != ""
+        if show and not is_visible:
+            apartments_btn.pack(side="left", padx=8)
+        elif not show and is_visible:
+            apartments_btn.pack_forget()
 
     # ========================================================================
     # SUCCESS STATE
@@ -104,11 +139,37 @@ class ApartmentManagerPage:
 
     def refresh_apartments(self):
         """Load and display all apartments in table"""
+        self._toggle_apartments_button(False)
         clear_frame(self.box_frame)
-        apartments = get_all_apartments()
+        if self.is_admin and self.assigned_city_id is not None:
+            apartments = get_all_apartments(scope_city_id=self.assigned_city_id)
+        else:
+            apartments = get_all_apartments()
+        self._all_apartments = apartments
 
         # Create table wrapper
         from tkinter import ttk
+
+        if self.is_manager:
+            search_wrap = tk.Frame(self.box_frame, bg="#c9e4c4")
+            search_wrap.pack(fill="x", pady=(0, 10))
+
+            tk.Label(search_wrap, text="City", bg="#c9e4c4", fg="#1f3b63", font=FONT_LABEL).pack(side="left", padx=(0, 10))
+
+            city_options = ["All Cities"] + sorted({apt[1] for apt in apartments if apt[1]})
+            self._manager_city_filter_var = tk.StringVar(value="All Cities")
+            city_filter_cb = ttk.Combobox(
+                search_wrap,
+                textvariable=self._manager_city_filter_var,
+                values=city_options,
+                state="readonly",
+                width=24,
+                font=("Arial", 11)
+            )
+            city_filter_cb.pack(side="left", padx=(0, 10), ipady=3)
+            self._manager_city_filter_cb = city_filter_cb
+            city_filter_cb.bind("<<ComboboxSelected>>", lambda _e: self._run_manager_search(city_filter_cb.get()))
+
         table_wrap = tk.Frame(self.box_frame, bg="white", bd=2, relief="groove")
         table_wrap.pack(fill="both", expand=True, pady=(0, 12))
 
@@ -153,7 +214,37 @@ class ApartmentManagerPage:
         y_scroll.pack(side="right", fill="y", pady=8, padx=(0, 8))
 
         # Insert apartment rows
-        for apt in apartments:
+        self._render_apartment_rows()
+
+    def _run_manager_search(self, selected_city=None):
+        """Apply manager city filter from dropdown and refresh table rows"""
+        if selected_city is None:
+            if self._manager_city_filter_cb is not None:
+                selected_city = self._manager_city_filter_cb.get()
+            elif self._manager_city_filter_var is not None:
+                selected_city = self._manager_city_filter_var.get()
+            else:
+                selected_city = "All Cities"
+
+        selected_city = (selected_city or "All Cities").strip()
+        if selected_city == "All Cities":
+            if self.is_admin and self.assigned_city_id is not None:
+                self._all_apartments = get_all_apartments(scope_city_id=self.assigned_city_id)
+            else:
+                self._all_apartments = get_all_apartments()
+        else:
+            all_rows = get_all_apartments()
+            self._all_apartments = [apt for apt in all_rows if str(apt[1]).strip() == selected_city]
+        self._render_apartment_rows()
+
+    def _render_apartment_rows(self):
+        """Render apartments in table"""
+        if not self.apt_tree:
+            return
+
+        self.apt_tree.delete(*self.apt_tree.get_children())
+
+        for apt in self._all_apartments:
             self.apt_tree.insert("", "end", values=apt)
 
     # ========================================================================
@@ -162,7 +253,8 @@ class ApartmentManagerPage:
 
     def on_add_property(self):
         """Open add apartment wizard"""
-        AddApartmentStepper(self.box_frame, self.refresh_apartments)
+        self._toggle_apartments_button(True)
+        AddApartmentStepper(self.box_frame, self.refresh_apartments, user_info=self.user_info)
 
     # ========================================================================
     # ADD CITY
@@ -170,6 +262,7 @@ class ApartmentManagerPage:
 
     def show_add_city_stepper(self):
         """Show form to add new city"""
+        self._toggle_apartments_button(True)
         clear_frame(self.box_frame)
 
         # Create form container
@@ -222,6 +315,7 @@ class ApartmentManagerPage:
 
     def show_add_building_stepper(self):
         """Show form to add new building"""
+        self._toggle_apartments_button(True)
         clear_frame(self.box_frame)
 
         # Create form container
@@ -230,18 +324,37 @@ class ApartmentManagerPage:
         tk.Frame(container, bg=ACCENT, height=3, width=60).pack(pady=(0, 16))
 
         # Load cities
-        cities     = get_all_cities()
+        scope_city_id = self.assigned_city_id if self.is_admin else None
+        cities     = get_all_cities(scope_city_id=scope_city_id)
         city_map   = build_city_map(cities)
         city_names = list(city_map.keys())
 
+        # Resolve assigned city for admins
+        if self.is_admin:
+            if self.assigned_city_name in city_map:
+                selected_city_name = self.assigned_city_name
+            elif city_names:
+                selected_city_name = city_names[0]
+            else:
+                selected_city_name = ""
+        else:
+            selected_city_name = None
+
         # Create form fields
-        city_cb        = form_dropdown(container, "Select City", city_names)
+        if self.is_admin:
+            styled_label(container, f"City: {selected_city_name}", fg="#555").pack(anchor="w", pady=(0, 8))
+            city_cb = None
+        else:
+            city_cb = form_dropdown(container, "Select City", city_names)
         street_entry   = form_field(container, "Street", [0])
         postcode_entry = form_field(container, "Postcode", [0])
 
         # Submit function
         def submit_building():
-            selected_city = city_cb.get().strip()
+            if self.is_admin:
+                selected_city = (selected_city_name or "").strip()
+            else:
+                selected_city = city_cb.get().strip()
             street = street_entry.get().strip()
             postcode = postcode_entry.get().strip()
 

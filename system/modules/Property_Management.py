@@ -34,22 +34,44 @@ class AddApartmentStepper:
     TYPES     = ['Studio', 'Apartment', 'Penthouse']
     OCCUPANCY = ['Occupied', 'Vacant', 'Unavailable']
 
-    def __init__(self, parent, refresh_callback):
+    def __init__(self, parent, refresh_callback, user_info=None):
         # Store parent and refresh callback
         self.box_frame        = parent
         self.refresh_callback = refresh_callback
+        self.user_info        = user_info
+
+        # Parse user role and city assignment
+        self.user_role = None
+        self.assigned_city_name = None
+        self.assigned_city_id = None
+        if user_info and len(user_info) >= 6:
+            self.user_role = user_info[4]
+            self.assigned_city_name = user_info[3]
+            self.assigned_city_id = user_info[5]
+        self.is_admin = self.user_role == "Administrators"
 
         # Load cities and buildings from database
-        cities    = get_all_cities()
-        buildings = get_all_buildings()
+        scope_city_id = self.assigned_city_id if self.is_admin else None
+        cities    = get_all_cities(scope_city_id=scope_city_id)
+        buildings = get_all_buildings(scope_city_id=scope_city_id)
 
         # Build lookup dictionaries
         self.city_map          = build_city_map(cities)
         self.city_names        = list(self.city_map.keys())
         self.buildings_by_city, self.display_to_id = build_buildings_by_city(buildings)
 
-        # Start with city selection
-        self.step_city()
+        if self.assigned_city_name in self.city_map:
+            self.default_city = self.assigned_city_name
+        elif self.city_names:
+            self.default_city = self.city_names[0]
+        else:
+            self.default_city = ""
+
+        # Start flow based on role
+        if self.is_admin:
+            self.step_address(self.default_city)
+        else:
+            self.step_city()
 
     # ========================================================================
     # SUCCESS STATE
@@ -84,7 +106,7 @@ class AddApartmentStepper:
         container = card(self.box_frame)
         styled_label(container, "Add Apartment", font=FONT_TITLE, fg="#222").pack(pady=(0, 4))
         tk.Frame(container, bg=ACCENT, height=3, width=60).pack(pady=(0, 16))
-        styled_label(container, "Step 1 of 3 — Select City", fg="#888").pack(pady=(0, 8))
+        styled_label(container, "Step 1 of 3 - Select City", fg="#888").pack(pady=(0, 8))
 
         # City dropdown
         city_cb = form_dropdown(container, "City", self.city_names)
@@ -94,7 +116,7 @@ class AddApartmentStepper:
         btn_frame.pack(pady=(20, 0))
         create_button(
             btn_frame,
-            text="Next →",
+            text="Next ->",
             width=150,
             height=50,
             bg="#3B86FF",
@@ -117,6 +139,9 @@ class AddApartmentStepper:
         if any(char.isdigit() for char in selected_city):
             messagebox.showerror("Input Error", "City names must only contain letters.", parent=self.box_frame)
             return
+        if selected_city not in self.city_map:
+            messagebox.showerror("Selection Error", "Please select a valid city before proceeding.", parent=self.box_frame)
+            return
 
         clear_frame(self.box_frame)
 
@@ -124,8 +149,10 @@ class AddApartmentStepper:
         container = card(self.box_frame)
         styled_label(container, "Add Apartment", font=FONT_TITLE, fg="#222").pack(pady=(0, 4))
         tk.Frame(container, bg=ACCENT, height=3, width=60).pack(pady=(0, 16))
-        styled_label(container, "Step 2 of 3 — Select Address", fg="#888").pack(pady=(0, 8))
-        styled_label(container, f"City: {selected_city}", fg="#555").pack(anchor="w")
+        step_label = "Step 1 of 2 - Select Address" if self.is_admin else "Step 2 of 3 - Select Address"
+        city_prefix = "Assigned City" if self.is_admin else "City"
+        styled_label(container, step_label, fg="#888").pack(pady=(0, 8))
+        styled_label(container, f"{city_prefix}: {selected_city}", fg="#555").pack(anchor="w")
 
         # Get addresses for selected city
         city_id   = self.city_map[selected_city]
@@ -136,14 +163,15 @@ class AddApartmentStepper:
             styled_label(container, "No buildings found for this city.", fg="#C62828").pack(pady=10)
             btn_frame = tk.Frame(container, bg=BG)
             btn_frame.pack(pady=(12, 0))
+            back_command = self.step_city if not self.is_admin else (lambda: self.step_address(self.default_city))
             create_button(
                 btn_frame,
-                text="← Back",
+                text="<- Back",
                 width=150,
                 height=50,
                 bg="#3B86FF",
                 fg="white",
-                command=self.step_city,
+                command=back_command,
                 next_window_func=None,
                 current_window=None
             ).pack()
@@ -157,7 +185,7 @@ class AddApartmentStepper:
         btn_frame.pack(pady=(20, 0))
         create_button(
             btn_frame,
-            text="Next →",
+            text="Next ->",
             width=150,
             height=50,
             bg="#3B86FF",
@@ -186,21 +214,22 @@ class AddApartmentStepper:
         container = card(self.box_frame)
         styled_label(container, "Add Apartment", font=FONT_TITLE, fg="#222").pack(pady=(0, 4))
         tk.Frame(container, bg=ACCENT, height=3, width=60).pack(pady=(0, 16))
-        styled_label(container, "Step 3 of 3 — Details", fg="#888").pack(pady=(0, 8))
+        detail_step_label = "Step 2 of 2 - Details" if self.is_admin else "Step 3 of 3 - Details"
+        styled_label(container, detail_step_label, fg="#888").pack(pady=(0, 8))
 
         # Show selected city and address
         info = tk.Frame(container, bg="#F5F5F5", padx=12, pady=8)
         info.pack(fill="x", pady=(0, 12))
-        styled_label(info, f"{city}  ·  {address}", fg="#555").pack(anchor="w")
+        styled_label(info, f"{city}  |  {address}", fg="#555").pack(anchor="w")
 
         # Number of rooms (digits only)
         vcmd = container.register(lambda P: P.isdigit() or P == "")
         rooms_entry = form_field(container, "Number of Rooms", [0])
         rooms_entry.config(validate="key", validatecommand=(vcmd, "%P"))
-        
+
         # Property type dropdown
         type_cb = form_dropdown(container, "Property Type", self.TYPES)
-        
+
         # Occupancy status dropdown
         occ_cb = form_dropdown(container, "Occupancy Status", self.OCCUPANCY)
 
@@ -224,7 +253,7 @@ class AddApartmentStepper:
         btn_frame.pack(pady=(20, 0))
         create_button(
             btn_frame,
-            text="Add Apartment ✓",
+            text="Add Apartment",
             width=180,
             height=50,
             bg="#3B86FF",
@@ -260,7 +289,7 @@ class AddApartmentStepper:
         # Get building and city IDs
         building_id = self.display_to_id.get(address)
         city_id     = self.city_map[city]
-        
+
         if building_id is None:
             messagebox.showerror("Selection Error", "Please select a valid address.", parent=self.box_frame)
             return
@@ -285,7 +314,7 @@ class AddApartmentStepper:
 # PAGE FACTORY
 # ============================================================================
 
-def create_page(parent):
+def create_page(parent, user_info=None):
     """Create and return property management page"""
-    from main.apartment_page import ApartmentManagerPage  
-    return ApartmentManagerPage(parent).frame
+    from main.apartment_page import ApartmentManagerPage
+    return ApartmentManagerPage(parent, user_info=user_info).frame
