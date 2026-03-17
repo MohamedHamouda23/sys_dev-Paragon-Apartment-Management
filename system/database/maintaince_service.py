@@ -1,3 +1,5 @@
+# database/maintaince_service.py
+
 from database.databaseConnection import check_connection
 from datetime import datetime
 
@@ -36,7 +38,7 @@ def get_all_requests(user_info=None):
 
 
 def viewFull(request_id):
-    """Get full details of a specific maintenance request."""
+    """Get full details of a specific maintenance request including repair cost and time."""
     conn = check_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -50,11 +52,13 @@ def viewFull(request_id):
             mr.notes,
             mr.issue,
             u.first_name || ' ' || u.surname AS tenant_name,
-            a.type,
+            a.type AS apartment_type,
             b.postcode,
             su.first_name || ' ' || su.surname AS staff_name,
             ma.assigned_date,
-            ma.is_current
+            ma.is_current,
+            mr.repair_cost,
+            mr.repair_time
         FROM Maintenance_Request mr
         LEFT JOIN Tenant t ON mr.tenant_id = t.tenant_id
         LEFT JOIN User u ON t.user_id = u.user_id
@@ -73,7 +77,7 @@ def viewFull(request_id):
 def update_request_status(request_id, action):
     """Update request status: approve, reject, or resolve."""
     action_map = {
-        "approve": "In Progress",  
+        "approve": "Approved",     # Changed from "In Progress" to "Approved"
         "reject":  "Denied",
         "resolve": "Resolved",
     }
@@ -101,20 +105,13 @@ def update_request_status(request_id, action):
             """, (new_status, request_id))
         
         conn.commit()
-        
-        cursor.execute("""
-            SELECT request_id, Maintenance_status
-            FROM Maintenance_Request
-            WHERE request_id = ?
-        """, (request_id,))
-        result = cursor.fetchone()
-        conn.close()
-        return result
+        return True # Return True to indicate success
     except Exception as e:
         conn.rollback()
-        conn.close()
         print("Database error:", e)
-        return None
+        return False
+    finally:
+        conn.close()
 
 
 def get_maintenance_staff(user_info=None):
@@ -155,15 +152,29 @@ def get_staff_task_count_for_date(staff_name, date_str):
     conn = check_connection()
     cursor = conn.cursor()
     
+    # First get the employee_id from the staff name
     cursor.execute("""
-        SELECT ma.assigned_date
-        FROM Maintenance_Assignment ma
-        JOIN Employee e ON ma.employee_id = e.employee_id
+        SELECT e.employee_id
+        FROM Employee e
         JOIN User u ON e.employee_id = u.user_id
         WHERE (u.first_name || ' ' || u.surname) = ?
-        AND DATE(ma.assigned_date) = ?
-        AND ma.is_current = 1
-    """, (staff_name, date_str))
+    """, (staff_name,))
+    
+    employee_result = cursor.fetchone()
+    if not employee_result:
+        conn.close()
+        return {}
+    
+    employee_id = employee_result[0]
+    
+    # Get assignments for this employee on the specified date
+    cursor.execute("""
+        SELECT strftime('%H:%M', assigned_date) as time_slot
+        FROM Maintenance_Assignment
+        WHERE employee_id = ?
+        AND DATE(assigned_date) = ?
+        AND is_current = 1
+    """, (employee_id, date_str))
     
     assignments = cursor.fetchall()
     conn.close()
@@ -172,9 +183,8 @@ def get_staff_task_count_for_date(staff_name, date_str):
     slot_counts = {}
     for assignment in assignments:
         if assignment[0]:
-            # Extract time portion (HH:MM)
-            time_part = assignment[0][11:16] if ' ' in assignment[0] else assignment[0][:5]
-            slot_counts[time_part] = slot_counts.get(time_part, 0) + 1
+            time_slot = assignment[0]  # This will be like '09:00'
+            slot_counts[time_slot] = slot_counts.get(time_slot, 0) + 1
     
     return slot_counts
 
@@ -189,7 +199,21 @@ def assign_and_schedule(request_id, employee_id, priority, scheduled_datetime, c
     cursor = conn.cursor()
     
     try:
-        # Retire any existing current assignment
+        # Check if the employee is already booked at this time
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM Maintenance_Assignment
+            WHERE employee_id = ?
+              AND assigned_date = ?
+              AND is_current = 1
+        """, (employee_id, scheduled_datetime))
+        
+        count = cursor.fetchone()[0]
+        if count > 0:
+            conn.close()
+            raise Exception("Staff member is already assigned to another task at this time")
+        
+        # Retire any existing current assignment for this request
         cursor.execute("""
             UPDATE Maintenance_Assignment
             SET is_current = 0
@@ -199,26 +223,36 @@ def assign_and_schedule(request_id, employee_id, priority, scheduled_datetime, c
         # Insert new assignment using scheduled date
         cursor.execute("""
             INSERT INTO Maintenance_Assignment 
-            (request_id, employee_id, assigned_date, is_current)
+                (request_id, employee_id, assigned_date, is_current)
             VALUES (?, ?, ?, 1)
         """, (request_id, employee_id, scheduled_datetime))
 
-        # Update request with priority, status, AND staff comment in description
+        # FIXED: Only update status if it's currently "Approved"
+        # This prevents overwriting the status incorrectly
         cursor.execute("""
             UPDATE Maintenance_Request
-            SET Maintenance_status = 'In Progress',
-                priority = ?,
+            SET priority = ?,
                 description = ?
             WHERE request_id = ?
         """, (priority, comment, request_id))
+        
+        # Also update status to "In Progress" if it's currently "Approved"
+        cursor.execute("""
+            UPDATE Maintenance_Request
+            SET Maintenance_status = 'In Progress'
+            WHERE request_id = ? AND Maintenance_status = 'Approved'
+        """, (request_id,))
 
         conn.commit()
 
         # Return assignment details including the description
         cursor.execute("""
-            SELECT ma.request_id, ma.employee_id, ma.assigned_date,
+            SELECT ma.request_id,
+                   ma.employee_id,
+                   ma.assigned_date,
                    u.first_name || ' ' || u.surname AS staff_name,
-                   mr.description
+                   mr.description,
+                   mr.Maintenance_status
             FROM Maintenance_Assignment ma
             JOIN Employee e ON ma.employee_id = e.employee_id
             JOIN User u ON e.employee_id = u.user_id
@@ -235,8 +269,9 @@ def assign_and_schedule(request_id, employee_id, priority, scheduled_datetime, c
         conn.close()
         raise e
 
-def resolve_request(request_id, issue, description, repair_time=None, repair_cost=None):
-    """Mark a request as Resolved, saving updated issue and resolution notes."""
+
+def resolve_request(request_id, notes, repair_cost=None, repair_time=None):
+    """Mark a request as Resolved, saving resolution notes, cost, and time."""
     conn = check_connection()
     cursor = conn.cursor()
     
@@ -244,24 +279,22 @@ def resolve_request(request_id, issue, description, repair_time=None, repair_cos
         cursor.execute("""
             UPDATE Maintenance_Request
             SET Maintenance_status = 'Resolved',
-                resolved_date      = ?,
-                issue              = ?,
-                notes              = ?,
-                repair_time        = ?,
-                repair_cost        = ?
+                resolved_date = ?,
+                notes = ?,
+                repair_cost = ?,
+                repair_time = ?
             WHERE request_id = ?
         """, (
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            issue,
-            description,
-            repair_time,
+            notes,
             repair_cost,
+            repair_time,
             request_id,
         ))
         conn.commit()
         
         cursor.execute(
-            "SELECT request_id FROM Maintenance_Request WHERE request_id = ?",
+            "SELECT request_id, Maintenance_status FROM Maintenance_Request WHERE request_id = ?",
             (request_id,)
         )
         result = cursor.fetchone()
@@ -332,8 +365,6 @@ def get_all_apartments(user_info=None):
     return [(r[0], r[1]) for r in rows]
 
 
-
-
 def register_request(apartment_id, tenant_id, issue, priority):
     conn = check_connection()
     cursor = conn.cursor()
@@ -358,7 +389,9 @@ def register_request(apartment_id, tenant_id, issue, priority):
         print("Database error:", e)
         return None
 
+
 def update_request_priority(request_id, new_priority):
+    """Update request priority and return True if successful."""
     conn = check_connection()
     cursor = conn.cursor()
     try:
@@ -367,6 +400,19 @@ def update_request_priority(request_id, new_priority):
             (new_priority, request_id)
         )
         conn.commit()
-    finally:
-        cursor.close()
+        
+        # Verify the update was successful
+        cursor.execute(
+            "SELECT priority FROM Maintenance_Request WHERE request_id = ?",
+            (request_id,)
+        )
+        result = cursor.fetchone()
         conn.close()
+        
+        # Return True if the priority was updated correctly
+        return result and result[0] == new_priority
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        print("Database error:", e)
+        return False

@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS Maintenance_Request
     tenant_id 	int,
     issue	VARCHAR(255),
     description	VARCHAR(255),
-    Maintenance_status TEXT DEFAULT 'Open' CHECK(Maintenance_status IN ('Open', 'In Progress', 'Resolved', 'Denied')),
+    Maintenance_status TEXT DEFAULT 'Open' CHECK(Maintenance_status IN ('Open','Approved','In Progress', 'Resolved', 'Denied')),
     priority TEXT check(priority IN ('Low', 'Medium', 'High')),
     created_date	DATETIME,
     resolved_date	DATETIME,
