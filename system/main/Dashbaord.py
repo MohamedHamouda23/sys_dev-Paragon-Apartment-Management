@@ -59,7 +59,7 @@ def page_template(main_window, user_info):
             "Tenants", "Leases", "Maintenance"
         ],
         "Maintenance Staff": [
-            "Request Lifecycle"
+            "Request Lifecycle","Reports"
         ],
         "Manager": [
             "Properties", "Tenants",
