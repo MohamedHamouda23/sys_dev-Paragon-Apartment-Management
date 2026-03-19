@@ -1,8 +1,4 @@
 
-🛠️ Maintenance and property tasks ,and Authentication (✅ Completed by Chiko, Mohamed)
-
-
-
 
 
 ------------------------------------------------------------------------------------------------------------------------------------------------
@@ -42,19 +38,26 @@ Cannot remove or update existing leases.
 tenant managment
 use case
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Report (chiko)
+Report (Ava)
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+paymen (chiko)
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
 tenant dashboard (Mohamed)
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 USER MANAGEMNT   ✅
-### Table 1: Apartment Management (Admins & Managers)      ✅
+### Apartment Management (Admins & Managers)      ✅ (chiko)
 
-| ID      | Requirement Description |
-| FR1.3   | Register new Apartments; view apartment details. |
-| FR2.4   | Expand operations by adding new locations (manager-level function). |
+### Maintenance Management (Admins, Staff & Tenants) ✅ (mohamed)
 
-### Table 4: Lease Management (Admins & Tenants)      ✅
+### user Management: very close
+
+
+
+
+
+
+### Table 4: Lease Management (Admins & Tenants)     (leyla)  
 
 | ID      | Requirement Description |
 |---------|------------------------|
@@ -63,36 +66,7 @@ USER MANAGEMNT   ✅
 
 
 
-
-### Table 5: Maintenance Management (Admins, Staff & Tenants)
-
-| ID      | Requirement Description |
-|---------|------------------------|
-| FR1.7   | Manage the lifecycle of maintenance requests by approving/denying them. |
-| FR2.5   | Assign maintenance staff to new or pending requests. |
-| FR2.6   | Approve or verify completion of maintenance requests. |
-| FR2.7   | Monitor overall maintenance efficiency and costs. |
-| FR4.5   | Register maintenance requests and tenant complaints. |
-| FR4.6   | Maintain logs for tenant registrations and maintenance status. |
-| FR5.2   | View all maintenance requests submitted by tenants or front desk staff. |
-| FR5.3   | Update request status (pending, in progress, completed). |
-| FR5.4   | Add notes on diagnostics, work done, and materials used. |
-| FR5.5   | Log time taken, resolution details, and associated costs. |
-| FR5.6   | Prioritise maintenance tasks based on urgency and importance. |
-| FR5.7   | Schedule maintenance appointments and notify tenants. |
-| FR6.4   | Track maintenance requests and complaints. |
-| FR6.8   | Submit complaints and repair requests. |
-
-
-
-
-
-
-
-
-
-
-### Table 2: Tenant Information & Access (Admins & Tenants)
+### Table 2: Tenant Information & Access (Admins & Tenants)  (Erin)
 
 | ID      | Requirement Description |
 |---------|------------------------|
@@ -100,7 +74,7 @@ USER MANAGEMNT   ✅
 | FR4.2   | Register new tenants; sign in as tenant and see profile. |
 | FR6.5   | Update contact info. |
 
-### Table 3: Financial & Occupancy Reports (Admins & Financial Staff)
+### Table 3: Financial & Occupancy Reports (Admins & Financial Staff)  (Ava)
 
 | ID      | Requirement Description |
 |---------|------------------------|
@@ -112,9 +86,7 @@ USER MANAGEMNT   ✅
 | FR6.9   | See repair progress and graph of own payments history. |
 
 
-
-
-### Table 6: Payments & Financial Tracking (Tenants & Admins)
+### Table 6: Payments & Financial Tracking (Tenants & Admins) (Chiko
 
 | ID      | Requirement Description |
 |---------|------------------------|
