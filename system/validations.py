@@ -8,7 +8,6 @@ from tkinter import messagebox
 from datetime import datetime
 
 
-
 # ============================================================================
 # USER VALIDATIONS
 # ============================================================================
@@ -156,8 +155,55 @@ def validate_lease_details(start_date, end_date, rent):
 
 
 # ============================================================================
-# REQUEST VALIDATIONS
+# MAINTENANCE REQUEST VALIDATIONS
 # ============================================================================
+
+def validate_request_form(tenant_name, apt_label, issue, priority):
+    """Validate maintenance request form data"""
+    errors = []
+    
+    # Check required fields
+    if not tenant_name or not tenant_name.strip():
+        errors.append("• Please select a tenant")
+    
+    if not apt_label or not apt_label.strip():
+        errors.append("• Please select an apartment")
+    
+    if not issue or not issue.strip():
+        errors.append("• Issue description is required")
+    elif len(issue.strip()) < 5:
+        errors.append("• Issue description must be at least 5 characters")
+    
+    # Validate priority
+    if priority not in ["High", "Medium", "Low"]:
+        errors.append("• Please select a valid priority")
+    
+    if errors:
+        raise ValueError("\n".join(errors))
+    
+    return True
+
+
+def validate_maintenance_request(apartment_id, tenant_id, issue, priority):
+    """Validate new maintenance request form"""
+    errors = []
+    
+    if not apartment_id:
+        errors.append("• Please select an apartment")
+    
+    if not tenant_id:
+        errors.append("• Please select a tenant")
+    
+    if not issue or not issue.strip():
+        errors.append("• Issue description is required")
+    
+    if not priority:
+        errors.append("• Please select a priority")
+    
+    if errors:
+        raise ValueError("\n".join(errors))
+    
+    return True
 
 
 def validate_staff_assignment(staff_name, priority, date_str, selected_slot, comment):
@@ -216,28 +262,6 @@ def validate_resolution_form(notes, repair_time, repair_cost):
                 errors.append("• Repair cost cannot be negative")
         except ValueError:
             errors.append("• Repair cost must be a valid number")
-    
-    if errors:
-        raise ValueError("\n".join(errors))
-    
-    return True
-
-
-def validate_maintenance_request(apartment_id, tenant_id, issue, priority):
-    """Validate new maintenance request form"""
-    errors = []
-    
-    if not apartment_id:
-        errors.append("• Please select an apartment")
-    
-    if not tenant_id:
-        errors.append("• Please select a tenant")
-    
-    if not issue or not issue.strip():
-        errors.append("• Issue description is required")
-    
-    if not priority:
-        errors.append("• Please select a priority")
     
     if errors:
         raise ValueError("\n".join(errors))

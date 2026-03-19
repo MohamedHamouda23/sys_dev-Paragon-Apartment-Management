@@ -140,12 +140,23 @@ def create_side_navbar(parent, button_text, user_info, button_command=None):
 
     # User info section
     info_frame = _nav_frame(frame, side="top", fill="x", pady=(20, 10))
-    user_img   = tk.Label(info_frame, text="👤", font=("Arial", 30), bg=NAV_BG)
-    user_name  = tk.Label(info_frame, text=f"{user_info[1]} {user_info[2]}", font=("Arial", 12, "bold"), bg=NAV_BG)
-    user_email = tk.Label(info_frame, text=f"{user_info[4]}", font=("Arial", 10), bg=NAV_BG)
-    for widget, kw in [(user_img, {"pady": (0, 5)}), (user_name, {}), (user_email, {})]:
-        widget.pack(side="top", **kw)
 
+    # User image
+    user_img = tk.Label(info_frame, text="👤", font=("Arial", 30), bg=NAV_BG)
+    user_img.pack(side="top", pady=(0, 5))
+
+    # Name and city on one line: "Name (City)"
+    user_name_city = tk.Label(
+        info_frame, 
+        text=f"{user_info[1]} {user_info[2]} ({user_info[3]})", 
+        font=("Arial", 12, "bold"), 
+        bg=NAV_BG
+    )
+    user_name_city.pack(side="top")
+
+    # Role on the next line
+    role_label = tk.Label(info_frame, text=f"{user_info[4]}", font=("Arial", 10), bg=NAV_BG)
+    role_label.pack(side="top")
     # Sidebar navigation buttons (excluding logout)
 
     nav_buttons = []
