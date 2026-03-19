@@ -1,5 +1,7 @@
 
 
+Fixing or missing
+
 
 ------------------------------------------------------------------------------------------------------------------------------------------------
 User Management Notes (Ava)
@@ -35,29 +37,36 @@ Cannot remove or update existing leases.
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
 (Erin)
-tenant managment
 use case
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Report (Ava)
----------------------------------------------------------------------------------------------------------------------------------------------------------------
-paymen (chiko)
+
+
+
+
+
+
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
-tenant dashboard (Mohamed)
-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Tasks
+
 
 USER MANAGEMNT   ✅
 ### Apartment Management (Admins & Managers)      ✅ (chiko)
 
 ### Maintenance Management (Admins, Staff & Tenants) ✅ (mohamed)
 
-### user Management: very close
+### user Management: very close (No role based access needed)
 
 
 
 
 
+1- tenant dashboard 
 
-### Table 4: Lease Management (Admins & Tenants)     (leyla)  
+
+
+
+
+### 2- Lease Management (Admins & Tenants)     (leyla)  
 
 | ID      | Requirement Description |
 |---------|------------------------|
@@ -65,8 +74,7 @@ USER MANAGEMNT   ✅
 | FR6.6   | Request early end of lease; system checks notice and adds penalty. |
 
 
-
-### Table 2: Tenant Information & Access (Admins & Tenants)  (Erin)
+### 3-  Tenant Information & Access (Admins & Tenants)  (Erin)
 
 | ID      | Requirement Description |
 |---------|------------------------|
@@ -74,7 +82,8 @@ USER MANAGEMNT   ✅
 | FR4.2   | Register new tenants; sign in as tenant and see profile. |
 | FR6.5   | Update contact info. |
 
-### Table 3: Financial & Occupancy Reports (Admins & Financial Staff)  (Ava)
+
+### 4-  Financial & Occupancy Reports (Admins & Financial Staff)  (Ava)
 
 | ID      | Requirement Description |
 |---------|------------------------|
@@ -86,7 +95,7 @@ USER MANAGEMNT   ✅
 | FR6.9   | See repair progress and graph of own payments history. |
 
 
-### Table 6: Payments & Financial Tracking (Tenants & Admins) (Chiko
+### 5- Payments & Financial Tracking (Tenants & Admins) (Chiko)
 
 | ID      | Requirement Description |
 |---------|------------------------|
@@ -95,3 +104,9 @@ USER MANAGEMNT   ✅
 | FR3.5   | Review tenant mock payments via the Tenant Dashboard; see payment history and download invoices. |
 | FR6.10  | Make payments; system checks card and records payment. |
 | FR6.7   | See own payment record and get alerts for late payments. |
+
+
+
+6000 word for report
+
+800 each for reflection
