@@ -5,13 +5,7 @@ Email addresses must include a domain after the @ symbol.
 When updating a record, if nothing has changed, do not perform the update.
 Remove the city column from user forms and tables.
 When adding or updating a user, delete the option for city (useless — city is always the user’s assigned city).
-
-
 -Gantt chart     
-
-
-
-
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
 Lease Management Notes(Leyla)
@@ -42,8 +36,10 @@ Cannot remove or update existing leases.
 tenant managment
 use case
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
+Report (chiko)
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
+tenant dashboard (Mohamed)
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 USER MANAGEMNT   ✅
 ### Table 1: Apartment Management (Admins & Managers)      ✅
