@@ -1,6 +1,3 @@
-Systems Development Group Project
-===================================================
-
 📌 Project Overview
 -------------------
 
@@ -8,17 +5,7 @@ The **Paragon Apartment Management System (PAMS)** is a comprehensive software s
 
 The system modernises apartment management by replacing manual processes with a secure, centralised digital platform. It supports multi-city operations, improves data accuracy, and provides role-based access control for staff and management.
 
-PAMS includes:
-
-* 🏢 Tenant Management
-* 🏠 Apartment Management
-* 💳 Payment & Billing
-* 🛠️ Maintenance Tracking
-* 📊 Reporting & Analytics
-
-Together, these features deliver an efficient and scalable property management solution.
-
-
+* * *
 
 
 🎯 Project Objectives
@@ -29,21 +16,21 @@ Together, these features deliver an efficient and scalable property management s
 *   Build a fully functional and tested software system
 *   Produce professional technical documentation
 
+* * *
 
 
 🗂️ Repository Structure
 ------------------------
 
-root/
-│
-├── system/               # Main system source code
-├── documentation/        # Reports and system documentation
-├── diagrams/             # UML and design diagrams
-├── database/             # Database scripts and schemas
-├── tests/                # Test cases and testing scripts
-└── README.html           # Project documentation file
+system/
+  ├── main # Main program pages
+  ├── requirements.txt # Python dependencies required to run the project
+  ├── assets/ # Static files like images, icons, or other resources
+  ├── modules/ # Python modules containing core functionality
+  ├── validations.py # validation functions
+  ├── database/ # Database scripts, schemas, and initial data
 
-
+* * *
 
 ⚙️ System Requirements
 ----------------------
@@ -51,6 +38,7 @@ root/
 *   Python 3.x
 *   Required Python libraries (see requirements.txt if provided)
 
+* * *
 
 
 
@@ -71,16 +59,24 @@ python3 main.py
 
 * * *
 
-👥 Team Responsibilities
-------------------------
+## 👥 Team Responsibilities
 
-*   System Analysis and Requirements Gathering
-*   UI/UX Design
-*   Backend Development
-*   Database Management
-*   Testing and Quality Assurance
-*   Documentation and Reporting
+The project team collaborated on different areas to ensure a complete and high-quality system:
 
+- **System Analysis & Requirements Gathering**  
+- **UI/UX Design**  
+- **Backend Development**  
+- **Database Management**  
+- **Testing & Quality Assurance**  
+- **Documentation & Reporting**  
+
+**Team Members:**
+
+- Mohamed Hamouda (23077543)  
+- Leyla Ahmed (24060594)  
+- Erin Williams (23072947)  
+- Ava Abtin (23039373)  
+- Momchil Georgiev (24033989)
 
 * * *
 
@@ -88,7 +84,7 @@ python3 main.py
 --------------------
 
 *   Python
-*   SQL Databases
+*   SQLite Databases
 *   Tkinter
 *   Git & GitHub
 
