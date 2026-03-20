@@ -1,18 +1,17 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-<<<<<<< HEAD
+
 from main.helpers import (
     create_button, create_frame, clear_frame, styled_label, form_field, form_dropdown, card, BG, ACCENT, FONT_TITLE, FONT_LABEL 
-=======
-from main.helpers import create_button
+)
+
 from database.tenant_management_service import (
     get_all_tenants,
     create_tenant,
     update_tenant,
     delete_tenant,
     get_all_complaints_with_tenant
->>>>>>> 0d082a1 (updated tenant managment page and patched db)
 )
 
 
