@@ -30,7 +30,7 @@ system/
   ├── modules/           # Python modules containing core functionality
   ├── validations.py     # Validation functions
   ├── database/          # Database scripts, schemas, and initial data
-
+```
 
 * * *
 
@@ -60,7 +60,7 @@ cd your-repository
 ### 3️⃣ Run the System
 
 python3 main.py
-
+```
 
 * * *
 
