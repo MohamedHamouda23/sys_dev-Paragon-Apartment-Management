@@ -24,14 +24,14 @@ The system modernises apartment management by replacing manual processes with a 
 
 ```text
 system/
-  ├── main               # Main program pages
-  ├── requirements.txt   # Python dependencies required to run the project
-  ├── assets/            # Static files like images, icons, or other resources
-  ├── modules/           # Python modules containing core functionality
-  ├── validations.py     # Validation functions
-  ├── database/          # Database scripts, schemas, and initial data
+  ├── main /               # Main program pages
+  ├── database /           # Database scripts, schemas, and initial data
+  ├── modules /            # Python modules containing core functionality
+  ├── assets /             # Static files like images, icons, or other resources
+  ├── .gitignore           # Git ignore files
+  ├── requirements.txt     # Python dependencies required to run the project
+  ├── validations.py       # Validation functions
 ```
-
 * * *
 
 ⚙️ System Requirements
