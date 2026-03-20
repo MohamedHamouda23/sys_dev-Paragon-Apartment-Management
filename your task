@@ -38,6 +38,8 @@ Cannot remove or update existing leases.
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
 (Erin)
 request and complaints is diffrent 
+
+lease_period and apartment_type already in database no need again
 1. Complaint Management
 (Consider moving all Complaint Management logic to a separate file for easier Role-Based Access control) to complaints.py 
 * All complaints must be associated with the same city as the user operating from that city.
