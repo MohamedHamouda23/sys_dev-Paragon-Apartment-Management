@@ -22,13 +22,15 @@ The system modernises apartment management by replacing manual processes with a 
 🗂️ Repository Structure
 ------------------------
 
+```text
 system/
-  ├── main # Main program pages
-  ├── requirements.txt # Python dependencies required to run the project
-  ├── assets/ # Static files like images, icons, or other resources
-  ├── modules/ # Python modules containing core functionality
-  ├── validations.py # validation functions
-  ├── database/ # Database scripts, schemas, and initial data
+  ├── main               # Main program pages
+  ├── requirements.txt   # Python dependencies required to run the project
+  ├── assets/            # Static files like images, icons, or other resources
+  ├── modules/           # Python modules containing core functionality
+  ├── validations.py     # Validation functions
+  ├── database/          # Database scripts, schemas, and initial data
+
 
 * * *
 
@@ -48,6 +50,7 @@ system/
 """
 ### 1️⃣ Clone the Repository
 
+```bash
 git clone https://github.com/your-username/your-repository.git
 
 ### 2️⃣ Navigate to Project Directory
@@ -57,7 +60,7 @@ cd your-repository
 ### 3️⃣ Run the System
 
 python3 main.py
-"""
+
 
 * * *
 
