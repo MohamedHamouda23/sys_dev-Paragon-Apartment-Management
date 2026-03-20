@@ -4,18 +4,32 @@ Systems Development Group Project
 📌 Project Overview
 -------------------
 
-This repository contains a comprehensive system development project created as part of the **Systems Development Group Project** module at the School of Computing and Creative Technologies.
+The **Paragon Apartment Management System (PAMS)** is a comprehensive software solution developed for the **Systems Development Group Project** module at the School of Computing and Creative Technologies, **UWE Bristol**.
 
-The project demonstrates professional software engineering practices by applying **Software Development Life Cycle (SDLC)** methodologies including:
+The system modernises apartment management by replacing manual processes with a secure, centralised digital platform. It supports multi-city operations, improves data accuracy, and provides role-based access control for staff and management.
 
-*   Requirements Analysis
-*   System Design
-*   Implementation
-*   Testing
-*   Documentation
-*   Team Collaboration using Version Control
+PAMS includes:
 
-* * *
+* 🏢 Tenant Management
+* 🏠 Apartment Management
+* 💳 Payment & Billing
+* 🛠️ Maintenance Tracking
+* 📊 Reporting & Analytics
+
+Together, these features deliver an efficient and scalable property management solution.
+
+
+
+
+🎯 Project Objectives
+---------------------
+
+*   Apply SDLC principles in a real-world project
+*   Develop teamwork and collaboration skills
+*   Build a fully functional and tested software system
+*   Produce professional technical documentation
+
+
 
 🗂️ Repository Structure
 ------------------------
@@ -29,16 +43,16 @@ root/
 ├── tests/                # Test cases and testing scripts
 └── README.html           # Project documentation file
 
-* * *
+
 
 ⚙️ System Requirements
 ----------------------
 
 *   Python 3.x
 *   Required Python libraries (see requirements.txt if provided)
-*   Modern web browser
 
-* * *
+
+
 
 ▶️ How to Run the Project
 -------------------------
@@ -69,13 +83,6 @@ python3 main.py
 
 * * *
 
-🎯 Project Objectives
----------------------
-
-*   Apply SDLC principles in a real-world project
-*   Develop teamwork and collaboration skills
-*   Build a fully functional and tested software system
-*   Produce professional technical documentation
 
 * * *
 
@@ -84,7 +91,7 @@ python3 main.py
 
 *   Python
 *   SQL Databases
-*   HTML, CSS
+*   Tkinter
 *   Git & GitHub
 
 * * *
