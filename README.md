@@ -45,6 +45,7 @@ system/
 ▶️ How to Run the Project
 -------------------------
 
+"""
 ### 1️⃣ Clone the Repository
 
 git clone https://github.com/your-username/your-repository.git
@@ -56,6 +57,7 @@ cd your-repository
 ### 3️⃣ Run the System
 
 python3 main.py
+"""
 
 * * *
 
