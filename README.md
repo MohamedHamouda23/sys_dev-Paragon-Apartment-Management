@@ -55,7 +55,7 @@ git clone https://github.com/your-username/your-repository.git
 
 ### 2️⃣ Navigate to Project Directory
 
-cd your-repository
+cd system
 
 ### 3️⃣ Run the System
 
