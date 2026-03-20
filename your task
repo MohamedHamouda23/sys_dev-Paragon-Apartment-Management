@@ -39,7 +39,10 @@ Cannot remove or update existing leases.
 (Erin)
 Requests and complaints are different 
 
-.Remove the batch file because the apartment type and lease period exist in the DB already as apartment_type and start-end date and  remove the alter of apartment type and lease period cuz no need if they already exist but keep the email referenc. queries of need to change to align with the changes
+Remove the database batch file because the apartment type and lease period already exist in the database as apartment_type and start_end_date.
+Also remove the alteration of apartment type and lease period since they already exist, but keep the email reference and update the queries where necessary to align with these changes.
+
+
 
 1. Complaint Management
 (Consider moving all Complaint Management logic to a separate file for easier Role-Based Access control) to complaints.py 
