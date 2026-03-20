@@ -8,7 +8,7 @@ from main.helpers import create_side_navbar
 import tkinter as tk
 from tkinter import ttk
 from modules import User_Management, Property_Management, Tenant_Management, Payments_Management, complaints
-from modules import Lease_Management, Report_Management, Lifecycle_Management, Request_Management
+from modules import Lease_Management, Report_Management, Lifecycle_Management, Request_Management, Maintenance_metrics
 
 
 def page_template(main_window, user_info): 
@@ -28,6 +28,9 @@ def page_template(main_window, user_info):
     # Initialize page storage
     pages = {}
 
+    import main.Maintenance_page as MaintenancePage
+
+
     # Define all available pages
     ALL_PAGES = {
         "Users": User_Management,
@@ -35,11 +38,12 @@ def page_template(main_window, user_info):
         "Tenants": Tenant_Management,
         "Leases": Lease_Management,
         "Reports": Report_Management,
-        "Maintenance": Request_Management,
+        "Maintenance": MaintenancePage,
         "Request Lifecycle": Lifecycle_Management,
         "Payments": Payments_Management,
         "Payment": Payments_Management,
         "complaints": complaints,
+      
     }
 
     # Get user role
@@ -49,17 +53,17 @@ def page_template(main_window, user_info):
     ROLE_PAGES = {
         "Administrators": [
             "Users", "Properties", "Tenants",
-            "Leases", "Reports", "Maintenance"
+            "Leases", "Reports", "Request Lifecycle"
         ],
         "Front-desk Staff": [
             "Tenants", "Leases", "Maintenance"
         ],
         "Maintenance Staff": [
-            "Maintenance", "Request Lifecycle"
+            "Request Lifecycle","Reports"
         ],
         "Manager": [
             "Properties", "Tenants",
-            "Leases", "Reports", "Maintenance"
+            "Leases", "Reports", "Maintenance", "Request Lifecycle"
         ],
         "Finance Manager": [
             "Reports", "Payments"
@@ -81,8 +85,8 @@ def page_template(main_window, user_info):
 
     # Create all page frames
     for name, module in page_modules.items():
-        if name in ("Users", "Payment", "Payments"):
-            # Users page needs user_info parameter
+        # Pages that need user_info parameter
+        if name in ("Users", "Properties", "Payment", "Payments", "Maintenance", "Request Lifecycle"):
             frame = module.create_page(content_frame, user_info=user_info)
         else:
             # Other pages don't need user_info in create_page

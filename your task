@@ -1,17 +1,15 @@
 
+
+Fixing or missing
+
+
 ------------------------------------------------------------------------------------------------------------------------------------------------
 User Management Notes (Ava)
 Email addresses must include a domain after the @ symbol.
 When updating a record, if nothing has changed, do not perform the update.
 Remove the city column from user forms and tables.
 When adding or updating a user, delete the option for city (useless — city is always the user’s assigned city).
-
-
 -Gantt chart     
-
-
-
-
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
 Lease Management Notes(Leyla)
@@ -39,20 +37,36 @@ Cannot remove or update existing leases.
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
 (Erin)
-tenant managment
 use case
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 
+
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Tasks
+
+
 USER MANAGEMNT   ✅
-### Table 1: Apartment Management (Admins & Managers)      ✅
+### Apartment Management (Admins & Managers)      ✅ (chiko)
 
-| ID      | Requirement Description |
-| FR1.3   | Register new Apartments; view apartment details. |
-| FR2.4   | Expand operations by adding new locations (manager-level function). |
+### Maintenance Management (Admins, Staff & Tenants) ✅ (mohamed)
 
-### Table 4: Lease Management (Admins & Tenants)      ✅
+### user Management: very close (No role based access needed)
+
+
+
+
+
+1- tenant dashboard 
+
+
+
+
+
+### 2- Lease Management (Admins & Tenants)     (leyla)  
 
 | ID      | Requirement Description |
 |---------|------------------------|
@@ -60,37 +74,7 @@ USER MANAGEMNT   ✅
 | FR6.6   | Request early end of lease; system checks notice and adds penalty. |
 
 
-
-
-### Table 5: Maintenance Management (Admins, Staff & Tenants)
-
-| ID      | Requirement Description |
-|---------|------------------------|
-| FR1.7   | Manage the lifecycle of maintenance requests by approving/denying them. |
-| FR2.5   | Assign maintenance staff to new or pending requests. |
-| FR2.6   | Approve or verify completion of maintenance requests. |
-| FR2.7   | Monitor overall maintenance efficiency and costs. |
-| FR4.5   | Register maintenance requests and tenant complaints. |
-| FR4.6   | Maintain logs for tenant registrations and maintenance status. |
-| FR5.2   | View all maintenance requests submitted by tenants or front desk staff. |
-| FR5.3   | Update request status (pending, in progress, completed). |
-| FR5.4   | Add notes on diagnostics, work done, and materials used. |
-| FR5.5   | Log time taken, resolution details, and associated costs. |
-| FR5.6   | Prioritise maintenance tasks based on urgency and importance. |
-| FR5.7   | Schedule maintenance appointments and notify tenants. |
-| FR6.4   | Track maintenance requests and complaints. |
-| FR6.8   | Submit complaints and repair requests. |
-
-
-
-
-
-
-
-
-
-
-### Table 2: Tenant Information & Access (Admins & Tenants)
+### 3-  Tenant Information & Access (Admins & Tenants)  (Erin)
 
 | ID      | Requirement Description |
 |---------|------------------------|
@@ -98,7 +82,8 @@ USER MANAGEMNT   ✅
 | FR4.2   | Register new tenants; sign in as tenant and see profile. |
 | FR6.5   | Update contact info. |
 
-### Table 3: Financial & Occupancy Reports (Admins & Financial Staff)
+
+### 4-  Financial & Occupancy Reports (Admins & Financial Staff)  (Ava)
 
 | ID      | Requirement Description |
 |---------|------------------------|
@@ -110,9 +95,7 @@ USER MANAGEMNT   ✅
 | FR6.9   | See repair progress and graph of own payments history. |
 
 
-
-
-### Table 6: Payments & Financial Tracking (Tenants & Admins)
+### 5- Payments & Financial Tracking (Tenants & Admins) (Chiko)
 
 | ID      | Requirement Description |
 |---------|------------------------|
@@ -121,3 +104,9 @@ USER MANAGEMNT   ✅
 | FR3.5   | Review tenant mock payments via the Tenant Dashboard; see payment history and download invoices. |
 | FR6.10  | Make payments; system checks card and records payment. |
 | FR6.7   | See own payment record and get alerts for late payments. |
+
+
+
+6000 word for report
+
+800 each for reflection
