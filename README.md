@@ -81,8 +81,6 @@ python3 main.py
 *   Testing and Quality Assurance
 *   Documentation and Reporting
 
-* * *
-
 
 * * *
 
