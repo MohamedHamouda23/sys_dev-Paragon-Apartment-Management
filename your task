@@ -37,6 +37,35 @@ Cannot remove or update existing leases.
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
 (Erin)
+request and complaints is diffrent 
+1. Complaint Management
+(Consider moving all Complaint Management logic to a separate file for easier Role-Based Access control) to complaints.py 
+* All complaints must be associated with the same city as the user operating from that city.
+* Only complaint descriptions should be shown; maintenance records are separate and not included.
+* Complaints are added via the Add Complaint button and must be linked to the correct tenant and the current user’s city.
+* Complaint windows should be inline, not pop-ups.
+
+2. Tenant Management Rules
+* Prevent duplicate tenants by validating email.
+* Validate telephone numbers and National Insurance (NI) numbers.
+* Emails must include "@".
+* Lease period and apartment type are fixed and cannot be updated from general tenant management.
+* When removing a tenant, all associated leases must also be deleted.
+* Display all tenants and complaints on the same page, no separate windows.
+* Remove lease period and apartment type from the general management table; keep them only in operational boxes.
+
+3. General UI & Logic Updates
+* Add Tenant → validate email, phone, NI → prevent duplicates.
+* Remove Tenant → delete all associated leases.
+* View Complaints → show complaint description inline with tenant info, filtered by city.
+* All displays must be consistent and linked to the user’s city.
+
+4. Role-Based Access
+Role	Permissions
+Front-desk Staff	Register tenants, View tenants, Add complaints, View complaints
+Admin	Add tenants, Update tenants, Delete tenants
+
+
 use case
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
