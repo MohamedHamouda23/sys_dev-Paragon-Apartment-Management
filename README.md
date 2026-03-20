@@ -1,25 +1,85 @@
-# Project Repository
+Systems Development Group Project - Team Repository
+===================================================
 
-## Overview
-This group project is part of the Systems Development Group Project module within the School of Computing and Creative Technologies, UWE Bristol.
-It involves designing, developing, testing, and documenting a complete system project while applying software development life cycle (SDLC) principles and professional teamwork practices.
+A comprehensive system development project applying SDLC principles and professional teamwork practices as part of the School of Computing and Creative Technologies, UWE Bristol.
 
-## Repository Structure
-```
+* * *
+
+Project Overview
+----------------
+
+This group project involves designing, developing, testing, and documenting a complete system while following software development life cycle (SDLC) methodologies and industry-standard collaboration practices.
+
+* * *
+
+Repository Structure
+--------------------
+
 root/
-├── system/ 
-├── report
-├── presentation
-└── README.md
-```
+├── system/          # Main application source code
+├── report/          # Project documentation and deliverables
+├── presentation/    # Final presentation materials
+└── README.md        # Project overview and setup instructions
+    
 
-- [Group Timeline instructions](planning_and_design/Gantt_chart)
+Team Members
+------------
 
+Name
 
-## Team Members
-- Mohamed Hamouda   (23077543)
-- Leyla Ahmed       (24060594)
-- Erin Williams     (23072947)
-- Ava Abtin         (23039373)
-- Momchil Georgiev  (24033989)
+Student ID
 
+Mohamed Hamouda
+
+23077543
+
+Leyla Ahmed
+
+24060594
+
+Erin Williams
+
+23072947
+
+Ava Abtin
+
+23039373
+
+Momchil Georgiev
+
+24033989
+
+Getting Started
+---------------
+
+### Prerequisites
+
+*   Python 3.x
+*   Additional dependencies listed in `requirements.txt` (if applicable)
+
+### Installation & Running
+
+\# Clone the repository
+git clone \[repository-url\]
+cd \[repository-name\]
+
+# Run the main application
+python3 main.index
+    
+
+Project Timeline
+----------------
+
+Follow the group timeline instructions as outlined in the course materials. Milestones and deadlines are tracked in the `/report` directory.
+
+Documentation
+-------------
+
+*   **System Documentation:** Located in `/system`
+*   **Project Reports:** Located in `/report`
+*   **Presentation Materials:** Located in `/presentation`
+
+License
+-------
+
+This project is developed for academic purposes as part of the UWE Bristol curriculum.
