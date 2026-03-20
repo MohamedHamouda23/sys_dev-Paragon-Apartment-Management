@@ -1,11 +1,5 @@
-   Systems Development Group Project - Repository body { font-family: Arial, Helvetica, sans-serif; margin: 40px; background-color: #f7f9fc; color: #2c3e50; line-height: 1.6; } h1, h2, h3 { color: #1a73e8; } code, pre { background-color: #eef1f5; padding: 10px; border-radius: 6px; display: block; overflow-x: auto; } .container { max-width: 900px; margin: auto; background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); } .badge { display: inline-block; padding: 6px 12px; border-radius: 20px; background-color: #1a73e8; color: white; font-size: 14px; margin-right: 8px; } ul { margin-left: 20px; } footer { margin-top: 40px; font-size: 14px; color: #7f8c8d; text-align: center; }
-
-Systems Development Group Project - Team Repository
+Systems Development Group Project
 ===================================================
-
-SDLC Project Team Collaboration UWE Bristol
-
-* * *
 
 📌 Project Overview
 -------------------
