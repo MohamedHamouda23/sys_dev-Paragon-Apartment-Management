@@ -44,18 +44,19 @@ root/
 # Clone the repository
 git clone [repository-url]
 cd [repository-name]
+```
 
 ### Run the main application
 
 python3 main.index
 Project Timeline
 
-Follow the group timeline instructions as outlined in the course materials. Milestones and deadlines are tracked in the /report directory.
-Documentation
+
+### Documentation
 System Documentation: Located in /system
 Project Reports: Located in /report
 Presentation Materials: Located in /presentation
 
 
-License
+### License
 This project is developed for academic purposes as part of the UWE Bristol curriculum.
