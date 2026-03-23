@@ -21,11 +21,10 @@ from validations import validate_user_form
 class UserFormStepper:
     """Multi-step form for creating/editing users"""
 
-    def __init__(self, parent, role_name_to_id, city_name_to_id, prefill=None):
+    def __init__(self, parent, role_name_to_id, prefill=None):
         # Store parent and lookup dictionaries
         self.parent          = parent
         self.role_name_to_id = role_name_to_id
-        self.city_name_to_id = city_name_to_id
         self._prefill        = prefill
 
         # Initialize widget references
@@ -34,7 +33,6 @@ class UserFormStepper:
         self.email_entry      = None
         self.password_entry   = None
         self.role_combobox    = None
-        self.city_combobox    = None
 
         # Defer rendering to avoid macOS autorelease crash
         self.parent.after(0, lambda: self._do_render(prefill))
@@ -66,8 +64,7 @@ class UserFormStepper:
 
         # Create dropdown fields
         self.role_combobox = self._dropdown(form, "Role", self.role_name_to_id, 2, 0)
-        self.city_combobox = self._dropdown(form, "City", self.city_name_to_id, 2, 2)
-
+        
         # Configure column weights for responsiveness
         form.grid_columnconfigure(1, weight=1)
         form.grid_columnconfigure(3, weight=1)
@@ -77,10 +74,7 @@ class UserFormStepper:
             self.first_name_entry.insert(0, prefill[1])
             self.surname_entry.insert(0, prefill[2])
             self.email_entry.insert(0, prefill[3])
-            city_name = prefill[4]
-            role_name = prefill[5]
-            if city_name in self.city_name_to_id:
-                self.city_combobox.set(city_name)
+            role_name = prefill[4]
             if role_name in self.role_name_to_id:
                 self.role_combobox.set(role_name)
 
@@ -121,7 +115,6 @@ class UserFormStepper:
         email      = self.email_entry.get().strip()
         password   = self.password_entry.get().strip()
         role_name  = self.role_combobox.get().strip()
-        city_name  = self.city_combobox.get().strip()
 
         # Validate using centralized validation
         validate_user_form(first_name, surname, email, role_name, require_password, password)
@@ -131,10 +124,7 @@ class UserFormStepper:
         if role_id is None:
             raise ValueError("Please select a valid role.")
 
-        # Get city ID (optional)
-        city_id = self.city_name_to_id.get(city_name)
-        
-        return first_name, surname, email, password, role_id, city_id
+        return first_name, surname, email, password, role_id
 
 
 # ============================================================================
