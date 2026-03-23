@@ -322,3 +322,11 @@ INSERT INTO Lease (apartment_id, tenant_id, start_date, end_date, deposit, early
 (1, 1, '2026-03-01', '2026-09-30', 800, 400, 900),
 (4, 1, '2026-04-01', '2026-12-31', 1200, 600, 1300),
 (5, 1, '2026-05-01', '2026-10-31', 950, 475, 1100);
+
+
+
+# run this to create the database
+#windows:
+# Get-Content .\schema.sql | sqlite3 .\database.db
+#macOS/Linux:
+# cat schema.sql | sqlite3 database.db

@@ -2,7 +2,7 @@
 # MAINTENANCE MAIN PAGE
 # Combines Metrics and Request Management in a single page
 # ============================================================================
-
+# remove metrics part
 import tkinter as tk
 from tkinter import messagebox, ttk
 from main.helpers import create_button, create_scrollable_treeview, show_placeholder
