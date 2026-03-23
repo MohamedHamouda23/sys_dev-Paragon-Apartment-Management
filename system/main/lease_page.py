@@ -57,6 +57,10 @@ class LeaseManagerPage:
     # ========================================================================
 
     def refresh_leases(self):
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
         """Load and display all lease agreements"""
         clear_frame(self.box_frame)
         leases = fetch_leases()
