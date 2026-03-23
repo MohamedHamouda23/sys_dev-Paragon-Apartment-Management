@@ -119,16 +119,19 @@ USER MANAGEMNT   ✅
 
 
 ### 4-  Financial & Occupancy Reports (Admins & Financial Staff)  (Ava)
-
-| ID      | Requirement Description |
-|---------|------------------------|
-| FR1.5   | Access all financial and occupancy reports. |
-| FR2.3   | Generate performance, occupancy, and financial comparison reports for their city. |
-| FR2.8   | View system-wide graphical performance analytics for their city. |
-| FR3.1   | Access Level: Financial control only. |
-| FR3.2   | Manage and record payments, invoices, and deposits; view historical maintenance records and performance reports. |
-| FR6.9   | See repair progress and graph of own payments history. |
-
+| Report Type / Name                        | Who Can Access          | Notes / Purpose                                                   |
+|-------------------------------------------|------------------------|-------------------------------------------------------------------|
+| Occupancy reports (filtered by apartment or city) | Manager, Administrators | Shows apartment occupancy; used for expansion and location management |
+| Financial summaries (collected vs pending rents)  | Finance Manager, Administrators | Overview of payments and pending rents |
+| Maintenance cost tracking                 | Administrators         | Tracks costs for resolved maintenance issues for budgeting       |
+| Performance reports by location          | Manager                | Compares occupancy and financial performance across apartments/cities |
+| Lease agreement tracking / end dates     | Administrators         | Tracks lease expirations and occupancy trends                    |
+| Tenant payment history                    | Finance Manager        | Complete payment records for all tenants                         |
+| Late payment reports                      | Finance Manager        | Tracks late payments and applied penalties                       |
+| Tenant payment history graph              | Tenant                 | Visualizes tenant’s own payment history over time                |
+| Tenant payments vs neighbors graph        | Tenant                 | Compares tenant payments with neighbors to see trends            |
+| Tenant late payments graph                | Tenant                 | Shows late payments per property in graphical form               |
+| Tenant repair/request progress graph      | Tenant                 | Visualizes progress of submitted maintenance or repair requests  |
 
 ### 5- Payments & Financial Tracking (Tenants & Admins) (Chiko)
 
