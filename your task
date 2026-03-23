@@ -124,7 +124,7 @@ USER MANAGEMNT   ✅
 | Occupancy reports (filtered by apartment or city) | Manager, Administrators         | Shows apartment occupancy; used for expansion and location management |
 | Financial summaries (collected vs pending rents)  | Finance Manager, Administrators | Overview of payments and pending rents                                |
 | Maintenance cost tracking                         | Administrators                  | Tracks costs for resolved maintenance issues for budgeting            |
-| Performance reports by location                   | Manager                         | Compares occupancy and financial performance across apartments/cities |
+| generate all reports by location  (filter)                 | Manager                       
 ### 5- Payments & Financial Tracking (Tenants & Admins) (Chiko)
 
 | ID      | Requirement Description |
