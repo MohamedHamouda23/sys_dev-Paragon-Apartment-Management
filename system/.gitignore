@@ -9,8 +9,5 @@ venv/
 # macOS
 .DS_Store
 
-# Databases
-*.db
-
 # Logs
 *.log

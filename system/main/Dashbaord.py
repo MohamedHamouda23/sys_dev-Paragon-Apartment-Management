@@ -56,7 +56,7 @@ def page_template(main_window, user_info):
             "Leases", "Reports", "Request Lifecycle"
         ],
         "Front-desk Staff": [
-            "Tenants", "Leases", "Maintenance"
+            "Tenants", "Leases", "Maintenance",
         ],
         "Maintenance Staff": [
             "Request Lifecycle","Reports"
