@@ -203,7 +203,7 @@ CREATE TABLE Report
     payment_id  	int ,
     date_created	DATETIME ,
     data_from_date	DATE ,
-    report_type TEXT CHECK(report_type IN ('Financial', 'Occupancy', 'Maintenance', 'Tenant')),    
+    report_type TEXT CHECK(report_type IN ('Financial', 'Occupancy', 'Maintenance', 'performance')),    
     data_to_date	DATE ,
     FOREIGN KEY (apartment_id) REFERENCES Apartments(apartment_id),
     FOREIGN KEY (payment_id) REFERENCES Payment(payment_id)

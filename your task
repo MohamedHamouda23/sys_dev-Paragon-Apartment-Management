@@ -119,20 +119,12 @@ USER MANAGEMNT   ✅
 
 
 ### 4-  Financial & Occupancy Reports (Admins & Financial Staff)  (Ava)
-| Report Type / Name                        | Who Can Access          | Notes / Purpose                                                   |
-|-------------------------------------------|------------------------|-------------------------------------------------------------------|
-| Occupancy reports (filtered by apartment or city) | Manager, Administrators | Shows apartment occupancy; used for expansion and location management |
-| Financial summaries (collected vs pending rents)  | Finance Manager, Administrators | Overview of payments and pending rents |
-| Maintenance cost tracking                 | Administrators         | Tracks costs for resolved maintenance issues for budgeting       |
-| Performance reports by location          | Manager                | Compares occupancy and financial performance across apartments/cities |
-| Lease agreement tracking / end dates     | Administrators         | Tracks lease expirations and occupancy trends                    |
-| Tenant payment history                    | Finance Manager        | Complete payment records for all tenants                         |
-| Late payment reports                      | Finance Manager        | Tracks late payments and applied penalties                       |
-| Tenant payment history graph              | Tenant                 | Visualizes tenant’s own payment history over time                |
-| Tenant payments vs neighbors graph        | Tenant                 | Compares tenant payments with neighbors to see trends            |
-| Tenant late payments graph                | Tenant                 | Shows late payments per property in graphical form               |
-| Tenant repair/request progress graph      | Tenant                 | Visualizes progress of submitted maintenance or repair requests  |
-
+| Report Type / Name                                | Who Can Access                  | Notes / Purpose                                                       |
+| ------------------------------------------------- | ------------------------------- | --------------------------------------------------------------------- |
+| Occupancy reports (filtered by apartment or city) | Manager, Administrators         | Shows apartment occupancy; used for expansion and location management |
+| Financial summaries (collected vs pending rents)  | Finance Manager, Administrators | Overview of payments and pending rents                                |
+| Maintenance cost tracking                         | Administrators                  | Tracks costs for resolved maintenance issues for budgeting            |
+| Performance reports by location                   | Manager                         | Compares occupancy and financial performance across apartments/cities |
 ### 5- Payments & Financial Tracking (Tenants & Admins) (Chiko)
 
 | ID      | Requirement Description |
