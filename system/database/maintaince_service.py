@@ -11,7 +11,7 @@ def get_all_requests(user_info=None, selected_city=None):
     """
     Get all maintenance requests.
     - For managers: retrieves data from ALL cities OR filtered by city name
-    - For other roles: retrieves data filtered by user's assigned city only
+    - For other roles (including Administrators): retrieves data filtered by user's assigned city only
     """
     conn = check_connection()
     cursor = conn.cursor()
@@ -62,9 +62,10 @@ def get_all_requests(user_info=None, selected_city=None):
             JOIN Buildings b ON a.building_id = b.building_id
         """
         params = ()
-        if user_info and len(user_info) > 6 and user_info[6]:
+        # retrive_data returns city_id at index 5
+        if user_info and len(user_info) > 5 and user_info[5]:
             query += " WHERE b.city_id = ?"
-            params = (user_info[6],)
+            params = (user_info[5],)
         
         query += " ORDER BY mr.created_date DESC"
         cursor.execute(query, params)
@@ -177,10 +178,10 @@ def get_maintenance_staff(user_info=None):
     """
     
     params = ()
-    # Non-managers: filter by city
-    if not is_manager and user_info and len(user_info) > 6 and user_info[6]:
+    # Non-managers: filter by city (city_id is user_info[5])
+    if not is_manager and user_info and len(user_info) > 5 and user_info[5]:
         query += " AND u.city_id = ?"
-        params = (user_info[6],)
+        params = (user_info[5],)
     
     query += " ORDER BY full_name"
     cursor.execute(query, params)
@@ -380,10 +381,10 @@ def get_all_tenants(user_info=None):
     """
     
     params = ()
-    # Non-managers: filter by city
-    if not is_manager and user_info and len(user_info) > 6 and user_info[6]:
+    # Non-managers: filter by city (city_id is user_info[5])
+    if not is_manager and user_info and len(user_info) > 5 and user_info[5]:
         query += " WHERE u.city_id = ?"
-        params = (user_info[6],)
+        params = (user_info[5],)
     
     query += " ORDER BY full_name"
     cursor.execute(query, params)
@@ -415,10 +416,10 @@ def get_all_apartments(user_info=None):
     """
     
     params = ()
-    # Non-managers: filter by city
-    if not is_manager and user_info and len(user_info) > 6 and user_info[6]:
+    # Non-managers: filter by city (city_id is user_info[5])
+    if not is_manager and user_info and len(user_info) > 5 and user_info[5]:
         query += " WHERE b.city_id = ?"
-        params = (user_info[6],)
+        params = (user_info[5],)
     
     query += " ORDER BY b.postcode"
     cursor.execute(query, params)
@@ -429,7 +430,7 @@ def get_all_apartments(user_info=None):
 
 
 # ============================================================================
-# MAINTENANCE METRICS FUNCTIONS
+# move to file called report_service METRICS FUNCTIONS
 # ============================================================================
 
 def get_metrics_summary(user_info=None):
@@ -451,14 +452,14 @@ def get_metrics_summary(user_info=None):
     where_base = ""
     params = ()
 
-    # Non-managers: filter by city
-    if not is_manager and user_info and len(user_info) > 6 and user_info[6]:
+    # Non-managers: filter by city (city_id is user_info[5])
+    if not is_manager and user_info and len(user_info) > 5 and user_info[5]:
         city_join = """
             JOIN Apartments a ON mr.apartment_id = a.apartment_id
             JOIN Buildings b ON a.building_id = b.building_id
         """
         where_base = "WHERE b.city_id = ?"
-        params = (user_info[6],)
+        params = (user_info[5],)
 
     # Total requests
     cursor.execute(f"""
@@ -544,15 +545,15 @@ def get_cost_analysis(user_info=None):
     """
     
     params = ()
-    # Non-managers: filter by city
-    if not is_manager and user_info and len(user_info) > 6 and user_info[6]:
+    # Non-managers: filter by city (city_id is user_info[5])
+    if not is_manager and user_info and len(user_info) > 5 and user_info[5]:
         query += """
             JOIN Apartments a ON mr.apartment_id = a.apartment_id
             JOIN Buildings b ON a.building_id = b.building_id
             WHERE b.city_id = ?
             AND mr.repair_cost IS NOT NULL
         """
-        params = (user_info[6],)
+        params = (user_info[5],)
     else:
         query += " WHERE mr.repair_cost IS NOT NULL"
     
@@ -594,14 +595,14 @@ def get_staff_performance(user_info=None):
     params = ()
     where_clauses = []
     
-    # Non-managers: filter by city
-    if not is_manager and user_info and len(user_info) > 6 and user_info[6]:
+    # Non-managers: filter by city (city_id is user_info[5])
+    if not is_manager and user_info and len(user_info) > 5 and user_info[5]:
         query += """
             JOIN Apartments a ON mr.apartment_id = a.apartment_id
             JOIN Buildings b ON a.building_id = b.building_id
         """
         where_clauses.append("b.city_id = ?")
-        params = (user_info[6],)
+        params = (user_info[5],)
     
     where_clauses.append("mr.Maintenance_status = 'Resolved'")
     where_clauses.append("mr.resolved_date IS NOT NULL")
@@ -649,14 +650,14 @@ def get_recent_completed_requests(user_info=None, limit=5):
     params = ()
     where_clauses = []
     
-    # Non-managers: filter by city
-    if not is_manager and user_info and len(user_info) > 6 and user_info[6]:
+    # Non-managers: filter by city (city_id is user_info[5])
+    if not is_manager and user_info and len(user_info) > 5 and user_info[5]:
         query += """
             JOIN Apartments a ON mr.apartment_id = a.apartment_id
             JOIN Buildings b ON a.building_id = b.building_id
         """
         where_clauses.append("b.city_id = ?")
-        params = (user_info[6],)
+        params = (user_info[5],)
     
     where_clauses.append("mr.Maintenance_status = 'Resolved'")
     where_clauses.append("mr.resolved_date IS NOT NULL")

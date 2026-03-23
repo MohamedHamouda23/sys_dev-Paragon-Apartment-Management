@@ -8,7 +8,7 @@ from main.helpers import create_side_navbar
 import tkinter as tk
 from tkinter import ttk
 from modules import User_Management, Property_Management, Tenant_Management, Payments_Management, complaints
-from modules import Lease_Management, Report_Management, Lifecycle_Management, Request_Management, Maintenance_metrics
+from modules import Lease_Management, Report_Management, Lifecycle_Management, Request_Management
 
 
 def page_template(main_window, user_info): 
@@ -86,7 +86,7 @@ def page_template(main_window, user_info):
     # Create all page frames
     for name, module in page_modules.items():
         # Pages that need user_info parameter
-        if name in ("Users", "Properties", "Payment", "Payments", "Maintenance", "Request Lifecycle"):
+        if name in ("Users", "Properties", "Payment", "Payments", "Maintenance", "Request Lifecycle", "Reports"):
             frame = module.create_page(content_frame, user_info=user_info)
         else:
             # Other pages don't need user_info in create_page

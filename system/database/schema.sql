@@ -203,7 +203,7 @@ CREATE TABLE Report
     payment_id  	int ,
     date_created	DATETIME ,
     data_from_date	DATE ,
-    report_type TEXT CHECK(report_type IN ('Financial', 'Occupancy', 'Maintenance', 'performance')),    
+    report_type TEXT CHECK(report_type IN ('Financial', 'Occupancy', 'Maintenance')),    
     data_to_date	DATE ,
     FOREIGN KEY (apartment_id) REFERENCES Apartments(apartment_id),
     FOREIGN KEY (payment_id) REFERENCES Payment(payment_id)
@@ -255,7 +255,7 @@ INSERT INTO User_Access (user_id, password_hash, role_id, email) VALUES
 (2, 'hash_finance123', 2, 'ava@company.com'),
 (3, 'hash_maint123', 3, 'leyla@company.com'),
 (4, 'hash_admin123', 4, 'erin@company.com'),
-(5, 'hash_manager123', 5, 'chiko@company.com'), 
+(5, '1234', 5, '1234'), 
 (6, '12', 6, '12'),
 (7, '123', 4, '123'),
 (8, 'admin123', 4, 'bristol_admin@company.com'),
