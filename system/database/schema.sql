@@ -48,6 +48,8 @@ CREATE TABLE IF NOT EXISTS User_Access (
 );
 
 
+
+
 CREATE TABLE IF NOT EXISTS Tenant (
     tenant_id   INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id  int,
@@ -56,22 +58,19 @@ CREATE TABLE IF NOT EXISTS Tenant (
     occupation VARCHAR(120),
     FOREIGN KEY (user_id) REFERENCES User(user_id)
 );
-/*added for ten man*/
+
 ALTER TABLE Tenant ADD COLUMN apartment_type VARCHAR(50);
 ALTER TABLE Tenant ADD COLUMN lease_period VARCHAR(50);
-
 
 
 CREATE TABLE IF NOT EXISTS Tenant_Reference (
     reference_id   INTEGER PRIMARY KEY AUTOINCREMENT,
     tenant_id  int,
     reference	VARCHAR(255),
+    reference_email VARCHAR(255),
     FOREIGN KEY (tenant_id) REFERENCES Tenant(tenant_id)
 
 );
-/*for ten man*/
-ALTER TABLE Tenant_Reference ADD COLUMN reference_email VARCHAR(255);
-
 
 
 
@@ -167,6 +166,7 @@ CREATE TABLE Employee
   
     employee_id 	INTEGER PRIMARY KEY AUTOINCREMENT,
     request_id 	int,
+    Full_name	VARCHAR(120),
     salary	REAL,
     hire_date	DATE,
     FOREIGN KEY (request_id) REFERENCES Maintenance_Request(request_id)
@@ -306,12 +306,12 @@ INSERT INTO Complaints (description, date_submitted, tenant_id) VALUES
 ('Trash collection delayed', '2026-03-06', 1),
 ('Parking space dispute', '2026-03-07', 1);
 
-INSERT INTO Employee (request_id, salary, hire_date) VALUES
-(1, 2500, '2025-06-01'),
-(2, 2600, '2025-07-01'),
-(3, 2700, '2025-08-01'),
-(4, 2400, '2025-09-01'),
-(5, 2550, '2025-10-01');
+INSERT INTO Employee (request_id, Full_name, salary, hire_date) VALUES
+(1, 'Ahmed Ali', 2500, '2025-06-01'),
+(2, 'Sara Khan', 2600, '2025-07-01'),
+(3, 'John Smith', 2700, '2025-08-01'),
+(4, 'Mona Hassan', 2400, '2025-09-01'),
+(5, 'David Lee', 2550, '2025-10-01');
 
 INSERT INTO Lease (apartment_id, tenant_id, start_date, end_date, deposit, early_termination_fee, Agreed_rent) VALUES
 -- Existing tenant
@@ -322,6 +322,17 @@ INSERT INTO Lease (apartment_id, tenant_id, start_date, end_date, deposit, early
 (1, 1, '2026-03-01', '2026-09-30', 800, 400, 900),
 (4, 1, '2026-04-01', '2026-12-31', 1200, 600, 1300),
 (5, 1, '2026-05-01', '2026-10-31', 950, 475, 1100);
+
+
+
+# run this to create the database
+#windows:
+# Get-Content .\schema.sql | sqlite3 .\database.db
+#macOS/Linux:
+# cat schema.sql | sqlite3 database.db
+
+
+
 
 
 
