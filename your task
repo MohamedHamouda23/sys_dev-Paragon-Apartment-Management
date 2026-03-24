@@ -3,13 +3,7 @@
 Fixing or missing
 
 
-------------------------------------------------------------------------------------------------------------------------------------------------
-User Management Notes (Ava)
-Email addresses must include a domain after the @ symbol.
-When updating a record, if nothing has changed, do not perform the update.
-Remove the city column from user forms and tables.
-When adding or updating a user, delete the option for city (useless — city is always the user’s assigned city).
--Gantt chart     
+
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
 Lease Management Notes(Leyla)
@@ -71,8 +65,6 @@ Role	Permissions
 Front-desk Staff	Register tenants, View tenants, Add complaints, View complaints
 Admin	Add tenants, Update tenants, Delete tenants
 
-
-use case
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -84,18 +76,21 @@ use case
 Tasks
 
 
-USER MANAGEMNT   ✅
+USER MANAGEMNT   ✅ (Ava)
 ### Apartment Management (Admins & Managers)      ✅ (chiko)
-
 ### Maintenance Management (Admins, Staff & Tenants) ✅ (mohamed)
+### Financial & Occupancy Reports (Admins & Financial Staff) ✅ (chiko)
 
-### user Management: very close (No role based access needed)
+
 
 
 
 
 
 1- tenant dashboard 
+2- tenant Management
+3 -Lease Management
+4- Payments
 
 
 
@@ -118,17 +113,6 @@ USER MANAGEMNT   ✅
 | FR6.5   | Update contact info. |
 
 
-### 4-  Financial & Occupancy Reports (Admins & Financial Staff)  (chiko)
-| Report Type / Name                                | Who Can Access                  | Notes / Purpose                                                       |
-| ------------------------------------------------- | ------------------------------- | --------------------------------------------------------------------- |
-
-| Occupancy reports (filtered by apartment or city) | Manager, Administrators         | Shows apartment occupancy; used for expansion and location management |
-
-| Financial summaries (collected vs pending rents)  | Finance Manager, Administrators | Overview of payments and pending rents                                |
-
-| Maintenance cost tracking                         | Administrators                  | Tracks costs for resolved maintenance issues for budgeting            |
-
-| generate all reports by location  (filter)                 | Manager 
 
 
 
