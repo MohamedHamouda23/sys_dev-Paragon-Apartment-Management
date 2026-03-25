@@ -216,40 +216,44 @@ CREATE TABLE Report
 
 
 
-INSERT INTO Role (role_name) VALUES
-('Front-desk Staff'),
-('Finance Manager'),
-('Maintenance Staff'),
-('Administrators'),
-('Manager'),
-('Tenant');
 
+-- ==========================================
+-- 1. LEVEL 1: INDEPENDENT TABLES
+-- ==========================================
+INSERT INTO Role (role_name) VALUES
+('Front-desk Staff'), ('Finance Manager'), ('Maintenance Staff'), 
+('Administrators'), ('Manager'), ('Tenant');
+
+-- ID 1: Bristol, 2: Cardiff, 3: London, 4: Manchester
+INSERT INTO Location (city_name) VALUES
+('Bristol'), ('Cardiff'), ('London'), ('Manchester');
+
+-- ==========================================
+-- 2. LEVEL 2: BUILDINGS & USERS
+-- ==========================================
 INSERT INTO Buildings (city_id, street, postcode) VALUES
 (1, '123 Bristol St', 'BS1 4ST'),
 (2, '456 Cardiff Rd', 'CF10 1EP'),
 (3, '789 London Ave', 'E1 6AN'),
 (4, '321 Manchester Blvd', 'M1 2AB');
 
-INSERT INTO Location (city_name) VALUES
-('Bristol'),
-('Cardiff'),
-('London'),
-('Manchester');
-
 INSERT INTO User (city_id, first_name, surname) VALUES
-(1, 'mohamed', 'hamouda'),
-(1, 'ava', 'abtin'),
-(1, 'leyla', 'Ahmed'),
-(1, 'erin', 'williams'),
-(1, 'tenant', 'test'),
-(1, 'chiko', 'momchil'),
-(1, 'test', 'test'),
-(1, 'Bristol', 'Admin'),
-(2, 'Cardiff', 'Admin'),
-(3, 'London', 'Admin'),
-(4, 'Manchester', 'Admin');
+(1, 'mohamed', 'hamouda'), -- User ID 1
+(1, 'ava', 'abtin'),       -- User ID 2
+(1, 'leyla', 'Ahmed'),     -- User ID 3
+(1, 'erin', 'williams'),   -- User ID 4
+(1, 'tenant', 'test'),     -- User ID 5
+(1, 'chiko', 'momchil'),   -- User ID 6
+(1, 'test', 'test'),       -- User ID 7
+(1, 'Bristol', 'Admin'),   -- User ID 8
+(2, 'Cardiff', 'Admin'),   -- User ID 9
+(3, 'London', 'Admin'),    -- User ID 10
+(4, 'Manchester', 'Admin'),-- User ID 11
+(4, 'Omar', 'Nasser');      -- User ID 12
 
-
+-- ==========================================
+-- 3. LEVEL 3: USER ACCESS (Old Emails/Passwords)
+-- ==========================================
 INSERT INTO User_Access (user_id, password_hash, role_id, email) VALUES
 (1, 'hash_frontdesk123', 1, 'mohamed@company.com'),
 (2, 'hash_finance123', 2, 'ava@company.com'),
@@ -261,83 +265,33 @@ INSERT INTO User_Access (user_id, password_hash, role_id, email) VALUES
 (8, 'admin123', 4, 'bristol_admin@company.com'),
 (9, 'admin123', 4, 'cardiff_admin@company.com'),
 (10, 'admin123', 4, 'london_admin@company.com'),
-(11, 'admin123', 4, 'manchester_admin@company.com');
+(11, 'admin123', 4, 'manchester_admin@company.com'),
+(12, 'tenant123', 6, 'omar@tenant.com');
 
-
-INSERT INTO Tenant (user_id, ni_number, telephone, occupation)
-VALUES (6, 'NI123456A', 712345678, 'Student');
-
-
-INSERT INTO Tenant_Reference (tenant_id, reference)
-VALUES (1, 'Previous landlord — paid rent on time');
-
+-- ==========================================
+-- 4. LEVEL 4: TENANTS & APARTMENTS
+-- ==========================================
+-- Tenant 1 is user 6 (Chiko), Tenant 2 is user 12 (Omar)
+INSERT INTO Tenant (user_id, ni_number, telephone, occupation, apartment_type, lease_period) VALUES 
+(6, 'NI123456A', 712345678, 'Student', 'Studio', '6 months'),
+(12, 'NI999999M', 799999999, 'Engineer', 'Apartment', '12 months');
 
 INSERT INTO Apartments (city_id, building_id, num_rooms, type, occupancy_status) VALUES
-(1, 1, 1, 'Studio', 'Vacant'),
-(1, 1, 3, 'Apartment', 'Occupied'),
-(2, 2, 2, 'Apartment', 'Occupied'),
-(3, 3, 4, 'Penthouse', 'Vacant'),
-(4, 4, 2, 'Apartment', 'Unavailable');
+(1, 1, 1, 'Studio', 'Occupied'),    -- Apt 1
+(2, 2, 2, 'Apartment', 'Occupied'), -- Apt 2
+(3, 3, 4, 'Penthouse', 'Vacant'),   -- Apt 3
+(4, 4, 2, 'Apartment', 'Occupied'); -- Apt 4
 
-
-INSERT INTO Payment (lease_id, due_date, payment_date, amount, Is_late) VALUES
-(1, '2026-04-01', '2026-04-01', 1200, 0),
-(1, '2026-05-01', '2026-05-02', 1200, 1),
-(1, '2026-06-01', NULL, 1200, 0),
-(1, '2026-07-01', NULL, 1200, 0),
-(1, '2026-08-01', NULL, 1200, 0);
-
-
-
-
-INSERT INTO Maintenance_Request
-(apartment_id, tenant_id, issue, description, Maintenance_status, priority, created_date, resolved_date, repair_time, repair_cost, notes)
-VALUES
-(2, 1, 'Radiator Fault', NULL, 'Open', NULL, '2026-03-08 09:30:00', NULL, NULL, NULL, ''),
-(3, 1, 'Weak Shower', NULL, 'Open', NULL, '2026-03-09 11:00:00', NULL, NULL, NULL, ''),
-(2, 1, 'Door Lock', NULL, 'Open', NULL, '2026-02-20 08:15:00', NULL, NULL, NULL, ''),
-(4, 1, 'Light Flicker', NULL, 'Open', NULL, '2026-02-25 14:00:00', NULL, NULL, NULL, ''),
-(1, 1, 'Mold Growth', NULL, 'Open', NULL, '2026-03-01 10:45:00', NULL, NULL, NULL, '');
-
-INSERT INTO Complaints (description, date_submitted, tenant_id) VALUES
-('No hot water in apartment', '2026-03-02', 1),
-('Noise complaint from upstairs neighbor', '2026-03-03', 1),
-('Lift not working for two days', '2026-03-05', 1),
-('Trash collection delayed', '2026-03-06', 1),
-('Parking space dispute', '2026-03-07', 1);
-
-INSERT INTO Employee (request_id, Full_name, salary, hire_date) VALUES
-(1, 'Ahmed Ali', 2500, '2025-06-01'),
-(2, 'Sara Khan', 2600, '2025-07-01'),
-(3, 'John Smith', 2700, '2025-08-01'),
-(4, 'Mona Hassan', 2400, '2025-09-01'),
-(5, 'David Lee', 2550, '2025-10-01');
-
+-- ==========================================
+-- 5. LEVEL 5: LEASES (Agreed Rent Examples)
+-- ==========================================
 INSERT INTO Lease (apartment_id, tenant_id, start_date, end_date, deposit, early_termination_fee, Agreed_rent) VALUES
--- Existing tenant
-(2, 1, '2026-01-01', '2026-12-31', 1000, 500, 1200),
+(1, 1, '2026-01-01', '2026-12-31', 1000, 500, 1200), -- Lease 1
+(4, 2, '2026-01-01', '2026-12-31', 1000, 500, 1100); -- Lease 2
 
--- New tenants
-(3, 1, '2026-02-01', '2026-11-30', 900, 450, 1000),
-(1, 1, '2026-03-01', '2026-09-30', 800, 400, 900),
-(4, 1, '2026-04-01', '2026-12-31', 1200, 600, 1300),
-(5, 1, '2026-05-01', '2026-10-31', 950, 475, 1100);
-
-
-
-# run this to create the database
-#windows:
-# Get-Content .\schema.sql | sqlite3 .\database.db
-#macOS/Linux:
-# cat schema.sql | sqlite3 database.db
-
-
-
-
-
-
-# run this to create the database
-#windows:
-# Get-Content .\schema.sql | sqlite3 .\database.db
-#macOS/Linux:
-# cat schema.sql | sqlite3 database.db
+-- ==========================================
+-- 6. LEVEL 6: PAYMENTS (Test Cases)
+-- ==========================================
+INSERT INTO Payment (lease_id, due_date, payment_date, amount, Is_late) VALUES
+(1, '2026-04-01', '2026-04-01', 1200, 0), -- FULLY PAID
+(2, '2026-05-01', '2026-05-01', 500, 0);  -- PARTIAL (Agreed 1100, Paid 500)

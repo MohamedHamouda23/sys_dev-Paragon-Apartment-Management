@@ -49,6 +49,8 @@ class AddApartmentStepper:
             self.assigned_city_name = user_info[3]
             self.assigned_city_id = user_info[5]
         self.is_admin = self.user_role == "Administrators"
+        self.is_city_locked = self.role in ["Administrators", "Maintenance Staff"] 
+        self.show_report_selector = len(self.available_report_types) > 1
 
         # Load cities and buildings from database
         scope_city_id = self.assigned_city_id if self.is_admin else None
