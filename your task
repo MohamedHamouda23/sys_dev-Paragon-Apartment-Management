@@ -80,6 +80,8 @@ USER MANAGEMNT   ✅ (Ava)
 ### Apartment Management (Admins & Managers)      ✅ (chiko)
 ### Maintenance Management (Admins, Staff & Tenants) ✅ (mohamed)
 ### Financial & Occupancy Reports (Admins & Financial Staff) ✅ (chiko)
+### 5- Payments & Financial Tracking (Tenants & Admins) ✅ (mohamed)
+
 
 
 
@@ -117,19 +119,6 @@ USER MANAGEMNT   ✅ (Ava)
 | FR4.2   | Register new tenants; sign in as tenant and see profile. |
 | FR6.5   | Update contact info. |
 
-
-
-
-
-### 5- Payments & Financial Tracking (Tenants & Admins) (Chiko)
-
-| ID      | Requirement Description |
-|---------|------------------------|
-| FR3.3   | Record and flag late payments; apply late fees or penalties and show graph of late payments per property. |
-| FR3.4   | Create financial reports with graphical representation comparing tenant payments to nearby tenants. |
-| FR3.5   | Review tenant mock payments via the Tenant Dashboard; see payment history and download invoices. |
-| FR6.10  | Make payments; system checks card and records payment. |
-| FR6.7   | See own payment record and get alerts for late payments. |
 
 
 
