@@ -1,9 +1,3 @@
-
-
-Fixing or missing
-
-
-
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
 Lease Management Notes(Leyla)
@@ -66,12 +60,7 @@ Front-desk Staff	Register tenants, View tenants, Add complaints, View complaints
 Admin	Add tenants, Update tenants, Delete tenants
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-
-
-
-
+tenant dashboard (chiko and erin)
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
 Tasks
 
@@ -88,38 +77,14 @@ USER MANAGEMNT   ✅ (Ava)
 
 
 
-
-1- tenant dashboard 
-2- tenant Management
-3 -Lease Management
-4- Payments
-5- final test
-5- gantt chart and test plan fixing
-6- report
+1- tenant Management(erin)
+2 -Lease Management (leyla)
+3- tenant dashboard (chiko and moahmed)
+4- gantt chart (ava) and test plan (mohamed)
+5- final test(leyla and erin and ava)
+6- report (erin and leyla and ava)
 7- each one reflection
-8 - slides 
-
-
-
-
-
-### 2- Lease Management (Admins & Tenants)     (leyla)  
-
-| ID      | Requirement Description |
-|---------|------------------------|
-| FR1.6   | Track and manage lease agreements; enter lease details. |
-| FR6.6   | Request early end of lease; system checks notice and adds penalty. |
-
-
-### 3-  Tenant Information & Access (Admins & Tenants)  (Erin)
-
-| ID      | Requirement Description |
-|---------|------------------------|
-| FR1.4   | View and update Tenant Information. |
-| FR4.2   | Register new tenants; sign in as tenant and see profile. |
-| FR6.5   | Update contact info. |
-
-
+8 - slides (mohamed)
 
 
 6000 word for report
