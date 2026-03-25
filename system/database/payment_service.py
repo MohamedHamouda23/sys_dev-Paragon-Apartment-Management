@@ -1,11 +1,33 @@
 # payment_service.py
 from database.databaseConnection import check_connection
 
-def get_tenant_payments(user_id):
-    """Retrieves payments for a specific tenant."""
+def update_late_status():
+    """Updates the 'is_late' column in Payment table based on current date and payment status."""
     conn = check_connection()
-    if not conn: 
+    if not conn:
+        return
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE Payment
+        SET is_late = CASE
+            WHEN date(due_date) < date('now') 
+                 AND (payment_date IS NULL OR amount < (SELECT Agreed_rent FROM Lease WHERE Lease.lease_id = Payment.lease_id))
+            THEN 'Yes'
+            ELSE 'No'
+        END
+    """)
+    conn.commit()
+    conn.close()
+
+
+def get_tenant_payments(user_id):
+    """Retrieves payments for a specific tenant, updating late payments first."""
+    update_late_status()  # auto-update late payments
+    
+    conn = check_connection()
+    if not conn:
         return []
+
     cursor = conn.cursor()
     cursor.execute("""
         SELECT b.street || ' (' || b.postcode || ')' as apartment,
@@ -18,7 +40,7 @@ def get_tenant_payments(user_id):
                  WHEN p.amount < l.Agreed_rent THEN 'Pending (Partial)'
                  ELSE 'Fully Paid' 
                END as status,
-               CASE WHEN p.Is_late = 1 THEN 'Yes' ELSE 'No' END as is_late,
+               p.is_late,
                p.payment_id
         FROM Payment p
         JOIN Lease l ON p.lease_id = l.lease_id
@@ -28,15 +50,20 @@ def get_tenant_payments(user_id):
         WHERE t.user_id = ? 
         ORDER BY p.due_date DESC
     """, (user_id,))
+
     rows = cursor.fetchall()
     conn.close()
     return rows
 
+
 def get_all_payments():
-    """Retrieves all payments for the Finance Manager."""
+    """Retrieves all payments for the Finance Manager, updating late payments first."""
+    update_late_status()  # auto-update late payments
+
     conn = check_connection()
-    if not conn: 
+    if not conn:
         return []
+
     cursor = conn.cursor()
     cursor.execute("""
         SELECT u.first_name || ' ' || u.surname as tenant_name,
@@ -51,7 +78,7 @@ def get_all_payments():
                  WHEN p.amount < l.Agreed_rent THEN 'Pending (Partial)'
                  ELSE 'Fully Paid' 
                END as status,
-               CASE WHEN p.Is_late = 1 THEN 'Yes' ELSE 'No' END as is_late,
+               p.is_late,
                p.payment_id
         FROM Payment p
         JOIN Lease l ON p.lease_id = l.lease_id
@@ -62,18 +89,33 @@ def get_all_payments():
         JOIN Location loc ON b.city_id = loc.city_id
         ORDER BY p.due_date DESC
     """)
+
     rows = cursor.fetchall()
     conn.close()
     return rows
 
+
 def get_payment_details(payment_id):
+    """Fetch details of a single payment, with late status updated."""
+    update_late_status()  # auto-update late payments
+
     conn = check_connection()
-    if not conn: return None
+    if not conn:
+        return None
+
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT p.payment_id, u.first_name || ' ' || u.surname, ua.email, b.street, b.postcode,
-               loc.city_name, p.due_date, COALESCE(p.payment_date, 'N/A'), COALESCE(p.amount, 0),
-               l.Agreed_rent, CASE WHEN p.Is_late = 1 THEN 'Yes' ELSE 'No' END as is_late,
+        SELECT p.payment_id,
+               u.first_name || ' ' || u.surname,
+               ua.email,
+               b.street,
+               b.postcode,
+               loc.city_name,
+               p.due_date,
+               COALESCE(p.payment_date, 'N/A'),
+               COALESCE(p.amount, 0),
+               l.Agreed_rent,
+               p.is_late,
                CASE 
                  WHEN p.payment_date IS NULL OR p.amount IS NULL OR p.amount = 0 THEN 'Unpaid'
                  WHEN p.amount < l.Agreed_rent THEN 'Pending (Partial)'
@@ -89,22 +131,25 @@ def get_payment_details(payment_id):
         JOIN Location loc ON b.city_id = loc.city_id
         WHERE p.payment_id = ?
     """, (payment_id,))
+
     r = cursor.fetchone()
     conn.close()
+
     if r:
         return {
-            'payment_id': r[0], 
-            'tenant_name': r[1], 
+            'payment_id': r[0],
+            'tenant_name': r[1],
             'tenant_email': r[2],
-            'street': r[3], 
-            'postcode': r[4], 
-            'city': r[5], 
+            'street': r[3],
+            'postcode': r[4],
+            'city': r[5],
             'due_date': r[6],
-            'payment_date': r[7], 
-            'paid_amount': float(r[8]), 
+            'payment_date': r[7],
+            'paid_amount': float(r[8]),
             'agreed_rent': float(r[9]),
-            'is_late': r[10], 
-            'status': r[11], 
+            'is_late': r[10],
+            'status': r[11],
             'property': f"{r[3]}, {r[4]}"
         }
+
     return None
