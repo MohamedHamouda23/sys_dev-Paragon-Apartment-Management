@@ -10,7 +10,6 @@ from main.helpers import create_button, create_scrollable_treeview, show_placeho
 from database.user_service import (
     get_all_users,
     get_all_roles,
-    get_all_locations,
     create_user,
     update_user,
     delete_user,
@@ -38,7 +37,6 @@ class UserManagementPage:
 
         # Initialize lookup dictionaries
         self.role_name_to_id = {}
-        self.city_name_to_id = {}
 
         # Create main frame
         self.frame = tk.Frame(parent, bg="#c9e4c4")
@@ -80,10 +78,10 @@ class UserManagementPage:
         # Create scrollable table
         _table_wrap, self.tree = create_scrollable_treeview(
             parent   = content_frame,
-            columns  = ("id", "first_name", "surname", "email", "city", "role"),
-            headings = ("ID", "First Name", "Surname", "Email", "City", "Role"),
-            widths   = (55, 140, 140, 210, 140, 170),
-            anchors  = ("center", "w", "w", "w", "w", "w"),
+            columns  = ("id", "first_name", "surname", "email", "role"),
+            headings = ("ID", "First Name", "Surname", "Email", "Role"),
+            widths   = (55, 160, 160, 240, 190),
+            anchors  = ("center", "w", "w", "w", "w"),
         )
         self.tree.bind("<<TreeviewSelect>>", self._on_row_select)
 
@@ -97,14 +95,10 @@ class UserManagementPage:
     # ========================================================================
 
     def _load_lookups(self):
-        """Load roles and cities from database"""
+        """Load roles from database"""
         # Load roles
         roles = get_all_roles()
         self.role_name_to_id = {name: role_id for role_id, name in roles}
-
-        # Load cities (scoped by admin city if applicable)
-        cities = get_all_locations(scope_city_id=self.admin_scope_city_id)
-        self.city_name_to_id = {name: city_id for city_id, name in cities}
 
     def _load_users(self):
         """Load users into table from database"""
@@ -134,7 +128,6 @@ class UserManagementPage:
         self._stepper = UserFormStepper(
             parent          = self.detail_wrap,
             role_name_to_id = self.role_name_to_id,
-            city_name_to_id = self.city_name_to_id,
             prefill         = user_values,
         )
 
@@ -149,7 +142,6 @@ class UserManagementPage:
             self._stepper = UserFormStepper(
                 parent          = self.detail_wrap,
                 role_name_to_id = self.role_name_to_id,
-                city_name_to_id = self.city_name_to_id,
                 prefill         = None,
             )
             self.selected_user_id = None
@@ -157,8 +149,9 @@ class UserManagementPage:
 
         # Second click: save user
         try:
-            first_name, surname, email, password, role_id, city_id = \
+            first_name, surname, email, password, role_id = \
                 self._stepper.collect(require_password=True)
+            city_id = self.admin_scope_city_id
             create_user(
                 first_name, surname, email, password, role_id, city_id,
                 scope_city_id=self.admin_scope_city_id,
@@ -175,8 +168,9 @@ class UserManagementPage:
             messagebox.showerror("Selection Error", "Please select a user from the table first.")
             return
         try:
-            first_name, surname, email, password, role_id, city_id = \
+            first_name, surname, email, password, role_id = \
                 self._stepper.collect(require_password=False)
+            city_id = self.admin_scope_city_id
             update_user(
                 self.selected_user_id, first_name, surname, email, role_id, city_id,
                 password_hash=password if password else None,

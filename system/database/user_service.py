@@ -85,11 +85,9 @@ def get_all_users(scope_city_id=None):
             u.first_name,
             u.surname,
             ua.email,
-            COALESCE(l.city_name, ''),
             r.role_name
         FROM User u
         JOIN User_Access ua ON u.user_id = ua.user_id
-        LEFT JOIN Location l ON u.city_id = l.city_id
         JOIN Role r ON ua.role_id = r.role_id
         WHERE r.role_name != 'Tenant'
     """

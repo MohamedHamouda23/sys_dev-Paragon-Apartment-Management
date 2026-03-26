@@ -6,7 +6,7 @@ from main.helpers import (
     create_button, create_frame, clear_frame, styled_label, form_field, form_dropdown, card, BG, ACCENT, FONT_TITLE, FONT_LABEL 
 )
 
-from database.tenant_management_service import (
+from database.tenant_service import (
     get_all_tenants,
     create_tenant,
     update_tenant,

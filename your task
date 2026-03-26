@@ -1,15 +1,3 @@
-
-
-Fixing or missing
-
-
-------------------------------------------------------------------------------------------------------------------------------------------------
-User Management Notes (Ava)
-Email addresses must include a domain after the @ symbol.
-When updating a record, if nothing has changed, do not perform the update.
-Remove the city column from user forms and tables.
-When adding or updating a user, delete the option for city (useless — city is always the user’s assigned city).
--Gantt chart     
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
 Lease Management Notes(Leyla)
@@ -71,79 +59,164 @@ Role	Permissions
 Front-desk Staff	Register tenants, View tenants, Add complaints, View complaints
 Admin	Add tenants, Update tenants, Delete tenants
 
-
-use case
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
+tenant dashboard (chiko and erin)
 
 
+Tenant Dashboard / Tenant Functionalities
+Tenants have access to their own electronic dashboard in the system where they can:
 
+1. View Personal and Payment Information
+   - View their tenant record, including:
+     - Payment history (list of all payments made and due)
+     - Lease agreement details
+     - Apartment details (assigned unit, type, location)
+   - View graphical representations of:
+     - Payment history over time
+     - Tenant payments compared to neighbors
+     - Late payments per property
 
+2. Payments and Billing
+   - Receive alerts for late payments automatically.
+   - Make payments through the dashboard:
+     - System validates card info (simulated)
+     - Creates a record of the “payment” in the system
+   - View pending dues or unpaid balances
+
+3. Complaints and Maintenance Requests
+   - Submit a complaint via the dashboard.
+   - Submit a repair/maintenance request.
+   - View the progress/status of repair requests:
+     - Whether maintenance is scheduled
+     - Updates on completion
+     - Time taken and costs recorded by maintenance staff (optional for info)
+
+4. Early Lease Termination
+   - Request to leave before the end of contract:
+     - Must provide 1-month notice
+     - System calculates penalty of 5% of monthly rent
 
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
 Tasks
 
 
-USER MANAGEMNT   ✅
+USER MANAGEMNT   ✅ (Ava)
 ### Apartment Management (Admins & Managers)      ✅ (chiko)
-
 ### Maintenance Management (Admins, Staff & Tenants) ✅ (mohamed)
-
-### user Management: very close (No role based access needed)
-
-
-
-
-
-1- tenant dashboard 
+### Financial & Occupancy Reports (Admins & Financial Staff) ✅ (chiko)
+### 5- Payments & Financial Tracking (Tenants & Admins) ✅ (mohamed)
 
 
 
 
 
-### 2- Lease Management (Admins & Tenants)     (leyla)  
-
-| ID      | Requirement Description |
-|---------|------------------------|
-| FR1.6   | Track and manage lease agreements; enter lease details. |
-| FR6.6   | Request early end of lease; system checks notice and adds penalty. |
 
 
-### 3-  Tenant Information & Access (Admins & Tenants)  (Erin)
-
-| ID      | Requirement Description |
-|---------|------------------------|
-| FR1.4   | View and update Tenant Information. |
-| FR4.2   | Register new tenants; sign in as tenant and see profile. |
-| FR6.5   | Update contact info. |
-
-
-### 4-  Financial & Occupancy Reports (Admins & Financial Staff)  (chiko)
-| Report Type / Name                                | Who Can Access                  | Notes / Purpose                                                       |
-| ------------------------------------------------- | ------------------------------- | --------------------------------------------------------------------- |
-
-| Occupancy reports (filtered by apartment or city) | Manager, Administrators         | Shows apartment occupancy; used for expansion and location management |
-
-| Financial summaries (collected vs pending rents)  | Finance Manager, Administrators | Overview of payments and pending rents                                |
-
-| Maintenance cost tracking                         | Administrators                  | Tracks costs for resolved maintenance issues for budgeting            |
-
-| generate all reports by location  (filter)                 | Manager 
-
-
-
-### 5- Payments & Financial Tracking (Tenants & Admins) (Chiko)
-
-| ID      | Requirement Description |
-|---------|------------------------|
-| FR3.3   | Record and flag late payments; apply late fees or penalties and show graph of late payments per property. |
-| FR3.4   | Create financial reports with graphical representation comparing tenant payments to nearby tenants. |
-| FR3.5   | Review tenant mock payments via the Tenant Dashboard; see payment history and download invoices. |
-| FR6.10  | Make payments; system checks card and records payment. |
-| FR6.7   | See own payment record and get alerts for late payments. |
-
+1- tenant Management(erin)
+2 -Lease Management (leyla)
+3- tenant dashboard (chiko and moahmed and leyla)
+4- gantt chart (ava) and test plan (mohamed)
+5- final test(leyla and erin and ava)
+6- report (erin and leyla and ava)
+7- each one reflection
+8 - slides (mohamed)
 
 
 6000 word for report
 
 800 each for reflection
+
+
+
+🏠 Tenant Functionalities (PAMS System)
+🔐 1. Login & Dashboard Access
+Tenants should be able to:
+* Log in securely to their personal account
+* Access a personal dashboard
+* Only see their own data (not other tenants)
+
+
+
+👤 2. View Personal Tenant Profile
+Tenants can:
+* View their personal details (name, email, phone, occupation, NI number)
+* View assigned apartment details:
+    * Location
+    * Type (1-bed, 2-bed, etc.)
+    * Monthly rent
+    * Lease start & end date
+
+💷 3. Payments & Billing
+Tenants can:
+✔ View payment history
+* All past payments
+* Due payments
+* Late payments status
+✔ Make payments (simulated)
+* Enter card details (validation only — no real processing)
+* System creates a payment record:
+    * Date
+    * Amount
+    * Status (Paid / Failed / Late)
+✔ View invoices / dues
+* Monthly rent due
+* Outstanding balances
+
+⏰ 4. Late Payment Alerts
+System should:
+* Automatically flag late payments
+* Show alerts on dashboard:
+    * “Payment overdue”
+    * “Late fee applied (if applicable)”
+
+🛠️ 5. Maintenance Requests
+Tenants can:
+✔ Submit repair request
+* Describe issue
+* Select category (plumbing, electricity, etc.)
+* Submit request
+✔ Track request progress
+* Status updates:
+    * Pending
+    * In progress
+    * Assigned worker
+    * Completed
+
+⚠️ 6. Complaints System
+Tenants can:
+* Submit complaints (noise, staff, building issues, etc.)
+* View complaint status
+* See resolution updates
+
+📊 7. Graphical Dashboard Features (VERY IMPORTANT)
+Tenants should see visual analytics:
+📈 Payment history graph
+* Shows payments over time
+📉 Late payment chart
+* Shows how many payments were late per property
+🏘️ Comparison graph (advanced requirement)
+* Tenant payments vs “close neighbours”
+    * (e.g. same building or same apartment type average)
+
+🏡 8. Lease & Apartment Info
+Tenants can:
+* View lease agreement details
+* See lease end date
+* Check rent amount
+* View apartment assignment
+
+🧾 9. Notifications System
+Dashboard should notify tenants about:
+* Upcoming rent due dates
+* Late payments
+* Maintenance updates
+* Complaint updates
+
+🚪 10. Early Lease Termination Request
+Tenants can:
+* Request to leave before contract ends
+* System rules:
+    * Must give 1 month notice
+    * Must pay 5% penalty of monthly rent
+* System calculates penalty automatically

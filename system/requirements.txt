@@ -15,3 +15,6 @@ mysql-connector-python>=8.1.0
 # Optional: Environment variables management
 python-dotenv>=1.0.0
 
+# PDF export for reports
+reportlab>=4.2.0
+
