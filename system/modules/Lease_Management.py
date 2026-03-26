@@ -379,7 +379,7 @@ class RemoveLeaseStepper:
 # PAGE FACTORY
 # ============================================================================
 
-def create_page(parent):
+def create_page(parent, user_info=None):
     """Create and return lease management page"""
     from main.lease_page import LeaseManagerPage
-    return LeaseManagerPage(parent).frame
+    return LeaseManagerPage(parent, user_info=user_info).frame

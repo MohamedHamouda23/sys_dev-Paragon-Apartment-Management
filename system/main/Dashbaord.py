@@ -86,7 +86,7 @@ def page_template(main_window, user_info):
     # Create all page frames
     for name, module in page_modules.items():
         # Pages that need user_info parameter
-        if name in ("Users", "Properties", "Payment", "Payments", "Maintenance", "Request Lifecycle", "Reports"):
+        if name in ("Users", "Properties", "Payment", "Payments", "Maintenance", "Request Lifecycle", "Reports", "Leases"):
             frame = module.create_page(content_frame, user_info=user_info)
         else:
             # Other pages don't need user_info in create_page

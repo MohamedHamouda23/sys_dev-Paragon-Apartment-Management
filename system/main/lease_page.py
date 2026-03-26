@@ -15,10 +15,19 @@ from database.lease_service import (
 
 
 class LeaseManagerPage:
-    def __init__(self, parent):
+    def __init__(self, parent, user_info=None):
         self.frame = tk.Frame(parent, bg="#c9e4c4")
         self.selected_lease_id = None
         self.selected_lease_row = None
+        
+        # Extract user info and city filtering
+        self.user_info = user_info
+        self.assigned_city_name = None
+        self.assigned_city_id = None
+        if user_info and len(user_info) >= 6:
+            self.assigned_city_name = user_info[3]
+            self.assigned_city_id = user_info[5]
+        
         self._build_layout()
         self._load_leases()
 
@@ -68,12 +77,20 @@ class LeaseManagerPage:
 
         # Sort priority: Active first, then Expired, then Terminated
         priority = {"Active": 0, "Expired": 1, "Terminated": 2}
-        leases = sorted(fetch_leases(), key=lambda lease: priority.get(lease[8], 99))
+        all_leases = fetch_leases()
+        
+        # Filter by assigned city if user has one
+        if self.assigned_city_id:
+            leases = [l for l in all_leases if l[9] == self.assigned_city_id]
+        else:
+            leases = all_leases
+        
+        leases = sorted(leases, key=lambda lease: priority.get(lease[8], 99))
 
         for lease in leases:
             (l_id, _apt_id, _ten_id,
              tenant_name, apt_display,
-             start, end, rent, status) = lease
+             start, end, rent, status, _city_id) = lease
 
             self.tree.insert(
                 "", "end",
@@ -107,7 +124,7 @@ class LeaseManagerPage:
 
     def _build_form(self):
         self.tenant_map = build_tenant_map(fetch_tenants())
-        self.available_map = build_apartment_map(fetch_available_apartments())
+        self.available_map = build_apartment_map(fetch_available_apartments(), city_id=self.assigned_city_id)
 
         self.tenant_cb = ttk.Combobox(self.form_frame, values=list(self.tenant_map.keys()), state="readonly")
         self.apt_cb = ttk.Combobox(self.form_frame, values=list(self.available_map.keys()), state="readonly")
@@ -160,8 +177,8 @@ class LeaseManagerPage:
 
         try:
             create_lease(
-                build_apartment_map(fetch_available_apartments())[self.apt_cb.get()],
-                build_tenant_map(fetch_tenants())[self.tenant_cb.get()],
+                self.available_map[self.apt_cb.get()],
+                self.tenant_map[self.tenant_cb.get()],
                 self.start_entry.get(),
                 self.end_entry.get(),
                 self.rent_entry.get()
