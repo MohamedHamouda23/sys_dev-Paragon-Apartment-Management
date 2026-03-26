@@ -196,7 +196,15 @@ class MaintenancePage:
         
         # Detail panel with Add Request button
         self.detail_wrap = tk.Frame(self.requests_frame, bg="white", bd=2, relief="groove", height=100)
+        self.detail_wrap = tk.Frame(
+                content_frame,
+                bg="white",
+                bd=2,
+                relief="groove",
+                height=300   # 👈 ADD THIS
+            )
         self.detail_wrap.pack(fill="x", pady=(10, 0))
+        self.detail_wrap.pack_propagate(False)  # 👈 IMPORTANT
         self.detail_wrap.pack_propagate(False)  # Maintain fixed height
         
         # Button frame centered
@@ -290,12 +298,30 @@ class MaintenancePage:
             self.tree.insert("", "end", values=row)
     
     def _on_row_select(self, _event=None):
-        """Handle row selection - just track the ID"""
         selected = self.tree.selection()
         if not selected:
             return
-        values = self.tree.item(selected[0], "values")
-        self.selected_request_id = values[0]
+
+        # Remove old highlight
+        for item in self.tree.get_children():
+            tags = list(self.tree.item(item, "tags"))
+            if "selected_row" in tags:
+                tags.remove("selected_row")
+                self.tree.item(item, tags=tuple(tags))
+
+        # Add highlight to selected
+        item = selected[0]
+        values = self.tree.item(item, "values")
+        self.selected_lease_id = values[0]
+
+        tags = list(self.tree.item(item, "tags"))
+        tags.append("selected_row")
+        self.tree.item(item, tags=tuple(tags))
+
+        show_placeholder(
+            self.detail_wrap,
+            f"Selected Lease ID: {self.selected_lease_id}"
+    )
     
     def _new_request(self):
         """Open new request registration form"""

@@ -169,7 +169,9 @@ class AddLeaseStepper:
         def submit():
             try:
                 # Validate selections
-                validate_lease_selection(tenant_name, apt_display)
+                if not tenant_name or not apt_display:
+                    messagebox.showerror("Error", "Please select a tenant and apartment.")
+                    return
                 
                 # Validate details
                 validate_lease_details(
