@@ -126,3 +126,97 @@ USER MANAGEMNT   ✅ (Ava)
 6000 word for report
 
 800 each for reflection
+
+
+
+🏠 Tenant Functionalities (PAMS System)
+🔐 1. Login & Dashboard Access
+Tenants should be able to:
+* Log in securely to their personal account
+* Access a personal dashboard
+* Only see their own data (not other tenants)
+
+
+
+👤 2. View Personal Tenant Profile
+Tenants can:
+* View their personal details (name, email, phone, occupation, NI number)
+* View assigned apartment details:
+    * Location
+    * Type (1-bed, 2-bed, etc.)
+    * Monthly rent
+    * Lease start & end date
+
+💷 3. Payments & Billing
+Tenants can:
+✔ View payment history
+* All past payments
+* Due payments
+* Late payments status
+✔ Make payments (simulated)
+* Enter card details (validation only — no real processing)
+* System creates a payment record:
+    * Date
+    * Amount
+    * Status (Paid / Failed / Late)
+✔ View invoices / dues
+* Monthly rent due
+* Outstanding balances
+
+⏰ 4. Late Payment Alerts
+System should:
+* Automatically flag late payments
+* Show alerts on dashboard:
+    * “Payment overdue”
+    * “Late fee applied (if applicable)”
+
+🛠️ 5. Maintenance Requests
+Tenants can:
+✔ Submit repair request
+* Describe issue
+* Select category (plumbing, electricity, etc.)
+* Submit request
+✔ Track request progress
+* Status updates:
+    * Pending
+    * In progress
+    * Assigned worker
+    * Completed
+
+⚠️ 6. Complaints System
+Tenants can:
+* Submit complaints (noise, staff, building issues, etc.)
+* View complaint status
+* See resolution updates
+
+📊 7. Graphical Dashboard Features (VERY IMPORTANT)
+Tenants should see visual analytics:
+📈 Payment history graph
+* Shows payments over time
+📉 Late payment chart
+* Shows how many payments were late per property
+🏘️ Comparison graph (advanced requirement)
+* Tenant payments vs “close neighbours”
+    * (e.g. same building or same apartment type average)
+
+🏡 8. Lease & Apartment Info
+Tenants can:
+* View lease agreement details
+* See lease end date
+* Check rent amount
+* View apartment assignment
+
+🧾 9. Notifications System
+Dashboard should notify tenants about:
+* Upcoming rent due dates
+* Late payments
+* Maintenance updates
+* Complaint updates
+
+🚪 10. Early Lease Termination Request
+Tenants can:
+* Request to leave before contract ends
+* System rules:
+    * Must give 1 month notice
+    * Must pay 5% penalty of monthly rent
+* System calculates penalty automatically
