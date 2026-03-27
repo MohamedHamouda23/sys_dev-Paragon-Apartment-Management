@@ -1,109 +1,68 @@
-# Log_in.py
+# PaymentGateway.py
 import tkinter as tk
 from tkinter import messagebox
-from main.helpers import create_button, create_entry, create_navbar
-from main.Dashbaord import page_template 
+from main.helpers import create_button
+from database.tenant_portal_service import simulate_payment 
 
 class PaymentWindow:
-    def __init__(self, main_window):
+    def __init__(self, main_window, user_id, payment_id, outstanding, refresh_callback):
         self.main_window = main_window
-        self.main_window.withdraw()  # Hide main window
+        self.user_id = user_id
+        self.payment_id = payment_id
+        self.outstanding = outstanding
+        self.refresh_callback = refresh_callback
         
+        self.main_window.withdraw()
         self.root = tk.Toplevel()
-        self.root.title("Secure Payment")
-        self.root.geometry("850x800")
-        self.root.minsize(850, 800)
-        self.root.configure(bg='#c9e4c4')
+        self.root.title("Secure Payment Gateway")
+        self.root.geometry("400x500")
+        self.root.configure(bg='white')
 
         self.setup_ui()
 
     def setup_ui(self):
-        """Setup all UI elements."""
-        # --- CARD FORM FRAME ---
-        self.frame = tk.Frame(self.root, bg="#ffffff", width=400, height=500,
-                              relief="solid", borderwidth=1)
-        self.frame.place(relx=0.5, rely=0.55, anchor="center")
-        self.frame.grid_columnconfigure(0, weight=1)
-        self.frame.grid_columnconfigure(1, weight=1)
+        tk.Label(self.root, text="Payment Gateway", font=("Arial", 16, "bold"), bg="white").pack(pady=20)
+        tk.Label(self.root, text=f"Balance Due: £{self.outstanding:.2f}", fg="red", bg="white", font=("Arial", 11, "bold")).pack()
 
-        # Amount Entry
-        self.amount_entry = tk.Entry(self.frame, font=("Arial", 14), justify="center")
-        self.amount_entry.grid(row=1, column=0, columnspan=2, pady=(20, 15), ipadx=40, ipady=6)
+        tk.Label(self.root, text="Amount to Pay (£):", bg="white").pack(pady=(20, 0))
+        self.amt_entry = tk.Entry(self.root, font=("Arial", 12), justify="center")
+        self.amt_entry.pack(pady=5)
+        self.amt_entry.insert(0, f"{self.outstanding:.2f}")
 
-        # Cardholder
-        tk.Label(self.frame, text="Cardholder Name", font=("Arial", 14), bg="#ffffff")\
-            .grid(row=2, column=0, columnspan=2, padx=10, pady=(10,0), sticky="w")
-        self.cardholder_entry = tk.Entry(self.frame, font=("Arial", 14))
-        self.cardholder_entry.grid(row=3, column=0, columnspan=2, padx=10, pady=(0,10), sticky="ew", ipadx=10, ipady=5)
-
-        # Card Number
-        tk.Label(self.frame, text="Card Number", font=("Arial", 14), bg="#ffffff")\
-            .grid(row=4, column=0, columnspan=2, padx=10, pady=(10,0), sticky="w")
-        self.card_number_entry = tk.Entry(self.frame, font=("Arial", 14))
-        self.card_number_entry.grid(row=5, column=0, columnspan=2, padx=10, pady=(0,10), sticky="ew", ipadx=10, ipady=5)
-
-        # CVC + Expiry
-        tk.Label(self.frame, text="CVC", font=("Arial", 14), bg="#ffffff")\
-            .grid(row=6, column=0, padx=10, pady=(10,0), sticky="w")
-        self.cvc_entry = tk.Entry(self.frame, font=("Arial", 14))
-        self.cvc_entry.grid(row=7, column=0, padx=10, pady=(0,10), sticky="ew", ipadx=10, ipady=5)
-
-        tk.Label(self.frame, text="Expiry Date (MM/YY)", font=("Arial", 14), bg="#ffffff")\
-            .grid(row=6, column=1, padx=10, pady=(10,0), sticky="w")
-        self.expiry_entry = tk.Entry(self.frame, font=("Arial", 14))
-        self.expiry_entry.grid(row=7, column=1, padx=10, pady=(0,10), sticky="ew", ipadx=10, ipady=5)
-
-        # Buttons
-        button_frame1 = tk.Frame(self.frame, bg="#ffffff")
-        button_frame1.grid(row=8, column=0, pady=20)
-        button_frame2 = tk.Frame(self.frame, bg="#ffffff")
-        button_frame2.grid(row=8, column=1, pady=20)
-
-        create_button(
-            button_frame1,
-            text="Cancel",
-            width=150,
-            height=50,
-            bg="white",
-            fg="red",
-            command=self.cancel_payment
-        )
-
-        create_button(
-            button_frame2,
-            text="Pay Now",
-            width=150,
-            height=50,
-            bg="red",
-            fg="white",
-            command=self.validate_payment
-        )
-
-    def validate_payment(self):
-        """Validate payment card information."""
-        card_number = self.card_number_entry.get().strip()
-        cvc = self.cvc_entry.get().strip()
-        cardholder = self.cardholder_entry.get().strip()
+        # Card Fields
+        tk.Label(self.root, text="Cardholder Name", bg="white").pack(pady=(10,0))
+        self.name_e = tk.Entry(self.root, width=30); self.name_e.pack()
         
-        if not cardholder or not card_number or not cvc:
-            messagebox.showerror("Error", "Please fill in all fields")
+        tk.Label(self.root, text="Card Number (16 Digits)", bg="white").pack(pady=(10,0))
+        self.card_e = tk.Entry(self.root, width=30); self.card_e.pack()
+
+        btn_f = tk.Frame(self.root, bg="white")
+        btn_f.pack(pady=30)
+        
+        create_button(btn_f, text="Cancel", width=90, height=35, bg="#eee", command=self.close).pack(side="left", padx=10)
+        create_button(btn_f, text="Pay Now", width=90, height=35, bg="#28a745", fg="white", command=self.process).pack(side="left", padx=10)
+
+    def process(self):
+        try:
+            val = float(self.amt_entry.get())
+            if val <= 0 or val > self.outstanding: raise ValueError
+        except:
+            messagebox.showerror("Error", "Enter a valid amount within the balance.")
             return
-        
-        if len(card_number) != 16 or not card_number.isdigit():
-            messagebox.showerror("Error", "Card number must be 16 digits")
+
+        if len(self.card_e.get().strip()) != 16:
+            messagebox.showerror("Error", "Invalid card number.")
             return
-        
-        if len(cvc) != 3 or not cvc.isdigit():
-            messagebox.showerror("Error", "CVC must be 3 digits")
-            return
-        
-        messagebox.showinfo("Success", "Payment processed successfully")
+
+        try:
+            # Update DB with the NEW incremental amount
+            simulate_payment(self.user_id, self.payment_id, val)
+            messagebox.showinfo("Success", f"Payment of £{val:.2f} processed!")
+            self.close()
+            self.refresh_callback()
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed: {e}")
+
+    def close(self):
         self.root.destroy()
         self.main_window.deiconify()
-
-    def cancel_payment(self):
-        """Cancel payment and return to main window."""
-        self.root.destroy()
-        self.main_window.deiconify()
-
-

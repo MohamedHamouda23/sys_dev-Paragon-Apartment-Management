@@ -1,3 +1,4 @@
+# tenant_portal_service.py
 from datetime import datetime, timedelta
 from database.databaseConnection import check_connection
 from database.payment_service import update_late_status
@@ -60,7 +61,20 @@ def ensure_tenant_portal_schema():
 
 
 def get_tenant_id_from_user(user_id):
-    row = _fetch_one("SELECT tenant_id FROM Tenant WHERE user_id = ?", (user_id,))
+    from database.databaseConnection import check_connection
+
+    conn = check_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT tenant_id
+        FROM Tenant
+        WHERE user_id = ?
+    """, (user_id,))
+
+    row = cursor.fetchone()
+    conn.close()
+
     return row[0] if row else None
 
 
@@ -149,25 +163,30 @@ def get_tenant_profile(user_id):
 
 
 def get_tenant_payments_with_balance(user_id):
+    """If payment_date is missing, status is 'Unpaid' and paid_amount is forced to 0.0."""
     update_late_status()
     rows = _fetch_all(
         """
         SELECT
             p.payment_id,
+            p.lease_id,
             p.due_date,
-            COALESCE(p.payment_date, ''),
+            p.payment_date,
             COALESCE(p.amount, 0),
             l.Agreed_rent,
             COALESCE(p.is_late, 'No'),
             b.street,
             b.postcode,
-            a.type
+            a.type,
+            b.city_id
         FROM Payment p
         JOIN Lease l ON p.lease_id = l.lease_id
         JOIN Tenant t ON l.tenant_id = t.tenant_id
+        JOIN User u ON t.user_id = u.user_id
         JOIN Apartments a ON l.apartment_id = a.apartment_id
         JOIN Buildings b ON a.building_id = b.building_id
         WHERE t.user_id = ?
+          AND u.city_id = b.city_id
         ORDER BY DATE(p.due_date) DESC
         """,
         (user_id,),
@@ -175,13 +194,14 @@ def get_tenant_payments_with_balance(user_id):
 
     out = []
     for r in rows:
-        paid = float(r[3] or 0)
-        agreed = float(r[4] or 0)
-        bal = max(agreed - paid, 0)
+        pay_date = r[3]
+        paid = float(r[4] or 0) if pay_date else 0.0
+        agreed = float(r[5] or 0)
+        bal = agreed if not pay_date else max(agreed - paid, 0)
 
-        if paid <= 0:
+        if not pay_date:
             status = "Unpaid"
-        elif paid < agreed:
+        elif paid < (agreed - 0.01):
             status = "Pending (Partial)"
         else:
             status = "Paid"
@@ -189,28 +209,36 @@ def get_tenant_payments_with_balance(user_id):
         out.append(
             {
                 "payment_id": r[0],
-                "due_date": r[1],
-                "payment_date": r[2] or "-",
+                "lease_id": r[1],
+                "due_date": r[2],
+                "payment_date": pay_date if pay_date else "-",
                 "paid_amount": paid,
                 "agreed_rent": agreed,
                 "outstanding": bal,
-                "is_late": r[5] or "No",
+                "is_late": r[6] or "No",
                 "status": status,
-                "property": f"{r[6]} ({r[7]})",
-                "apartment_type": r[8] or "N/A",
+                "property": f"{r[7]} ({r[8]})",
+                "apartment_type": r[9] or "N/A",
+                "city_id": r[10],
             }
         )
     return out
 
 
-def simulate_payment(user_id, payment_id, amount):
+def simulate_payment(user_id, payment_id, new_payment_amount):
+    """
+    Increments payment amount. 
+    If previous record was 'Unpaid' (no date), initial amount is treated as 0.
+    Sets payment_date to current date.
+    """
     update_late_status()
     conn = check_connection()
     cursor = conn.cursor()
 
+    # 1. Fetch current status
     cursor.execute(
         """
-        SELECT p.payment_id, p.due_date, l.Agreed_rent
+        SELECT COALESCE(p.amount, 0), l.Agreed_rent, p.due_date, p.payment_date
         FROM Payment p
         JOIN Lease l ON p.lease_id = l.lease_id
         JOIN Tenant t ON l.tenant_id = t.tenant_id
@@ -221,11 +249,26 @@ def simulate_payment(user_id, payment_id, amount):
     row = cursor.fetchone()
     if not row:
         conn.close()
-        raise ValueError("Payment record not found for tenant.")
+        raise ValueError("Payment record not found.")
 
-    due_date = datetime.strptime(str(row[1]), "%Y-%m-%d").date()
+    # Treat amount as 0 if no date was recorded previously
+    current_paid = float(row[0]) if row[3] else 0.0
+    agreed_rent = float(row[1])
+    due_date = datetime.strptime(str(row[2]), "%Y-%m-%d").date()
     today = datetime.now().date()
 
+    # 2. Calculate the new total (Current + Added)
+    updated_total = round(current_paid + float(new_payment_amount), 2)
+    
+    # Validation: Don't allow overpaying
+    if updated_total > agreed_rent + 0.01:
+        conn.close()
+        raise ValueError(f"Amount exceeds balance. Remaining: £{agreed_rent - current_paid:.2f}")
+
+    # 3. Determine if late
+    is_late = "Yes" if today > due_date and updated_total < (agreed_rent - 0.01) else "No"
+    
+    # 4. Update existing record with the payment date and new total
     cursor.execute(
         """
         UPDATE Payment
@@ -234,11 +277,12 @@ def simulate_payment(user_id, payment_id, amount):
             is_late = ?
         WHERE payment_id = ?
         """,
-        (float(amount), "Yes" if today > due_date else "No", payment_id),
+        (updated_total, is_late, payment_id),
     )
 
     conn.commit()
     conn.close()
+    return updated_total
 
 
 def get_dashboard_metrics(user_id):
@@ -263,13 +307,14 @@ def get_dashboard_metrics(user_id):
 
 
 def get_payment_history_series(user_id):
+    # Sum only where a payment_date exists to avoid counting phantom amounts
     rows = _fetch_all(
         """
         SELECT strftime('%Y-%m', due_date) AS ym, SUM(COALESCE(amount, 0))
         FROM Payment p
         JOIN Lease l ON p.lease_id = l.lease_id
         JOIN Tenant t ON l.tenant_id = t.tenant_id
-        WHERE t.user_id = ?
+        WHERE t.user_id = ? AND p.payment_date IS NOT NULL
         GROUP BY ym
         ORDER BY ym
         """,
@@ -311,7 +356,7 @@ def get_neighbor_comparison(user_id):
         JOIN Tenant t ON l.tenant_id = t.tenant_id
         JOIN Apartments a ON l.apartment_id = a.apartment_id
         JOIN Buildings b ON a.building_id = b.building_id
-        WHERE t.user_id = ?
+        WHERE t.user_id = ? AND p.payment_date IS NOT NULL
         """,
         (user_id,),
     )
@@ -334,6 +379,7 @@ def get_neighbor_comparison(user_id):
         WHERE a.type = ?
           AND b.city_id = ?
           AND t.user_id != ?
+          AND p.payment_date IS NOT NULL
         """,
         (apt_type, city_id, user_id),
     )
@@ -391,14 +437,12 @@ def submit_tenant_maintenance_request(user_id, category, description):
 
 
 def get_tenant_complaints(user_id):
-    # First get tenant_id from user_id
     tenant_id = get_tenant_id_from_user(user_id)
     if not tenant_id:
         return []
     
     conn = check_connection()
     cursor = conn.cursor()
-    
     cursor.execute("""
         SELECT complaint_id, description, date_submitted 
         FROM Complaints 
@@ -411,17 +455,13 @@ def get_tenant_complaints(user_id):
     return rows
 
 
-def submit_tenant_complaint(user_id, description): # Removed category argument
-    # Get tenant_id from user_id
+def submit_tenant_complaint(user_id, description):
     tenant_id = get_tenant_id_from_user(user_id)
     if not tenant_id:
         raise ValueError("Tenant not found for this user")
     
     conn = check_connection()
     cursor = conn.cursor()
-    
-    # Matching your actual schema: complaint_id, tenant_id, description, date_submitted
-    # If your table doesn't have 'category' or 'status', remove them from here:
     cursor.execute("""
         INSERT INTO Complaints (tenant_id, description, date_submitted) 
         VALUES (?, ?, DATE('now'))
@@ -442,7 +482,7 @@ def get_notifications(user_id):
         JOIN Lease l ON p.lease_id = l.lease_id
         JOIN Tenant t ON l.tenant_id = t.tenant_id
         WHERE t.user_id = ?
-          AND (p.payment_date IS NULL OR COALESCE(p.amount, 0) <= 0)
+          AND (p.payment_date IS NULL)
           AND DATE(p.due_date) BETWEEN DATE('now') AND DATE('now', '+7 day')
         ORDER BY DATE(p.due_date)
         """,
@@ -480,7 +520,6 @@ def get_notifications(user_id):
     for req_id, st in maint:
         notes.append(f"Maintenance update for request #{req_id}: {st}")
 
-    # Simplified to remove the 'status' column check
     comp = _fetch_all(
         """
         SELECT complaint_id, 'Submitted' 

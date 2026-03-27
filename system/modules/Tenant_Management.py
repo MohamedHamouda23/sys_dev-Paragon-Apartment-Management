@@ -55,7 +55,8 @@ class TenantManagementPage:
         )
 
         self.profile_rows = {}
-        for key in ["Name", "Email", "Phone", "Occupation", "NI Number", "Location", "Type", "Monthly Rent"]:
+        # Removed "Location", "Type", "Monthly Rent" from visible fields
+        for key in ["Name", "Email", "Phone", "Occupation", "NI Number"]:
             row = tk.Frame(card, bg="white")
             row.pack(fill="x", padx=14, pady=2)
             tk.Label(row, text=f"{key}:", bg="white", fg="#4c5d73", width=16, anchor="w", font=("Arial", 11, "bold")).pack(side="left")
@@ -81,9 +82,8 @@ class TenantManagementPage:
         self.profile_rows["Phone"].config(text=profile.get("phone", "-"))
         self.profile_rows["Occupation"].config(text=profile.get("occupation", "-"))
         self.profile_rows["NI Number"].config(text=profile.get("ni_number", "-"))
-        self.profile_rows["Location"].config(text=profile.get("location", "-"))
-        self.profile_rows["Type"].config(text=profile.get("apartment_type", "-"))
-        self.profile_rows["Monthly Rent"].config(text=f"GBP {float(profile.get('monthly_rent', 0)):.2f}")
+        # No longer setting Location, Type, or Monthly Rent
+        
         self.notes_list.delete(0, tk.END)
         late_notes = get_late_payment_notifications(self.user_id) or []
         other_notes = get_notifications(self.user_id) or []

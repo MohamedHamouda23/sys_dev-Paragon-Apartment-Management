@@ -1,113 +1,120 @@
 # Payments_page.py
 import tkinter as tk
 from tkinter import ttk, messagebox
-from main.helpers import clear_frame, show_placeholder, create_scrollable_treeview, create_button
-from database.payment_service import get_all_payments, get_tenant_payments, get_payment_details
+from main.helpers import create_scrollable_treeview, create_button
+from database.tenant_portal_service import get_tenant_payments_with_balance
+from main.PaymentGateway import PaymentWindow
 
 class PaymentsPage:
-    def __init__(self, parent, user_info=None):
-        self.parent = parent
-        self.user_info = user_info
-        self.user_id = user_info[0] if user_info else None
-        self.user_role = user_info[4] if user_info and len(user_info) >= 5 else None
-        
-        self._all_payments = []
-        self.current_city = "All Cities"
-        self.current_status = "All Status"
-
+    def __init__(self, parent, user_info):
+        self.user_id = user_info[0]
         self.frame = tk.Frame(parent, bg="#c9e4c4")
         self._build_layout()
         self.refresh_payments()
 
     def _build_layout(self):
-        top_btn_frame = tk.Frame(self.frame, bg="#c9e4c4")
-        top_btn_frame.pack(side="top", fill="x", pady=(20, 8))
-        btns_inner_frame = tk.Frame(top_btn_frame, bg="#c9e4c4")
-        btns_inner_frame.pack(anchor="center")
+        filter_f = tk.Frame(self.frame, bg="#c9e4c4")
+        filter_f.pack(fill="x", pady=10)
 
-        create_button(btns_inner_frame, text="Refresh Records", width=150, height=45,
-            bg="#28a745", fg="white", command=self.refresh_payments).pack(side="left", padx=8)
+        # Lease Filter
+        tk.Label(filter_f, text="Lease:").pack(side="left", padx=5)
+        self.lease_cb = ttk.Combobox(filter_f, state="readonly", width=15)
+        self.lease_cb.pack(side="left", padx=5)
+        self.lease_cb.bind("<<ComboboxSelected>>", lambda e: self._render_rows())
 
-        create_button(btns_inner_frame, text="Reset Filters", width=110, height=45,
-            bg="#3B86FF", fg="white", command=self._reset_filters).pack(side="left", padx=8)
+        # Status Filter
+        tk.Label(filter_f, text="Status:").pack(side="left", padx=5)
+        self.status_cb = ttk.Combobox(filter_f, values=["All", "Paid", "Unpaid"], state="readonly", width=10)
+        self.status_cb.set("All")
+        self.status_cb.pack(side="left", padx=5)
+        self.status_cb.bind("<<ComboboxSelected>>", lambda e: self._render_rows())
 
-        content_frame = tk.Frame(self.frame, bg="#c9e4c4")
-        content_frame.pack(fill="both", expand=True, padx=20, pady=(6, 20))
-
-        filter_frame = tk.Frame(content_frame, bg="#c9e4c4")
-        filter_frame.pack(fill="x", pady=(0, 10))
+        self.tree = create_scrollable_treeview(self.frame, ["ID", "Property", "Due Date", "Paid", "Total", "Status"])
+        self.tree.pack(fill="both", expand=True, padx=20)
         
-        if self.user_role == "Finance Manager":
-            tk.Label(filter_frame, text="City:", bg="#c9e4c4", font=("Arial", 10, "bold")).pack(side="left", padx=(0, 5))
-            self.city_cb = ttk.Combobox(filter_frame, state="readonly", width=15)
-            self.city_cb.pack(side="left", padx=(0, 15))
-            self.city_cb.bind("<<ComboboxSelected>>", lambda e: self._update_filter("city", self.city_cb.get()))
-        
-        tk.Label(filter_frame, text="Status:", bg="#c9e4c4", font=("Arial", 10, "bold")).pack(side="left", padx=(0, 5))
-        self.status_cb = ttk.Combobox(filter_frame, values=["All Status", "Paid", "Pending", "Unpaid"], state="readonly", width=12)
-        self.status_cb.set(self.current_status)
-        self.status_cb.pack(side="left", padx=(0, 15))
-        self.status_cb.bind("<<ComboboxSelected>>", lambda e: self._update_filter("status", self.status_cb.get()))
-
-        is_fm = self.user_role == "Finance Manager"
-        cols = ("name", "apt", "city", "due", "paid", "amt", "stat", "late") if is_fm else ("apt", "due", "paid", "amt", "stat", "late")
-        heads = ("Tenant", "Apt", "City", "Due Date", "Paid Date", "Amount", "Status", "Late") if is_fm else ("Apartment", "Due Date", "Paid Date", "Amount", "Status", "Late")
-        widths = (120, 150, 90, 100, 100, 80, 110, 60) if is_fm else (220, 110, 110, 90, 130, 70)
-
-        _, self.tree = create_scrollable_treeview(content_frame, cols, heads, widths, ["center"]*len(cols), height=12)
-        self.tree.bind("<<TreeviewSelect>>", self._on_row_select)
-
-        self.detail_wrap = tk.Frame(content_frame, bg="white", bd=2, relief="groove")
-        self.detail_wrap.pack(fill="x", padx=0, pady=(10, 0))
-        show_placeholder(self.detail_wrap, "Select a payment record to view full details")
+        create_button(self.frame, "Make Payment", command=self._pay).pack(pady=10)
 
     def refresh_payments(self):
-        if self.user_role == "Finance Manager":
-            self._all_payments = get_all_payments() or []
-            cities = ["All Cities"] + sorted(list(set(str(p[2]) for p in self._all_payments if p[2])))
-            self.city_cb['values'] = cities
-            self.city_cb.set(self.current_city)
-        else:
-            self._all_payments = get_tenant_payments(self.user_id) or []
+        self.data = get_tenant_payments_with_balance(self.user_id)
+        leases = sorted(list(set(d['property'] for d in self.data)))
+        self.lease_cb['values'] = ["All"] + leases
+        self.lease_cb.set("All")
         self._render_rows()
 
     def _render_rows(self):
-        for row in self.tree.get_children(): self.tree.delete(row)
-        for p in self._all_payments:
-            if self.user_role == "Finance Manager":
-                if self.current_city != "All Cities" and str(p[2]) != self.current_city: continue
-            
-            if self.current_status != "All Status" and self.current_status not in str(p[6 if self.user_role=="Finance Manager" else 5]): continue
-            
-            p_id = p[-1] 
-            self.tree.insert("", "end", values=p[:-1], tags=(p_id,))
+        for i in self.tree.get_children(): self.tree.delete(i)
+        l_filt = self.lease_cb.get()
+        s_filt = self.status_cb.get()
 
-    def _on_row_select(self, event=None):
-        sel = self.tree.selection()
-        if not sel: return
-        p_id = self.tree.item(sel[0])["tags"][0]
-        self._render_lifecycle_detail(p_id)
+        for d in self.data:
+            if l_filt != "All" and d['property'] != l_filt: continue
+            if s_filt != "All" and d['status'] != s_filt: continue
+            self.tree.insert("", "end", values=(d['payment_id'], d['property'], d['due_date'], d['paid_amount'], d['agreed_rent'], d['status']))
 
-    def _render_lifecycle_detail(self, p_id):
-        clear_frame(self.detail_wrap)
-        details = get_payment_details(p_id)
-        if not details: return
-        container = tk.Frame(self.detail_wrap, bg="#f0f2f5")
-        container.pack(fill="both", expand=True, padx=15, pady=10)
+    def _on_select(self, event):
+        selected = self.tree.selection()
+        if not selected: return
+        item = self.tree.item(selected[0])
+        self.selected_payment_id = item['values'][-1]
+        details = get_payment_details(self.selected_payment_id)
+        if details:
+            self._render_lifecycle_detail(details)
+
+    def _render_lifecycle_detail(self, details):
+        clear_frame(self.detail_container)
         
-        tk.Label(container, text=f"PAYMENT BREAKDOWN #{details['payment_id']} - {details['status']}", bg="white", font=("Arial", 10, "bold")).pack()
-        tk.Label(container, text=f"Tenant: {details['tenant_name']} | Amount Paid: £{details['paid_amount']} / £{details['agreed_rent']}", bg="#f0f2f5").pack()
+        # FIX: If payment_date is missing, paid amount is strictly 0.00
+        p_date = details.get('payment_date')
+        if not p_date or p_date in ["-", "N/A", "None"]:
+            paid_amount = 0.0
+        else:
+            paid_amount = float(details.get('paid_amount') or 0)
+            
+        rent = float(details.get('agreed_rent') or 0)
+        outstanding = max(rent - paid_amount, 0)
+        status = details.get('status', 'Unpaid')
+
+        tk.Label(self.detail_container, text="Payment Lifecycle", font=("Arial", 12, "bold"), bg="white").pack(pady=15)
+        
+        color = "#e74c3c" if status == "Unpaid" else "#f39c12" if "Partial" in status else "#27ae60"
+        tk.Label(self.detail_container, text=status.upper(), fg="white", bg=color, font=("Arial", 9, "bold"), padx=10).pack(pady=5)
+
+        info_f = tk.Frame(self.detail_container, bg="white")
+        info_f.pack(fill="x", padx=20, pady=10)
+
+        tk.Label(info_f, text=f"Agreed Rent: £{rent:.2f}", bg="white").pack(anchor="w")
+        tk.Label(info_f, text=f"Paid to Date: £{paid_amount:.2f}", bg="white", fg="green").pack(anchor="w")
+        tk.Label(info_f, text=f"Outstanding: £{outstanding:.2f}", bg="white", fg="red", font=("Arial", 10, "bold")).pack(anchor="w", pady=(5,0))
+
+        if self.user_role == "Tenant" and outstanding > 0.01:
+            create_button(self.detail_container, "Make Payment", command=self._open_payment_gateway, bg="#27ae60", fg="white").pack(pady=20)
+
+    def _open_payment_gateway(self):
+        details = get_payment_details(self.selected_payment_id)
+        p_date = details.get('payment_date')
+        rent = float(details.get('agreed_rent') or 0)
+        
+        # FIX: Force 0 if Unpaid so gateway calculates full rent as outstanding
+        paid = 0.0 if not p_date or p_date in ["-", "N/A"] else float(details.get('paid_amount') or 0)
+        outstanding = round(rent - paid, 2)
+        
+        if outstanding <= 0:
+            messagebox.showinfo("Info", "This rent is already fully paid.")
+            return
+
+        PaymentWindow(self.parent, self.user_id, self.selected_payment_id, outstanding, self.refresh_payments)
 
     def _update_filter(self, key, val):
-        if key == "city": self.current_city = val
-        elif key == "status": self.current_status = val
+        if key == "status": self.current_status = val
         self._render_rows()
 
     def _reset_filters(self):
         self.current_city = "All Cities"
         self.current_status = "All Status"
-        if hasattr(self, 'city_cb'): self.city_cb.set("All Cities")
+        if hasattr(self, 'city_cb'): 
+            self.city_cb.set("All Cities")
         self.status_cb.set("All Status")
         self._render_rows()
 
-    def get_frame(self): return self.frame
+    def get_frame(self): 
+        return self.frame

@@ -12,7 +12,6 @@ from database.lease_service import (
     build_apartment_map,
     update_lease_early_termination,
 )
-
 class LeaseManagerPage:
     def __init__(self, parent, user_info=None):
         self.frame = tk.Frame(parent, bg="#c9e4c4")
@@ -25,19 +24,18 @@ class LeaseManagerPage:
         self.assigned_city_id = None
         self.tenant_id = None
 
-        if user_info and len(user_info) >= 5:
+        from database.tenant_portal_service import get_tenant_id_from_user
+
+        if user_info and len(user_info) >= 6:
             self.user_id = user_info[0]
-            self.assigned_city_id = user_info[3] 
-            self.user_role = user_info[4]  
-            # If the user is a tenant, their user_id is often their tenant_id 
-            # (Adjust this based on your specific database schema)
-            self.tenant_id = user_info[0]
+            self.user_role = user_info[4]
+            self.assigned_city_id = user_info[5]   # ✅ FIXED
+            self.tenant_id = get_tenant_id_from_user(self.user_id)
 
         self._build_layout()
         self._load_leases()
 
     def _load_leases(self):
-        """Clears and reloads the treeview based on user permissions."""
         for row in self.tree.get_children():
             self.tree.delete(row)
 
@@ -46,16 +44,22 @@ class LeaseManagerPage:
         self.tree.tag_configure("Expired",    background="#FFF8E1", foreground="#F57F17")
 
         leases = []
-        # Filter leases based on the user's role and assigned city
+
         if self.user_role == "Tenant":
-            leases = fetch_leases(tenant_id=self.tenant_id)
-        elif self.user_role == "Administrators":
-            # Pass the admin's assigned city ID to filter the list
-            leases = fetch_leases(city_id=self.assigned_city_id)
-        else:
-            # Fallback for super-admins or other roles
+            leases = fetch_leases(
+                tenant_id=self.tenant_id,
+                city_id=self.assigned_city_id
+            )
+
+        elif self.user_role == "Manager":
             leases = fetch_leases()
-        
+
+        elif self.user_role in ["Administrators", "Front-desk Staff"]:
+            leases = fetch_leases(city_id=self.assigned_city_id)
+
+        else:
+            leases = fetch_leases(city_id=self.assigned_city_id)
+
         priority = {"Active": 0, "Expired": 1, "Terminated": 2}
         leases = sorted(leases, key=lambda lease: priority.get(lease[7], 99))
 
@@ -123,16 +127,15 @@ class LeaseManagerPage:
         self.rent_entry.delete(0, tk.END)
 
     def _build_form(self):
-        """Build the form with proper filtering based on user role."""
-        # For administrators, filter tenants and apartments by their assigned city
         if self.user_role == "Administrators":
             tenants = fetch_tenants(city_id=self.assigned_city_id)
             apartments = fetch_available_apartments(city_id=self.assigned_city_id)
+
         elif self.user_role == "Tenant":
             tenants = fetch_tenants(tenant_id=self.tenant_id)
             apartments = fetch_available_apartments(city_id=None)
+
         else:
-            # For super-admins or other roles, show all data
             tenants = fetch_tenants(city_id=None)
             apartments = fetch_available_apartments(city_id=None)
         
@@ -149,6 +152,7 @@ class LeaseManagerPage:
         self.apt_cb.grid(row=0, column=3, padx=(0, 16), pady=8, sticky="we")
 
         today = date.today()
+
         self._form_field(self.form_frame, "Start Date", 1, 0)
         self.start_entry = tk.Entry(self.form_frame)
         self.start_entry.insert(0, str(today))
@@ -162,8 +166,6 @@ class LeaseManagerPage:
         self._form_field(self.form_frame, "Monthly Rent (£)", 2, 0)
         self.rent_entry = tk.Entry(self.form_frame)
         self.rent_entry.grid(row=2, column=1, padx=(0, 16), pady=8, sticky="we")
-
-
 
         self.form_frame.grid_columnconfigure(1, weight=1)
         self.form_frame.grid_columnconfigure(3, weight=1)

@@ -40,11 +40,12 @@ from main.helpers import (
 from database.lease_service import (
     fetch_leases, fetch_tenants,
     create_lease, build_tenant_map,
+    update_lease_early_termination,
 )
 from database.property_service import build_apartment_map, fetch_available_apartments
 from database.tenant_portal_service import (
     get_tenant_profile,
-    submit_early_termination_request,
+    get_active_lease_for_user,
 )
 
 from validations import validate_lease_selection, validate_lease_details
@@ -207,36 +208,36 @@ class AddLeaseStepper:
                 
                 # Create lease in database
                 create_lease(
-                    apt_id,
-                    tenant_id,
-                    start_entry.get(),
-                    end_entry.get(),
-                    rent_entry.get(),
+                    apartment_id=apt_id,
+                    tenant_id=tenant_id,
+                    start_date=start_entry.get(),
+                    end_date=end_entry.get(),
+                    agreed_rent=rent_entry.get()
                 )
                 
                 # Show success message
                 clear_frame(self.box_frame)
                 styled_label(
                     self.box_frame,
-                    "✓  Lease created successfully!",
+                    "✓  Lease created successfully",
                     fg="#2E7D32",
                 ).pack(expand=True)
-                self.box_frame.after(1200, self.refresh_callback)
                 
-            except ValueError as e:
-                messagebox.showerror("Validation Error", str(e))
-            except Exception as e:
-                messagebox.showerror("Error", str(e))
+                # Refresh and return to main view after 1.5 seconds
+                self.box_frame.after(1500, self.refresh_callback)
+                
+            except Exception as err:
+                messagebox.showerror("Error", str(err))
 
-        # Create button
+        # Action buttons
         btn_frame = tk.Frame(container, bg=BG)
         btn_frame.pack(pady=(20, 0))
         create_button(
             btn_frame,
-            text="Create Lease ✓",
-            width=180,
+            text="Create Lease",
+            width=150,
             height=50,
-            bg="#3B86FF",
+            bg="#2E7D32",
             fg="white",
             command=submit,
             next_window_func=None,
@@ -247,44 +248,37 @@ class AddLeaseStepper:
 # ============================================================================
 # REMOVE LEASE STEPPER CLASS
 # ============================================================================
-
 class RemoveLeaseStepper:
-    """Two-step wizard for removing leases with early termination penalty"""
-
     def __init__(self, parent, refresh_callback):
-        # Store parent and refresh callback
         self.box_frame        = parent
         self.refresh_callback = refresh_callback
+        self.leases           = fetch_leases()
+        
         self.step_select()
 
-    # ========================================================================
-    # STEP 1: SELECT LEASE
-    # ========================================================================
-
     def step_select(self):
-        """First step: Select lease to remove"""
+        """First step: Select a lease to remove"""
         clear_frame(self.box_frame)
         container = card(self.box_frame)
 
-        # Step header
+        # Header
         styled_label(container, "Remove Lease", font=FONT_TITLE, fg="#222").pack(pady=(0, 4))
         tk.Frame(container, bg=ACCENT, height=3, width=60).pack(pady=(0, 16))
         styled_label(container, "Step 1 of 2 — Select Lease", fg="#888").pack(pady=(0, 8))
 
-        # Load leases
-        leases = fetch_leases()
-        if not leases:
-            styled_label(container, "No leases found.", fg="#C62828").pack(pady=10)
+        # Check if leases exist
+        if not self.leases:
+            styled_label(container, "No active leases found.", fg="#C62828").pack(pady=10)
             return
 
-        # Build lease lookup map
-        self.lease_map = {
-            f"[{l[0]}] {l[3]} – {l[4]}": l
-            for l in leases
-        }
-        
-        # Lease dropdown
-        lease_cb = form_dropdown(container, "Lease", list(self.lease_map.keys()))
+        # Display leases in dropdown format
+        lease_options = []
+        for lease in self.leases:
+            l_id, tenant, apt, start, end, rent, city, status = lease
+            lease_str = f"#{l_id} - {tenant} ({apt}) - {status}"
+            lease_options.append(lease_str)
+
+        lease_cb = form_dropdown(container, "Select Lease", lease_options)
 
         # Next button
         btn_frame = tk.Frame(container, bg=BG)
@@ -296,53 +290,56 @@ class RemoveLeaseStepper:
             height=50,
             bg="#3B86FF",
             fg="white",
-            command=lambda: self.step_confirm(self.lease_map[lease_cb.get()]),
+            command=lambda: self.step_confirm(lease_cb.get()),
             next_window_func=None,
             current_window=None,
         ).pack()
 
-    # ========================================================================
-    # STEP 2: CONFIRM REMOVAL
-    # ========================================================================
+    def step_confirm(self, lease_str):
+        """Second step: Confirm removal with penalty calculation"""
+        if not lease_str:
+            messagebox.showerror("Error", "Please select a lease.")
+            return
 
-    def step_confirm(self, lease):
-        """Second step: Confirm removal with penalty details"""
-        # Extract lease data
-        (l_id, _apt_id, _ten_id,
-         tenant_name, apt_display,
-         start, end, rent, status) = lease
+        # Extract lease ID from string (format: "#ID - ...")
+        l_id = int(lease_str.split("#")[1].split(" ")[0])
+        
+        # Find the corresponding lease
+        lease_data = next((l for l in self.leases if l[0] == l_id), None)
+        if not lease_data:
+            messagebox.showerror("Error", "Lease not found.")
+            return
 
-        # Calculate early termination penalty
-        is_early = date.fromisoformat(str(end)) > date.today()
-        penalty  = round(float(rent) * 0.05, 2) if is_early else 0.00
-        vacate   = str(date.today() + timedelta(days=30)) if is_early else str(end)
+        l_id, tenant, apt, start, end_str, rent_str, city, status = lease_data
+        
+        # Parse dates
+        end_date = date.fromisoformat(str(end_str))
+        today = date.today()
+        
+        # Calculate penalty
+        is_early = end_date > today
+        rent = float(rent_str.replace("£", "").replace(",", ""))
+        penalty = round(rent * 0.05, 2) if is_early else 0.0
+        vacate_date = str(today + timedelta(days=30)) if is_early else end_str
 
+        # Display confirmation
         clear_frame(self.box_frame)
         container = card(self.box_frame)
 
-        # Step header
         styled_label(container, "Remove Lease", font=FONT_TITLE, fg="#222").pack(pady=(0, 4))
         tk.Frame(container, bg=ACCENT, height=3, width=60).pack(pady=(0, 16))
-        styled_label(container, "Step 2 of 2 — Confirm", fg="#888").pack(pady=(0, 8))
+        styled_label(container, "Step 2 of 2 — Confirm Removal", fg="#888").pack(pady=(0, 8))
 
-        # Lease details display
-        info = tk.Frame(container, bg="#F5F5F5", padx=14, pady=12)
+        # Lease details
+        info = tk.Frame(container, bg="#F5F5F5", padx=12, pady=8)
         info.pack(fill="x", pady=(0, 12))
-        for label, value in [
-            ("Tenant",       tenant_name),
-            ("Apartment",    apt_display),
-            ("Lease End",    str(end)),
-            ("Vacate By",    vacate),
-            ("Monthly Rent", f"£{float(rent):,.2f}"),
-            ("Penalty (5%)", f"£{penalty:,.2f}" if is_early else "None"),
-        ]:
-            row = tk.Frame(info, bg="#F5F5F5")
-            row.pack(fill="x", pady=2)
-            styled_label(row, f"{label}:", fg="#555").pack(side="left", padx=(0, 8))
-            styled_label(row, value,        fg="#222").pack(side="left")
-
-        # Early termination warning
+        styled_label(info, f"Tenant: {tenant}", fg="#555").pack(anchor="w", pady=2)
+        styled_label(info, f"Apartment: {apt}", fg="#555").pack(anchor="w", pady=2)
+        styled_label(info, f"End Date: {end_str}", fg="#555").pack(anchor="w", pady=2)
+        styled_label(info, f"Vacate By: {vacate_date}", fg="#555").pack(anchor="w", pady=2)
+        
         if is_early:
+            styled_label(info, f"Early Termination Penalty (5%): £{penalty:,.2f}", fg="#C62828").pack(anchor="w", pady=2)
             styled_label(
                 container,
                 "⚠  Early termination — 1 month notice + 5% penalty applies.",
@@ -352,7 +349,6 @@ class RemoveLeaseStepper:
         # Confirm function
         def confirm():
             try:
-                from database.lease_service import update_lease_early_termination
                 if is_early:
                     update_lease_early_termination(l_id, penalty)
                 else:
@@ -409,136 +405,221 @@ class TenantLeaseExitPage:
         self._load_data()
 
     def _build_layout(self):
-        wrap = tk.Frame(self.frame, bg="#c9e4c4")
-        wrap.pack(fill="both", expand=True, padx=20, pady=20)
+        # Header
+        header = tk.Frame(self.frame, bg="#c9e4c4")
+        header.pack(fill="x", padx=20, pady=(20, 10))
+        tk.Label(header, text="My Leases", bg="#c9e4c4", fg="#1f3b63", font=("Arial", 18, "bold")).pack(side="left")
 
-        # Keep cards full-width while centering the whole section vertically.
-        top_spacer = tk.Frame(wrap, bg="#c9e4c4")
-        top_spacer.pack(fill="both", expand=True)
+        # Scrollable Container Setup
+        container = tk.Frame(self.frame, bg="#c9e4c4")
+        container.pack(fill="both", expand=True, padx=20, pady=10)
 
-        content = tk.Frame(wrap, bg="#c9e4c4")
-        content.pack(fill="x")
+        self.canvas = tk.Canvas(container, bg="#c9e4c4", highlightthickness=0)
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=self.canvas.yview)
+        self.scroll_frame = tk.Frame(self.canvas, bg="#c9e4c4")
 
-        info = tk.Frame(content, bg="white", bd=2, relief="groove")
-        info.pack(fill="x", pady=(0, 10))
-        tk.Label(info, text="Lease", bg="white", fg="#1f3b63", font=("Arial", 15, "bold")).pack(
-            anchor="w", padx=12, pady=(10, 8)
+        self.scroll_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
         )
 
-        self.lease_labels = {}
-        for key in ["Tenant", "Location", "Type", "Monthly Rent", "Lease End"]:
-            row = tk.Frame(info, bg="white")
-            row.pack(fill="x", padx=12, pady=2)
-            tk.Label(row, text=f"{key}:", bg="white", fg="#4c5d73", width=14, anchor="w", font=("Arial", 10, "bold")).pack(side="left")
-            lbl = tk.Label(row, text="-", bg="white", fg="#1f3b63", font=("Arial", 10))
-            lbl.pack(side="left")
-            self.lease_labels[key] = lbl
+        self.canvas_window = self.canvas.create_window((0, 0), window=self.scroll_frame, anchor="nw")
+        
+        # Ensure the scroll frame matches canvas width
+        self.canvas.bind('<Configure>', lambda e: self.canvas.itemconfig(self.canvas_window, width=e.width))
 
-        form = tk.Frame(content, bg="white", bd=2, relief="groove")
-        form.pack(fill="x", pady=(0, 0))
-        tk.Label(form, text="Request Early Termination", bg="white", fg="#1f3b63", font=("Arial", 12, "bold")).grid(
-            row=0, column=0, columnspan=4, sticky="w", padx=10, pady=(8, 8)
-        )
-        tk.Label(form, text="Move-out Date", bg="white", font=("Arial", 10, "bold")).grid(
-            row=1, column=0, sticky="w", padx=10, pady=4
-        )
-        date_entry_cls = _resolve_date_entry()
-        if date_entry_cls is not None:
-            self.move_out_entry = date_entry_cls(
-                form,
-                width=16,
-                date_pattern="yyyy-mm-dd",
-                mindate=date.today(),
-            )
-        else:
-            self.move_out_entry = tk.Entry(form, width=20)
-            self.move_out_entry.insert(0, "YYYY-MM-DD")
-        self.move_out_entry.grid(row=1, column=1, sticky="w", padx=6, pady=4)
-
-        tk.Label(form, text="Move-out Time", bg="white", font=("Arial", 10, "bold")).grid(
-            row=1, column=2, sticky="w", padx=10, pady=4
-        )
-        self.move_out_time = ttk.Combobox(
-            form,
-            values=["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"],
-            state="readonly",
-            width=12,
-        )
-        self.move_out_time.grid(row=1, column=3, sticky="w", padx=6, pady=4)
-        self.move_out_time.set("10:00")
-
-        tk.Button(
-            form,
-            text="Submit Request",
-            command=self._submit,
-            bg="#dc3545",
-            fg="white",
-            font=("Arial", 10, "bold"),
-            relief="flat",
-            padx=12,
-            pady=6,
-        ).grid(row=3, column=1, sticky="e", padx=10, pady=8)
-
-        tk.Label(
-            form,
-            text="Rule: 1 month notice required. Penalty is 5% of monthly rent.",
-            bg="white",
-            fg="#8a3b37",
-            font=("Arial", 9, "italic"),
-        ).grid(row=2, column=0, columnspan=3, sticky="w", padx=10)
-
-        bottom_spacer = tk.Frame(wrap, bg="#c9e4c4")
-        bottom_spacer.pack(fill="both", expand=True)
+        self.canvas.configure(yscrollcommand=scrollbar.set)
+        self.canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
 
     def on_show(self):
         self._load_data()
 
     def _load_data(self):
-        profile = get_tenant_profile(self.user_id)
-        if profile:
-            self.lease_labels["Tenant"].config(text=profile.get("name", "-"))
-            self.lease_labels["Location"].config(text=profile.get("location", "-"))
-            self.lease_labels["Type"].config(text=profile.get("apartment_type", "-"))
-            self.lease_labels["Monthly Rent"].config(text=f"GBP {float(profile.get('monthly_rent', 0)):.2f}")
-            self.lease_labels["Lease End"].config(text=profile.get("lease_end") or "N/A")
+        """Load all leases for the current tenant from database"""
+        # Clear existing lease cards
+        for widget in self.scroll_frame.winfo_children():
+            widget.destroy()
 
-    def _submit(self):
-        date_entry_cls = _resolve_date_entry()
-        if date_entry_cls is not None and isinstance(self.move_out_entry, date_entry_cls):
-            move_out = self.move_out_entry.get_date().strftime("%Y-%m-%d")
+        # Get the actual tenant_id for this user
+        from database.tenant_portal_service import get_tenant_id_from_user
+        tenant_id = get_tenant_id_from_user(self.user_id)
+        
+        if not tenant_id:
+            tk.Label(self.scroll_frame, text="No tenant profile found.", 
+                    bg="#c9e4c4", font=("Arial", 12)).pack(pady=20)
+            return
+
+    # Direct database query to get all leases for this tenant
+        from database.databaseConnection import check_connection
+        conn = check_connection()
+        cursor = conn.cursor()
+        
+        # Query that returns all leases with complete details
+        cursor.execute("""
+        SELECT 
+            l.lease_id,
+            u.first_name || ' ' || u.surname as tenant_name,
+            a.type || ' - ' || b.street || ', ' || b.postcode as apt_display,
+            l.start_date,
+            l.end_date,
+            l.Agreed_rent,
+            loc.city_name,
+            CASE 
+                WHEN l.early_termination_fee > 0 THEN 'Terminated'
+                WHEN DATE(l.end_date) >= DATE('now') THEN 'Active'
+                ELSE 'Expired'
+            END as status,
+            l.tenant_id,
+            l.deposit,
+            l.early_termination_fee
+        FROM Lease l
+        JOIN Tenant t ON l.tenant_id = t.tenant_id
+        JOIN User u ON t.user_id = u.user_id
+        JOIN Apartments a ON l.apartment_id = a.apartment_id
+        JOIN Buildings b ON a.building_id = b.building_id
+        JOIN Location loc ON b.city_id = loc.city_id
+        WHERE t.tenant_id = ?
+        AND u.city_id = ?
+        AND b.city_id = ?
+        ORDER BY 
+            CASE 
+                WHEN l.early_termination_fee > 0 THEN 2
+                WHEN DATE(l.end_date) >= DATE('now') THEN 0
+                ELSE 1
+            END,
+            l.end_date DESC
+    """, (tenant_id, self.user_info[5], self.user_info[5]))
+        
+        tenant_leases = cursor.fetchall()
+        conn.close()
+        
+        if not tenant_leases:
+            tk.Label(self.scroll_frame, text="No lease records found.", 
+                    bg="#c9e4c4", font=("Arial", 12)).pack(pady=20)
+            return
+
+        # Display each lease
+        for lease in tenant_leases:
+            self._create_lease_card(lease)
+
+    def _create_lease_card(self, lease):
+        """Create a card for a single lease"""
+        # lease format: (id, tenant_name, apt_display, start, end, rent, city, status, tenant_id, deposit, early_fee)
+        l_id, tenant_name, apt_display, start, end, rent, city, status, tenant_id, deposit, early_fee = lease
+        
+        # Determine UI colors based on status
+        is_active = (status == "Active")
+        card_bg = "white"
+        status_color = "#2E7D32" if is_active else "#C62828"
+        
+        # Convert rent to float safely
+        try:
+            rent_amount = float(rent)
+        except (TypeError, ValueError):
+            rent_amount = 0.0
+
+        # Create card frame
+        card = tk.Frame(self.scroll_frame, bg=card_bg, bd=2, relief="groove", padx=15, pady=15)
+        card.pack(fill="x", pady=8, padx=5)
+
+        # Left side - Lease details
+        info_frame = tk.Frame(card, bg=card_bg)
+        info_frame.pack(side="left", fill="both", expand=True)
+
+        # Apartment info
+        tk.Label(info_frame, text=f"Apartment: {apt_display}", bg=card_bg, 
+                 font=("Arial", 12, "bold"), fg="#1f3b63").pack(anchor="w")
+        
+        # Location and rent
+        tk.Label(info_frame, text=f"Location: {city} | Rent: £{rent_amount:,.2f}/month", 
+                 bg=card_bg, font=("Arial", 10)).pack(anchor="w")
+        
+        # Status with color coding
+        tk.Label(info_frame, text=f"STATUS: {status.upper()}", bg=card_bg, 
+                 font=("Arial", 10, "bold"), fg=status_color).pack(anchor="w")
+        
+        # Lease period
+        tk.Label(info_frame, text=f"Period: {start} to {end}", bg=card_bg, 
+                 font=("Arial", 9), fg="#555").pack(anchor="w")
+        
+        # Deposit info
+        if deposit:
+            tk.Label(info_frame, text=f"Deposit: £{float(deposit):,.2f}", bg=card_bg, 
+                     font=("Arial", 9), fg="#555").pack(anchor="w")
+
+        # Right side - Action buttons
+        if is_active:
+            btn_frame = tk.Frame(card, bg=card_bg)
+            btn_frame.pack(side="right", padx=10)
+            
+            # Termination button
+            tk.Button(
+                btn_frame,
+                text="Terminate Lease",
+                bg="#dc3545",
+                fg="white",
+                font=("Arial", 9, "bold"),
+                command=lambda lid=l_id, r=rent_amount: self._terminate_lease(lid, r),
+                relief="flat",
+                padx=10,
+                pady=5
+            ).pack()
+            
+            # Info about penalty
+            tk.Label(btn_frame, text=f"Penalty: 5% (£{rent_amount * 0.05:,.2f})", 
+                     bg=card_bg, font=("Arial", 8), fg="#dc3545").pack(pady=(5, 0))
         else:
-            move_out = self.move_out_entry.get().strip()
-        if not move_out:
-            messagebox.showerror("Validation Error", "Move-out date is required.")
-            return
-        try:
-            move_out_dt = date.fromisoformat(move_out)
-        except Exception:
-            messagebox.showerror("Validation Error", "Move-out date must be in YYYY-MM-DD format.")
-            return
+            # Show "PAST LEASE" label for expired/terminated leases
+            tk.Label(card, text="PAST LEASE", font=("Arial", 10, "bold"), 
+                     fg="#888", bg=card_bg).pack(side="right", padx=20)
 
-        if move_out_dt < date.today():
-            messagebox.showerror("Validation Error", "Move-out date cannot be before today.")
-            return
-        try:
-            penalty = submit_early_termination_request(self.user_id, move_out, "")
-            messagebox.showinfo("Submitted", f"Request submitted. Penalty: GBP {penalty:.2f}")
-            self._load_data()
-        except Exception as e:
-            messagebox.showerror("Error", str(e))
+    def _terminate_lease(self, lease_id, rent):
+        """Handle lease termination with confirmation"""
+        # Calculate penalty (5% of monthly rent)
+        penalty = round(rent * 0.05, 2)
+        
+        # Show confirmation dialog with details
+        confirm = messagebox.askyesno(
+            "Confirm Lease Termination", 
+            f"Are you sure you want to terminate this lease?\n\n"
+            f"Lease ID: #{lease_id}\n"
+            f"Monthly Rent: £{rent:,.2f}\n"
+            f"Early Termination Penalty (5%): £{penalty:,.2f}\n\n"
+            f"⚠ This action is immediate and cannot be undone."
+        )
+        
+        if confirm:
+            try:
+                # Call database service to terminate the lease
+                from database.lease_service import update_lease_early_termination
+                update_lease_early_termination(lease_id, penalty)
+                
+                # Show success message
+                messagebox.showinfo(
+                    "Success", 
+                    f"Lease #{lease_id} has been terminated.\n"
+                    f"Penalty charged: £{penalty:,.2f}\n\n"
+                    f"Please vacate the property within 30 days."
+                )
+                
+                # Refresh the list to show updated status
+                self._load_data()
+                
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not terminate lease: {e}")
 
 def create_page(parent, user_info):
-    """Create and return lease management page"""
-    # 1. Check if user_info exists and has the expected length
+    """Factory function to create the appropriate lease page based on user role"""
     if not user_info or len(user_info) < 5:
         from main.lease_page import LeaseManagerPage
         return LeaseManagerPage(parent, user_info=None).frame
+    
     role = user_info[4] 
     if role == "Tenant":
         page = TenantLeaseExitPage(parent, user_info=user_info)
         page.frame.on_show = page.on_show
         return page.frame
-    
-    # For Administrators/Staff
-    from main.lease_page import LeaseManagerPage
-    return LeaseManagerPage(parent, user_info=user_info).frame
+    else:
+        from main.lease_page import LeaseManagerPage
+        return LeaseManagerPage(parent, user_info=user_info).frame

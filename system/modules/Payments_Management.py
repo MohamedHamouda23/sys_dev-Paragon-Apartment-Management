@@ -1,4 +1,3 @@
-# Payments_Management.py
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from datetime import datetime
@@ -14,6 +13,7 @@ from database.tenant_portal_service import (
     get_payment_history_series,
     get_late_payment_by_property,
     get_neighbor_comparison,
+    get_tenant_payments_with_balance,
 )
 
 class PaymentsManagementPage:
@@ -144,6 +144,21 @@ class PaymentsManagementPage:
     def refresh_payments(self):
         if self.user_role == "Finance Manager":
             self._all_payments = get_all_payments() or []
+        elif self.user_role == "Tenant":
+            tenant_rows = get_tenant_payments_with_balance(self.user_id) or []
+            self._all_payments = [
+                (
+                    row["property"],
+                    row["due_date"],
+                    row["payment_date"],
+                    row["paid_amount"],
+                    row["agreed_rent"],
+                    row["status"],
+                    row.get("is_late", 0),
+                    row["payment_id"],
+                )
+                for row in tenant_rows
+            ]
         else:
             self._all_payments = get_tenant_payments(self.user_id) or []
         self._render_view()
@@ -197,11 +212,9 @@ class PaymentsManagementPage:
             )
 
         # --- Treeview Configuration ---
-        cols = ("tenant", "unit", "city", "due", "paid_dt", "paid_amt", "agreed", "stat", "late") if is_fm else \
-            ("unit", "due", "paid_dt", "paid_amt", "agreed", "stat", "late")
-        heads = ("Tenant", "Unit", "City", "Due Date", "Paid Date", "Paid", "Agreed", "Status", "Late") if is_fm else \
-                ("Unit", "Due Date", "Paid Date", "Paid", "Agreed", "Status", "Late")
-        widths = (120, 140, 100, 100, 100, 80, 80, 120, 60) if is_fm else (180, 110, 110, 90, 90, 130, 70)
+        cols = ("tenant", "unit", "city", "due", "paid_dt", "paid_amt", "agreed", "stat", "late") if is_fm else             ("unit", "due", "paid_dt", "paid_amt", "agreed", "stat", "late")
+        heads = ("Tenant", "Unit", "City", "Due Date", "Paid Date", "Paid", "Agreed", "Status", "Late") if is_fm else                 ("Unit", "Due Date", "Paid Date", "Paid", "Agreed", "Status", "Late")
+        widths = (120, 140, 100, 100, 100, 80, 80, 120, 60) if is_fm else (220, 110, 110, 90, 90, 130, 70)
 
         table_wrap = tk.Frame(self.content_frame, bg="white", bd=2, relief="groove")
         table_wrap.pack(fill="both", expand=True, pady=(0, 12))
@@ -247,62 +260,81 @@ class PaymentsManagementPage:
         details = get_payment_details(p_id)
         if not details: return
         self._render_lifecycle_detail_panel(p_id, details)
-
+        
     def _render_lifecycle_detail_panel(self, p_id, details):
-        clear_frame(self.detail_wrap)
-        container = tk.Frame(self.detail_wrap, bg="#f0f2f5")
-        container.pack(fill="both", expand=True, padx=15, pady=10)
+            clear_frame(self.detail_wrap)
+            container = tk.Frame(self.detail_wrap, bg="#f0f2f5")
+            container.pack(fill="both", expand=True, padx=15, pady=10)
 
-        header = tk.Frame(container, bg="white", bd=1, relief="solid")
-        header.pack(fill="x", pady=(0, 10))
-        
-        tk.Label(header, text=f"TRANSACTION MANAGEMENT: #{p_id}", 
-                 font=("Arial", 12, "bold"), bg="white", fg="#1f3b63").pack(side="left", padx=15, pady=10)
-        
-        status_text = str(details.get('status', 'Pending')).upper()
-        badge_bg = "#27ae60" if "PAID" in status_text else "#e67e22"
-        tk.Label(header, text=status_text, bg=badge_bg, fg="white", 
-                 font=("Arial", 8, "bold"), padx=12, pady=2).pack(side="right", padx=15)
+            # --- Header with Status Badge ---
+            header = tk.Frame(container, bg="white", bd=1, relief="solid")
+            header.pack(fill="x", pady=(0, 10))
+            
+            tk.Label(header, text=f"TRANSACTION MANAGEMENT: #{p_id}", 
+                    font=("Arial", 12, "bold"), bg="white", fg="#1f3b63").pack(side="left", padx=15, pady=10)
+            
+            status_text = str(details.get('status', 'Pending')).upper()
+            # Green for Paid, Orange for Unpaid/Pending
+            badge_bg = "#27ae60" if "PAID" in status_text else "#e67e22" 
+            tk.Label(header, text=status_text, bg=badge_bg, fg="white", 
+                    font=("Arial", 8, "bold"), padx=12, pady=2).pack(side="right", padx=15)
 
-        cols_frame = tk.Frame(container, bg="#f0f2f5")
-        cols_frame.pack(fill="x")
+            cols_frame = tk.Frame(container, bg="#f0f2f5")
+            cols_frame.pack(fill="x")
 
-        # Calculate Difference
-        diff = float(details.get('agreed_rent', 0)) - float(details.get('paid_amount', 0))
+            # --- Financial Calculation ---
+            # This handles both "Unpaid" (full amount) and "Partially Paid" (remainder)
+            agreed = float(details.get('agreed_rent', 0))
+            paid = float(details.get('paid_amount', 0))
+            diff = max(agreed - paid, 0)
 
-        sections = [
-            ("Occupant Info", [
-                ("Tenant", details.get('tenant_name')),
-                ("Property", details.get('property')),
-                ("Location", details.get('city', 'N/A'))
-            ]),
-            ("Billing Period", [
-                ("Due Date", details.get('due_date')),
-                ("Paid Date", details.get('payment_date')),
-                ("Late status", details.get('is_late', 'No'))
-            ]),
-            ("Financial Breakdown", [
-                ("Expected", f"£{details.get('agreed_rent', 0):.2f}"),
-                ("Actual Paid", f"£{details.get('paid_amount', 0):.2f}"),
-                ("Difference", f"£{diff:.2f}")
-            ])
-        ]
+            sections = [
+                ("Occupant Info", [
+                    ("Tenant", details.get('tenant_name')),
+                    ("Property", details.get('property')),
+                    ("Location", details.get('city', 'N/A'))
+                ]),
+                ("Billing Period", [
+                    ("Due Date", details.get('due_date')),
+                    ("Paid Date", details.get('payment_date')),
+                    ("Late status", details.get('is_late', 'No'))
+                ]),
+                ("Financial Breakdown", [
+                    ("Expected", f"£{agreed:.2f}"),
+                    ("Actual Paid", f"£{paid:.2f}"),
+                    ("Outstanding", f"£{diff:.2f}")
+                ])
+            ]
 
-        for title, items in sections:
-            card = tk.Frame(cols_frame, bg="white", bd=1, relief="solid")
-            card.pack(side="left", fill="both", expand=True, padx=2)
-            tk.Label(card, text=title, font=("Arial", 10, "bold"), bg="white", fg="#7f8c8d").pack(anchor="w", padx=10, pady=(8, 2))
-            for key, val in items:
-                f = tk.Frame(card, bg="white")
-                f.pack(fill="x", padx=10, pady=1)
-                tk.Label(f, text=f"{key}:", font=("Arial", 9), bg="white", fg="#2c3e50").pack(side="left")
-                tk.Label(f, text=str(val), font=("Arial", 9, "bold"), bg="white", fg="#1f3b63").pack(side="right")
+            # Render Information Cards
+            for title, items in sections:
+                card = tk.Frame(cols_frame, bg="white", bd=1, relief="solid")
+                card.pack(side="left", fill="both", expand=True, padx=2)
+                tk.Label(card, text=title, font=("Arial", 10, "bold"), bg="white", fg="#7f8c8d").pack(anchor="w", padx=10, pady=(8, 2))
+                for key, val in items:
+                    f = tk.Frame(card, bg="white")
+                    f.pack(fill="x", padx=10, pady=1)
+                    tk.Label(f, text=f"{key}:", font=("Arial", 9), bg="white", fg="#2c3e50").pack(side="left")
+                    tk.Label(f, text=str(val), font=("Arial", 9, "bold"), bg="white", fg="#1f3b63").pack(side="right")
 
-        footer = tk.Frame(container, bg="#f0f2f5")
-        footer.pack(fill="x", pady=(10, 0))
-        
-        create_button(footer, "Generate PDF Invoice", 160, 35, "#1f3b63", "white", 
-                      lambda: self._download_invoice(details)).pack(side="right")
+            # --- Footer Actions ---
+            footer = tk.Frame(container, bg="#f0f2f5")
+            footer.pack(fill="x", pady=(10, 0))
+            
+            # 1. Invoice button (Always visible)
+            create_button(footer, "Generate PDF Invoice", 160, 35, "#1f3b63", "white", 
+                        lambda: self._download_invoice(details)).pack(side="right")
+
+            # 2. Pay Button: Only appears if user is Tenant AND status is not fully paid (diff > 0)
+            if self.user_role == "Tenant" and diff > 0:
+                create_button(footer, "Pay Remaining Balance", 180, 35, "#28a745", "white", 
+                            lambda: PaymentWindow(
+                                self.parent.winfo_toplevel(),
+                                self.user_id, 
+                                p_id, 
+                                diff, 
+                                self.refresh_payments
+                            )).pack(side="right", padx=10)
 
     def _handle_filter_change(self, event, filter_type):
         val = event.widget.get()

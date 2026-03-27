@@ -212,9 +212,7 @@ CREATE TABLE Report
 
 );
 
--- ========================================================
--- 1. LOOKUP DATA
--- ========================================================
+
 INSERT INTO Role (role_name) VALUES 
 ('Front-desk Staff'), ('Finance Manager'), ('Maintenance Staff'), 
 ('Administrators'), ('Manager'), ('Tenant');
@@ -222,83 +220,104 @@ INSERT INTO Role (role_name) VALUES
 INSERT INTO Location (city_name) VALUES 
 ('Bristol'), ('Cardiff'), ('London'), ('Manchester');
 
--- ========================================================
--- 2. USERS & ACCESS (1:1 BALANCE - TOTAL 20 USERS)
--- ========================================================
 INSERT INTO User (user_id, city_id, first_name, surname) VALUES
 (1, 1, 'Ahmed', 'Ali'), (2, 2, 'Sophie', 'Taylor'), (3, 3, 'Mohamed', 'Ibrahim'),
 (4, 4, 'Lucas', 'Martin'), (5, 1, 'Zainab', 'Hassan'), (6, 2, 'Oliver', 'Jones'),
 (7, 3, 'Aisha', 'Khan'), (8, 4, 'Noah', 'Clark'), 
-(9, 1, 'System', 'Admin'),   -- Bristol Admin (1234)
-(10, 2, 'Area', 'Manager'),  -- Manager (123)
-(11, 3, 'Test', 'Tenant'),   -- Tenant (12)
+(9, 1, 'System', 'Admin'), (10, 2, 'Area', 'Manager'), (11, 1, 'Test', 'Tenant'),
 (12, 1, 'Emily', 'Cook'), (13, 1, 'Jack', 'Morgan'), (14, 1, 'Mark', 'Spencer'),
 (15, 2, 'David', 'Wilson'), (16, 2, 'Lily', 'Davies'), (17, 3, 'Maya', 'Patel'),
-(18, 4, 'Sarah', 'Jenkins'), (19, 4, 'William', 'Scott'), (20, 1, 'Liam', 'Davies');
+(18, 4, 'Sarah', 'Jenkins'), (19, 4, 'William', 'Scott'), (20, 1, 'Liam', 'Davies'),
+(21, 3, 'James', 'Sterling'), (22, 3, 'Elena', 'Ricci'), (23, 4, 'Marcus', 'Brown'), 
+(24, 1, 'Chloe', 'Wilder'), (25, 2, 'Dan', 'Evans');
 
 INSERT INTO User_Access (user_id, password_hash, role_id, email) VALUES
 (1, 'hash1', 6, 'ahmed@tenant.com'), (2, 'hash2', 6, 'sophie@tenant.com'),
 (3, 'hash3', 6, 'mohamed@tenant.com'), (4, 'hash4', 5, 'lucas@manager.com'),
 (5, 'hash5', 6, 'zainab@tenant.com'), (6, 'hash6', 1, 'oliver@frontdesk.com'),
 (7, 'hash7', 3, 'aisha@maintenance.com'), (8, 'hash8', 2, 'noah@finance.com'),
-(9, '1234', 4, '1234'),      -- Admin Creds: 1234 / 1234
-(10, '123', 5, '123'),       -- Manager Creds: 123 / 123
-(11, '12', 6, '12'),         -- Tenant Creds: 12 / 12
+(9, '1234', 4, '1234'), (10, '123', 5, '123'), (11, '12', 6, '12'),
 (12, 'h12', 6, 'emily@t.com'), (13, 'h13', 3, 'jack@m.com'),
 (14, 'h14', 6, 'mark@t.com'), (15, 'h15', 6, 'david@t.com'),
 (16, 'h16', 1, 'lily@f.com'), (17, 'h17', 6, 'maya@t.com'),
 (18, 'h18', 6, 'sarah@t.com'), (19, 'h19', 3, 'will@m.com'),
-(20, 'h20', 6, 'liam@t.com');
+(20, 'h20', 6, 'liam@t.com'), (21, 'hash21', 6, 'james@london.com'), 
+(22, 'hash22', 1, 'elena@frontdesk.com'), (23, 'hash23', 6, 'marcus@manc.com'), 
+(24, 'hash24', 6, 'chloe@bristol.com'), (25, 'hash25', 3, 'dan@maintenance.com');
 
--- ========================================================
--- 3. BUILDINGS & APARTMENTS (HUGE EXPANSION)
--- ========================================================
+
 INSERT INTO Buildings (building_id, city_id, street, postcode) VALUES
 (1, 1, '10 City Road', 'BS1 1AA'), (2, 2, '5 Atlantic Wharf', 'CF10 4XY'),
 (3, 3, '1 London Bridge', 'SE1 9SG'), (4, 4, '88 Oxford Rd', 'M13 9PL'),
-(5, 1, '22 Temple Meads', 'BS1 6QS'), (6, 1, '45 Clifton Village', 'BS8 4EB');
+(5, 1, '22 Temple Meads', 'BS1 6QS'), (6, 1, '45 Clifton Village', 'BS8 4EB'),
+(7, 3, '55 Canary Wharf', 'E14 5AB');
 
 INSERT INTO Apartments (apartment_id, city_id, building_id, num_rooms, type, occupancy_status) VALUES
 (1, 1, 1, 1, 'Studio', 'Occupied'), (2, 2, 2, 2, 'Apartment', 'Occupied'),
 (3, 3, 3, 4, 'Penthouse', 'Occupied'), (4, 4, 4, 1, 'Studio', 'Vacant'),
 (5, 1, 5, 2, 'Apartment', 'Occupied'), (6, 1, 5, 1, 'Studio', 'Vacant'),
 (7, 1, 6, 3, 'Apartment', 'Occupied'), (8, 1, 6, 1, 'Studio', 'Occupied'),
-(9, 1, 1, 2, 'Apartment', 'Vacant'); -- Vacant for Bristol Admin testing
+(9, 1, 1, 2, 'Apartment', 'Vacant'), (10, 3, 7, 2, 'Apartment', 'Vacant'),
+(11, 4, 4, 2, 'Apartment', 'Occupied'), (12, 3, 3, 1, 'Studio', 'Occupied');
 
--- ========================================================
--- 4. TENANTS & LEASES (BALANCED FOR BRISTOL ADMIN)
--- ========================================================
 INSERT INTO Tenant (tenant_id, user_id, ni_number, telephone, occupation, apartment_type, lease_period) VALUES
 (1, 1, 'NI101A', 700111, 'Student', 'Studio', '6 months'),
 (2, 2, 'NI202B', 700222, 'Teacher', 'Apartment', '12 months'),
 (3, 11, 'NI1212T', 71212, 'Tester', 'Penthouse', '24 months'),
 (4, 12, 'NI444D', 70044, 'Designer', 'Apartment', '12 months'),
 (5, 14, 'NI555E', 70055, 'Writer', 'Apartment', '6 months'),
-(6, 20, 'NI666F', 70066, 'Solicitor', 'Studio', '12 months');
+(6, 20, 'NI666F', 70066, 'Solicitor', 'Studio', '12 months'),
+(7, 21, 'NI777G', 700777, 'Architect', 'Penthouse', '12 months'),
+(8, 23, 'NI888H', 700888, 'Engineer', 'Apartment', '12 months'),
+(9, 24, 'NI999I', 700999, 'Nurse', 'Apartment', '6 months');
 
 INSERT INTO Lease (lease_id, apartment_id, tenant_id, start_date, end_date, deposit, Agreed_rent) VALUES
 (1, 1, 1, '2026-01-01', '2026-07-01', 800, 900),
 (2, 2, 2, '2026-02-01', '2027-02-01', 1200, 1300),
-(3, 3, 3, '2026-03-01', '2028-03-01', 3000, 2500),
-(4, 5, 4, '2026-04-01', '2027-04-01', 1100, 1100), -- Bristol
-(5, 7, 5, '2026-05-01', '2026-11-01', 900, 950),   -- Bristol
-(6, 8, 6, '2026-03-15', '2027-03-15', 850, 850);   -- Bristol
+(3, 7, 3, '2026-03-01', '2028-03-01', 3000, 2500),
+(4, 5, 4, '2026-04-01', '2027-04-01', 1100, 1100),
+(5, 7, 5, '2026-05-01', '2026-11-01', 900, 950),
+(6, 8, 6, '2026-03-15', '2027-03-15', 850, 850),
+(7, 12, 7, '2026-06-01', '2027-06-01', 3500, 3000),
+(8, 11, 8, '2026-01-10', '2027-01-10', 1000, 1050),
+(9, 5, 9, '2026-02-15', '2026-08-15', 1100, 1100),
+(10, 6, 3, '2025-01-01', '2025-07-01', 600, 700),
+(11, 9, 3, '2025-02-15', '2025-08-15', 900, 950),
+(12, 1, 3, '2025-03-01', '2025-09-01', 800, 850),
+(13, 5, 3, '2025-04-01', '2025-10-01', 1000, 1100),
+(14, 1, 3, '2024-01-01', '2024-06-01', 800, 850),
+(15, 2, 3, '2023-01-01', '2023-05-01', 1000, 1000);
 
--- ========================================================
--- 5. PAYMENTS & MAINTENANCE
--- ========================================================
+
+
+-- Every Lease ID (1 through 15) gets exactly ONE payment record
 INSERT INTO Payment (lease_id, due_date, payment_date, amount, Is_late) VALUES
+(1, '2026-01-01', '2026-01-01', 900, 0),
+(2, '2026-02-01', '2026-02-01', 1300, 0),
+(3, '2026-03-01', '2026-03-01', 2500, 0),
 (4, '2026-04-01', '2026-04-01', 1100, 0),
-(6, '2026-03-15', '2026-03-20', 850, 1),
-(3, '2026-04-01', NULL, 2500, 1);
+(5, '2026-05-01', '2026-05-01', 950, 0),
+(6, '2026-03-15', '2026-03-15', 850, 0),
+(7, '2026-06-01', '2026-06-01', 3000, 0),
+(8, '2026-01-10', '2026-01-10', 1050, 0),
+(9, '2026-02-15', '2026-02-15', 1100, 0),
+(10, '2025-01-01', '2025-01-01', 700, 0),
+(11, '2025-02-15', '2025-02-15', 950, 0),
+(12, '2025-03-01', '2025-03-01', 850, 0),
+(13, '2025-04-01', '2025-04-01', 1100, 0),
+(14, '2024-01-01', NULL, 850, 0),
+(15, '2023-01-01', NULL, 1000, 0);
+
 
 INSERT INTO Maintenance_Request (request_id, apartment_id, tenant_id, issue, Maintenance_status, priority) VALUES
 (1, 1, 1, 'Leaking Pipe', 'In Progress', 'High'),
-(2, 5, 4, 'Broken Window', 'Open', 'Medium');
+(2, 5, 4, 'Broken Window', 'Open', 'Medium'),
+(3, 7, 3, 'Heating Failure', 'Open', 'High');
 
 INSERT INTO Employee (employee_id, request_id, Full_name, salary, hire_date) VALUES
 (1, 1, 'John Repair', 35000, '2024-05-10'),
-(2, 2, 'Jack Bristol', 32000, '2025-01-15');
+(2, 2, 'Jack Bristol', 32000, '2025-01-15'),
+(3, 3, 'Sarah Bristol', 33000, '2025-02-20');
 
 INSERT INTO Maintenance_Assignment (request_id, employee_id, assigned_date, is_current) VALUES
-(1, 1, '2026-03-21', 1), (2, 2, '2026-04-11', 1);
+(1, 1, '2026-03-21', 1), (2, 2, '2026-04-11', 1), (3, 3, '2026-06-02', 1);
