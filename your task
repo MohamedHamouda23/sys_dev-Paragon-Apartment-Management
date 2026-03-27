@@ -1,12 +1,8 @@
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
 Lease Management Notes(Leyla)
-Keep the design of Add and Remove leases, but use the same layout/design as the user page for tracking leases.
-Lease operations (Add, Remove) should only display data related to the user’s assigned city, including:
-Tenant
-Apartment
-City
-Lease details
+
+role based access:
 
 Administrators:
 Can see all leases only in their assigned city.
