@@ -173,32 +173,35 @@ def create_side_navbar(parent, button_text, user_info, button_command=None):
 
     collapsed = False
 
-    def toggle_navbar():
-        nonlocal collapsed
-        collapsed = not collapsed
+    def _apply_sidebar_state():
         frame.configure(width=50 if collapsed else sidebar_width)
-        info_widgets = [user_img, user_name, user_email]
+
         if collapsed:
-            for w in info_widgets: w.pack_forget()
-            for btn in nav_buttons: btn.pack_forget()
+            info_frame.pack_forget()
+            for btn in nav_buttons:
+                btn.pack_forget()
             logout_btn.pack_forget()
         else:
-            user_img.pack(side="top", pady=(0, 5))
-            for w in [user_name, user_email]: w.pack(side="top")
-            for btn in nav_buttons: btn.pack(fill="x", expand=True, pady=10)
+            info_frame.pack(side="top", fill="x", pady=(20, 10))
+            for i, btn in enumerate(nav_buttons):
+                btn.pack(fill="x", expand=True, pady=(5 if i > 0 else 0))
             logout_btn.pack(side="top", fill="x", pady=(0, 2), before=toggle_btn)
+
         toggle_btn.configure(text="→" if collapsed else "←")
         frame.update_idletasks()
 
-    # Place nav buttons at the top
-    for btn in nav_buttons:
-        btn.pack(fill="x", expand=True, pady=10)
+    def toggle_navbar():
+        nonlocal collapsed
+        collapsed = not collapsed
+        _apply_sidebar_state()
 
     # Place footer buttons with deterministic order: logout above collapse.
     toggle_btn = tk.Button(footer_frame, text="←", command=toggle_navbar,
                            bg=NAV_BTN, fg=BTN_FG, bd=0, font=FONT_BTN)
     toggle_btn.pack(side="top", fill="x", pady=(0, 0))
     logout_btn.pack(side="top", fill="x", pady=(0, 2), before=toggle_btn)
+
+    _apply_sidebar_state()
 
     return frame
 

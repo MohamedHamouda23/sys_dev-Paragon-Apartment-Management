@@ -212,86 +212,93 @@ CREATE TABLE Report
 
 );
 
-
-
-
-
-
--- ==========================================
--- 1. LEVEL 1: INDEPENDENT TABLES
--- ==========================================
-INSERT INTO Role (role_name) VALUES
+-- ========================================================
+-- 1. LOOKUP DATA
+-- ========================================================
+INSERT INTO Role (role_name) VALUES 
 ('Front-desk Staff'), ('Finance Manager'), ('Maintenance Staff'), 
 ('Administrators'), ('Manager'), ('Tenant');
 
--- ID 1: Bristol, 2: Cardiff, 3: London, 4: Manchester
-INSERT INTO Location (city_name) VALUES
+INSERT INTO Location (city_name) VALUES 
 ('Bristol'), ('Cardiff'), ('London'), ('Manchester');
 
--- ==========================================
--- 2. LEVEL 2: BUILDINGS & USERS
--- ==========================================
-INSERT INTO Buildings (city_id, street, postcode) VALUES
-(1, '123 Bristol St', 'BS1 4ST'),
-(2, '456 Cardiff Rd', 'CF10 1EP'),
-(3, '789 London Ave', 'E1 6AN'),
-(4, '321 Manchester Blvd', 'M1 2AB');
+-- ========================================================
+-- 2. USERS & ACCESS (1:1 BALANCE - TOTAL 20 USERS)
+-- ========================================================
+INSERT INTO User (user_id, city_id, first_name, surname) VALUES
+(1, 1, 'Ahmed', 'Ali'), (2, 2, 'Sophie', 'Taylor'), (3, 3, 'Mohamed', 'Ibrahim'),
+(4, 4, 'Lucas', 'Martin'), (5, 1, 'Zainab', 'Hassan'), (6, 2, 'Oliver', 'Jones'),
+(7, 3, 'Aisha', 'Khan'), (8, 4, 'Noah', 'Clark'), 
+(9, 1, 'System', 'Admin'),   -- Bristol Admin (1234)
+(10, 2, 'Area', 'Manager'),  -- Manager (123)
+(11, 3, 'Test', 'Tenant'),   -- Tenant (12)
+(12, 1, 'Emily', 'Cook'), (13, 1, 'Jack', 'Morgan'), (14, 1, 'Mark', 'Spencer'),
+(15, 2, 'David', 'Wilson'), (16, 2, 'Lily', 'Davies'), (17, 3, 'Maya', 'Patel'),
+(18, 4, 'Sarah', 'Jenkins'), (19, 4, 'William', 'Scott'), (20, 1, 'Liam', 'Davies');
 
-INSERT INTO User (city_id, first_name, surname) VALUES
-(1, 'mohamed', 'hamouda'), -- User ID 1
-(1, 'ava', 'abtin'),       -- User ID 2
-(1, 'leyla', 'Ahmed'),     -- User ID 3
-(1, 'erin', 'williams'),   -- User ID 4
-(1, 'tenant', 'test'),     -- User ID 5
-(1, 'chiko', 'momchil'),   -- User ID 6
-(1, 'test', 'test'),       -- User ID 7
-(1, 'Bristol', 'Admin'),   -- User ID 8
-(2, 'Cardiff', 'Admin'),   -- User ID 9
-(3, 'London', 'Admin'),    -- User ID 10
-(4, 'Manchester', 'Admin'),-- User ID 11
-(4, 'Omar', 'Nasser');      -- User ID 12
-
--- ==========================================
--- 3. LEVEL 3: USER ACCESS (Old Emails/Passwords)
--- ==========================================
 INSERT INTO User_Access (user_id, password_hash, role_id, email) VALUES
-(1, 'hash_frontdesk123', 1, 'mohamed@company.com'),
-(2, 'hash_finance123', 2, 'ava@company.com'),
-(3, 'hash_maint123', 3, 'leyla@company.com'),
-(4, 'hash_admin123', 4, 'erin@company.com'),
-(5, '1234', 5, '1234'), 
-(6, '12', 6, '12'),
-(7, '123', 4, '123'),
-(8, 'admin123', 4, 'bristol_admin@company.com'),
-(9, 'admin123', 4, 'cardiff_admin@company.com'),
-(10, 'admin123', 4, 'london_admin@company.com'),
-(11, 'admin123', 4, 'manchester_admin@company.com'),
-(12, 'tenant123', 6, 'omar@tenant.com');
+(1, 'hash1', 6, 'ahmed@tenant.com'), (2, 'hash2', 6, 'sophie@tenant.com'),
+(3, 'hash3', 6, 'mohamed@tenant.com'), (4, 'hash4', 5, 'lucas@manager.com'),
+(5, 'hash5', 6, 'zainab@tenant.com'), (6, 'hash6', 1, 'oliver@frontdesk.com'),
+(7, 'hash7', 3, 'aisha@maintenance.com'), (8, 'hash8', 2, 'noah@finance.com'),
+(9, '1234', 4, '1234'),      -- Admin Creds: 1234 / 1234
+(10, '123', 5, '123'),       -- Manager Creds: 123 / 123
+(11, '12', 6, '12'),         -- Tenant Creds: 12 / 12
+(12, 'h12', 6, 'emily@t.com'), (13, 'h13', 3, 'jack@m.com'),
+(14, 'h14', 6, 'mark@t.com'), (15, 'h15', 6, 'david@t.com'),
+(16, 'h16', 1, 'lily@f.com'), (17, 'h17', 6, 'maya@t.com'),
+(18, 'h18', 6, 'sarah@t.com'), (19, 'h19', 3, 'will@m.com'),
+(20, 'h20', 6, 'liam@t.com');
 
--- ==========================================
--- 4. LEVEL 4: TENANTS & APARTMENTS
--- ==========================================
--- Tenant 1 is user 6 (Chiko), Tenant 2 is user 12 (Omar)
-INSERT INTO Tenant (user_id, ni_number, telephone, occupation, apartment_type, lease_period) VALUES 
-(6, 'NI123456A', 712345678, 'Student', 'Studio', '6 months'),
-(12, 'NI999999M', 799999999, 'Engineer', 'Apartment', '12 months');
+-- ========================================================
+-- 3. BUILDINGS & APARTMENTS (HUGE EXPANSION)
+-- ========================================================
+INSERT INTO Buildings (building_id, city_id, street, postcode) VALUES
+(1, 1, '10 City Road', 'BS1 1AA'), (2, 2, '5 Atlantic Wharf', 'CF10 4XY'),
+(3, 3, '1 London Bridge', 'SE1 9SG'), (4, 4, '88 Oxford Rd', 'M13 9PL'),
+(5, 1, '22 Temple Meads', 'BS1 6QS'), (6, 1, '45 Clifton Village', 'BS8 4EB');
 
-INSERT INTO Apartments (city_id, building_id, num_rooms, type, occupancy_status) VALUES
-(1, 1, 1, 'Studio', 'Occupied'),    -- Apt 1
-(2, 2, 2, 'Apartment', 'Occupied'), -- Apt 2
-(3, 3, 4, 'Penthouse', 'Vacant'),   -- Apt 3
-(4, 4, 2, 'Apartment', 'Occupied'); -- Apt 4
+INSERT INTO Apartments (apartment_id, city_id, building_id, num_rooms, type, occupancy_status) VALUES
+(1, 1, 1, 1, 'Studio', 'Occupied'), (2, 2, 2, 2, 'Apartment', 'Occupied'),
+(3, 3, 3, 4, 'Penthouse', 'Occupied'), (4, 4, 4, 1, 'Studio', 'Vacant'),
+(5, 1, 5, 2, 'Apartment', 'Occupied'), (6, 1, 5, 1, 'Studio', 'Vacant'),
+(7, 1, 6, 3, 'Apartment', 'Occupied'), (8, 1, 6, 1, 'Studio', 'Occupied'),
+(9, 1, 1, 2, 'Apartment', 'Vacant'); -- Vacant for Bristol Admin testing
 
--- ==========================================
--- 5. LEVEL 5: LEASES (Agreed Rent Examples)
--- ==========================================
-INSERT INTO Lease (apartment_id, tenant_id, start_date, end_date, deposit, early_termination_fee, Agreed_rent) VALUES
-(1, 1, '2026-01-01', '2026-12-31', 1000, 500, 1200), -- Lease 1
-(4, 2, '2026-01-01', '2026-12-31', 1000, 500, 1100); -- Lease 2
+-- ========================================================
+-- 4. TENANTS & LEASES (BALANCED FOR BRISTOL ADMIN)
+-- ========================================================
+INSERT INTO Tenant (tenant_id, user_id, ni_number, telephone, occupation, apartment_type, lease_period) VALUES
+(1, 1, 'NI101A', 700111, 'Student', 'Studio', '6 months'),
+(2, 2, 'NI202B', 700222, 'Teacher', 'Apartment', '12 months'),
+(3, 11, 'NI1212T', 71212, 'Tester', 'Penthouse', '24 months'),
+(4, 12, 'NI444D', 70044, 'Designer', 'Apartment', '12 months'),
+(5, 14, 'NI555E', 70055, 'Writer', 'Apartment', '6 months'),
+(6, 20, 'NI666F', 70066, 'Solicitor', 'Studio', '12 months');
 
--- ==========================================
--- 6. LEVEL 6: PAYMENTS (Test Cases)
--- ==========================================
+INSERT INTO Lease (lease_id, apartment_id, tenant_id, start_date, end_date, deposit, Agreed_rent) VALUES
+(1, 1, 1, '2026-01-01', '2026-07-01', 800, 900),
+(2, 2, 2, '2026-02-01', '2027-02-01', 1200, 1300),
+(3, 3, 3, '2026-03-01', '2028-03-01', 3000, 2500),
+(4, 5, 4, '2026-04-01', '2027-04-01', 1100, 1100), -- Bristol
+(5, 7, 5, '2026-05-01', '2026-11-01', 900, 950),   -- Bristol
+(6, 8, 6, '2026-03-15', '2027-03-15', 850, 850);   -- Bristol
+
+-- ========================================================
+-- 5. PAYMENTS & MAINTENANCE
+-- ========================================================
 INSERT INTO Payment (lease_id, due_date, payment_date, amount, Is_late) VALUES
-(1, '2026-04-01', '2026-04-01', 1200, 0), -- FULLY PAID
-(2, '2026-05-01', '2026-05-01', 500, 0);  -- PARTIAL (Agreed 1100, Paid 500)
+(4, '2026-04-01', '2026-04-01', 1100, 0),
+(6, '2026-03-15', '2026-03-20', 850, 1),
+(3, '2026-04-01', NULL, 2500, 1);
+
+INSERT INTO Maintenance_Request (request_id, apartment_id, tenant_id, issue, Maintenance_status, priority) VALUES
+(1, 1, 1, 'Leaking Pipe', 'In Progress', 'High'),
+(2, 5, 4, 'Broken Window', 'Open', 'Medium');
+
+INSERT INTO Employee (employee_id, request_id, Full_name, salary, hire_date) VALUES
+(1, 1, 'John Repair', 35000, '2024-05-10'),
+(2, 2, 'Jack Bristol', 32000, '2025-01-15');
+
+INSERT INTO Maintenance_Assignment (request_id, employee_id, assigned_date, is_current) VALUES
+(1, 1, '2026-03-21', 1), (2, 2, '2026-04-11', 1);

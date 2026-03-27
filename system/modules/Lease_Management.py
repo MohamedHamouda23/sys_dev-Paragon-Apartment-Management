@@ -4,8 +4,32 @@
 # ============================================================================
 
 import tkinter as tk
+from tkinter import ttk
 from tkinter import messagebox
 from datetime import date, timedelta
+
+try:
+    from tkcalendar import DateEntry
+    HAS_DATE_ENTRY = True
+except Exception:
+    HAS_DATE_ENTRY = False
+    DateEntry = None
+
+
+def _resolve_date_entry():
+    """Resolve DateEntry lazily so it can work after package installation."""
+    global HAS_DATE_ENTRY, DateEntry
+    if HAS_DATE_ENTRY and DateEntry is not None:
+        return DateEntry
+    try:
+        from tkcalendar import DateEntry as _DateEntry
+        HAS_DATE_ENTRY = True
+        DateEntry = _DateEntry
+        return DateEntry
+    except Exception:
+        HAS_DATE_ENTRY = False
+        DateEntry = None
+        return None
 
 from main.helpers import (
     create_button, clear_frame,
@@ -18,6 +42,10 @@ from database.lease_service import (
     create_lease, build_tenant_map,
 )
 from database.property_service import build_apartment_map, fetch_available_apartments
+from database.tenant_portal_service import (
+    get_tenant_profile,
+    submit_early_termination_request,
+)
 
 from validations import validate_lease_selection, validate_lease_details
 
@@ -25,27 +53,22 @@ from validations import validate_lease_selection, validate_lease_details
 # ============================================================================
 # ADD LEASE STEPPER CLASS
 # ============================================================================
-
 class AddLeaseStepper:
-    """Three-step wizard for creating lease agreements"""
-
-    def __init__(self, parent, refresh_callback):
-        # Store parent and refresh callback
+    def __init__(self, parent, refresh_callback, city_id=None): 
         self.box_frame        = parent
         self.refresh_callback = refresh_callback
+        self.city_id          = city_id 
 
-        # Load tenants and available apartments
-        tenants    = fetch_tenants()
-        apartments = fetch_available_apartments()
+        # FIX: Pass city_id to both fetch functions
+        tenants    = fetch_tenants(city_id=self.city_id)
+        apartments = fetch_available_apartments(city_id=self.city_id)
 
-        # Build lookup dictionaries
-        self.tenant_map   = build_tenant_map(tenants)
+        # Rest of the code remains the same...
+        self.tenant_map   = {t[1]: t[0] for t in tenants} # name: id
         self.tenant_names = list(self.tenant_map.keys())
-
         self.apt_map      = build_apartment_map(apartments)
         self.apt_displays = list(self.apt_map.keys())
 
-        # Start with tenant selection
         self.step_tenant()
 
     # ========================================================================
@@ -169,9 +192,7 @@ class AddLeaseStepper:
         def submit():
             try:
                 # Validate selections
-                if not tenant_name or not apt_display:
-                    messagebox.showerror("Error", "Please select a tenant and apartment.")
-                    return
+                validate_lease_selection(tenant_name, apt_display)
                 
                 # Validate details
                 validate_lease_details(
@@ -379,7 +400,145 @@ class RemoveLeaseStepper:
 # PAGE FACTORY
 # ============================================================================
 
-def create_page(parent, user_info=None):
+class TenantLeaseExitPage:
+    def __init__(self, parent, user_info):
+        self.user_info = user_info
+        self.user_id = user_info[0] if user_info else None
+        self.frame = tk.Frame(parent, bg="#c9e4c4")
+        self._build_layout()
+        self._load_data()
+
+    def _build_layout(self):
+        wrap = tk.Frame(self.frame, bg="#c9e4c4")
+        wrap.pack(fill="both", expand=True, padx=20, pady=20)
+
+        # Keep cards full-width while centering the whole section vertically.
+        top_spacer = tk.Frame(wrap, bg="#c9e4c4")
+        top_spacer.pack(fill="both", expand=True)
+
+        content = tk.Frame(wrap, bg="#c9e4c4")
+        content.pack(fill="x")
+
+        info = tk.Frame(content, bg="white", bd=2, relief="groove")
+        info.pack(fill="x", pady=(0, 10))
+        tk.Label(info, text="Lease", bg="white", fg="#1f3b63", font=("Arial", 15, "bold")).pack(
+            anchor="w", padx=12, pady=(10, 8)
+        )
+
+        self.lease_labels = {}
+        for key in ["Tenant", "Location", "Type", "Monthly Rent", "Lease End"]:
+            row = tk.Frame(info, bg="white")
+            row.pack(fill="x", padx=12, pady=2)
+            tk.Label(row, text=f"{key}:", bg="white", fg="#4c5d73", width=14, anchor="w", font=("Arial", 10, "bold")).pack(side="left")
+            lbl = tk.Label(row, text="-", bg="white", fg="#1f3b63", font=("Arial", 10))
+            lbl.pack(side="left")
+            self.lease_labels[key] = lbl
+
+        form = tk.Frame(content, bg="white", bd=2, relief="groove")
+        form.pack(fill="x", pady=(0, 0))
+        tk.Label(form, text="Request Early Termination", bg="white", fg="#1f3b63", font=("Arial", 12, "bold")).grid(
+            row=0, column=0, columnspan=4, sticky="w", padx=10, pady=(8, 8)
+        )
+        tk.Label(form, text="Move-out Date", bg="white", font=("Arial", 10, "bold")).grid(
+            row=1, column=0, sticky="w", padx=10, pady=4
+        )
+        date_entry_cls = _resolve_date_entry()
+        if date_entry_cls is not None:
+            self.move_out_entry = date_entry_cls(
+                form,
+                width=16,
+                date_pattern="yyyy-mm-dd",
+                mindate=date.today(),
+            )
+        else:
+            self.move_out_entry = tk.Entry(form, width=20)
+            self.move_out_entry.insert(0, "YYYY-MM-DD")
+        self.move_out_entry.grid(row=1, column=1, sticky="w", padx=6, pady=4)
+
+        tk.Label(form, text="Move-out Time", bg="white", font=("Arial", 10, "bold")).grid(
+            row=1, column=2, sticky="w", padx=10, pady=4
+        )
+        self.move_out_time = ttk.Combobox(
+            form,
+            values=["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"],
+            state="readonly",
+            width=12,
+        )
+        self.move_out_time.grid(row=1, column=3, sticky="w", padx=6, pady=4)
+        self.move_out_time.set("10:00")
+
+        tk.Button(
+            form,
+            text="Submit Request",
+            command=self._submit,
+            bg="#dc3545",
+            fg="white",
+            font=("Arial", 10, "bold"),
+            relief="flat",
+            padx=12,
+            pady=6,
+        ).grid(row=3, column=1, sticky="e", padx=10, pady=8)
+
+        tk.Label(
+            form,
+            text="Rule: 1 month notice required. Penalty is 5% of monthly rent.",
+            bg="white",
+            fg="#8a3b37",
+            font=("Arial", 9, "italic"),
+        ).grid(row=2, column=0, columnspan=3, sticky="w", padx=10)
+
+        bottom_spacer = tk.Frame(wrap, bg="#c9e4c4")
+        bottom_spacer.pack(fill="both", expand=True)
+
+    def on_show(self):
+        self._load_data()
+
+    def _load_data(self):
+        profile = get_tenant_profile(self.user_id)
+        if profile:
+            self.lease_labels["Tenant"].config(text=profile.get("name", "-"))
+            self.lease_labels["Location"].config(text=profile.get("location", "-"))
+            self.lease_labels["Type"].config(text=profile.get("apartment_type", "-"))
+            self.lease_labels["Monthly Rent"].config(text=f"GBP {float(profile.get('monthly_rent', 0)):.2f}")
+            self.lease_labels["Lease End"].config(text=profile.get("lease_end") or "N/A")
+
+    def _submit(self):
+        date_entry_cls = _resolve_date_entry()
+        if date_entry_cls is not None and isinstance(self.move_out_entry, date_entry_cls):
+            move_out = self.move_out_entry.get_date().strftime("%Y-%m-%d")
+        else:
+            move_out = self.move_out_entry.get().strip()
+        if not move_out:
+            messagebox.showerror("Validation Error", "Move-out date is required.")
+            return
+        try:
+            move_out_dt = date.fromisoformat(move_out)
+        except Exception:
+            messagebox.showerror("Validation Error", "Move-out date must be in YYYY-MM-DD format.")
+            return
+
+        if move_out_dt < date.today():
+            messagebox.showerror("Validation Error", "Move-out date cannot be before today.")
+            return
+        try:
+            penalty = submit_early_termination_request(self.user_id, move_out, "")
+            messagebox.showinfo("Submitted", f"Request submitted. Penalty: GBP {penalty:.2f}")
+            self._load_data()
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+def create_page(parent, user_info):
     """Create and return lease management page"""
+    # 1. Check if user_info exists and has the expected length
+    if not user_info or len(user_info) < 5:
+        from main.lease_page import LeaseManagerPage
+        return LeaseManagerPage(parent, user_info=None).frame
+    role = user_info[4] 
+    if role == "Tenant":
+        page = TenantLeaseExitPage(parent, user_info=user_info)
+        page.frame.on_show = page.on_show
+        return page.frame
+    
+    # For Administrators/Staff
     from main.lease_page import LeaseManagerPage
     return LeaseManagerPage(parent, user_info=user_info).frame

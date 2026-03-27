@@ -6,6 +6,11 @@ from database.report_service import (
     fetch_summary_snapshot, fetch_occupancy_rows,
     fetch_financial_rows, fetch_maintenance_rows
 )
+from database.tenant_portal_service import (
+    get_payment_history_series,
+    get_late_payment_by_property,
+    get_neighbor_comparison,
+)
 from modules.Report_Management import ReportLogicHandler
 
 REPORT_TYPES = {
@@ -35,9 +40,166 @@ class ReportManagementPage:
         self.summary_cards, self.tree = {}, None
         self.current_report_title, self.current_headings, self.current_rows = "", [], []
 
+        if self.role == "Tenant":
+            self._build_tenant_dashboard_layout()
+            self._render_tenant_dashboard()
+            return
+
         self._build_layout()
         self._load_city_filter_options()
         self.generate_report()
+
+    def _build_tenant_dashboard_layout(self):
+        top_wrap = tk.Frame(self.frame, bg="#c9e4c4")
+        top_wrap.pack(fill="x", padx=24, pady=(20, 8))
+
+        tk.Label(
+            top_wrap,
+            text="Tenant Dashboard Analytics",
+            bg="#c9e4c4",
+            fg="#1f3b63",
+            font=("Arial", 16, "bold"),
+        ).pack(side="left")
+
+        tk.Button(
+            top_wrap,
+            text="Refresh",
+            command=self._render_tenant_dashboard,
+            bg="#3B86FF",
+            fg="white",
+            font=("Arial", 10, "bold"),
+            relief="flat",
+            padx=14,
+            pady=6,
+        ).pack(side="right")
+
+        charts_wrap = tk.Frame(self.frame, bg="#c9e4c4")
+        charts_wrap.pack(fill="both", expand=True, padx=24, pady=(4, 20))
+
+        self.tenant_chart_payment = self._make_chart_card(
+            charts_wrap,
+            "Payment History Graph",
+            "Shows payments over time",
+        )
+        self.tenant_chart_late = self._make_chart_card(
+            charts_wrap,
+            "Late Payment Chart",
+            "How many payments were late per property",
+        )
+        self.tenant_chart_compare = self._make_chart_card(
+            charts_wrap,
+            "Comparison Graph",
+            "Your payments vs close neighbours",
+        )
+
+    def _make_chart_card(self, parent, title, subtitle):
+        card = tk.Frame(parent, bg="white", bd=2, relief="groove")
+        card.pack(side="left", fill="both", expand=True, padx=6)
+
+        tk.Label(card, text=title, bg="white", fg="#1f3b63", font=("Arial", 12, "bold")).pack(
+            anchor="w", padx=10, pady=(10, 2)
+        )
+        tk.Label(card, text=subtitle, bg="white", fg="#4c5d73", font=("Arial", 9)).pack(
+            anchor="w", padx=10, pady=(0, 6)
+        )
+
+        canvas = tk.Canvas(card, bg="#ffffff", highlightthickness=0)
+        canvas.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+        return canvas
+
+    def _render_tenant_dashboard(self):
+        user_id = self.user_info[0] if self.user_info else None
+        self._draw_line_chart(self.tenant_chart_payment, get_payment_history_series(user_id))
+        self._draw_bar_chart(self.tenant_chart_late, get_late_payment_by_property(user_id))
+
+        cmp_data = get_neighbor_comparison(user_id)
+        self._draw_compare_chart(
+            self.tenant_chart_compare,
+            cmp_data.get("tenant_avg", 0),
+            cmp_data.get("neighbor_avg", 0),
+        )
+
+    def _draw_line_chart(self, canvas, data):
+        canvas.delete("all")
+        canvas.update_idletasks()
+        w = max(canvas.winfo_width(), 280)
+        h = max(canvas.winfo_height(), 220)
+        pad = 26
+
+        canvas.create_line(pad, h - pad, w - pad, h - pad, fill="#95a5a6")
+        canvas.create_line(pad, h - pad, pad, pad, fill="#95a5a6")
+
+        if not data:
+            canvas.create_text(w / 2, h / 2, text="No payment history", fill="#7f8c8d")
+            return
+
+        max_y = max(v for _, v in data) or 1
+        n = len(data)
+        step_x = (w - (2 * pad)) / max(1, n - 1)
+
+        points = []
+        for i, (label, value) in enumerate(data):
+            x = pad + i * step_x
+            y = h - pad - ((value / max_y) * (h - (2 * pad)))
+            points.extend([x, y])
+            canvas.create_oval(x - 2, y - 2, x + 2, y + 2, fill="#2c7fb8", outline="#2c7fb8")
+            if i % max(1, n // 4) == 0:
+                canvas.create_text(x, h - 10, text=label[5:], fill="#4c5d73", font=("Arial", 8))
+
+        if len(points) >= 4:
+            canvas.create_line(*points, fill="#2c7fb8", width=2)
+
+    def _draw_bar_chart(self, canvas, data):
+        canvas.delete("all")
+        canvas.update_idletasks()
+        w = max(canvas.winfo_width(), 280)
+        h = max(canvas.winfo_height(), 220)
+        pad = 26
+
+        canvas.create_line(pad, h - pad, w - pad, h - pad, fill="#95a5a6")
+        canvas.create_line(pad, h - pad, pad, pad, fill="#95a5a6")
+
+        if not data:
+            canvas.create_text(w / 2, h / 2, text="No late payments", fill="#7f8c8d")
+            return
+
+        max_y = max(v for _, v in data) or 1
+        bar_w = (w - (2 * pad)) / max(1, len(data))
+
+        for i, (label, value) in enumerate(data):
+            x0 = pad + i * bar_w + 8
+            x1 = pad + (i + 1) * bar_w - 8
+            y1 = h - pad
+            y0 = y1 - ((value / max_y) * (h - (2 * pad)))
+            canvas.create_rectangle(x0, y0, x1, y1, fill="#e67e22", outline="#d35400")
+            canvas.create_text((x0 + x1) / 2, y0 - 8, text=str(value), fill="#4c5d73", font=("Arial", 8))
+            canvas.create_text((x0 + x1) / 2, h - 10, text=label, fill="#4c5d73", font=("Arial", 8))
+
+    def _draw_compare_chart(self, canvas, tenant_avg, neighbor_avg):
+        canvas.delete("all")
+        canvas.update_idletasks()
+        w = max(canvas.winfo_width(), 280)
+        h = max(canvas.winfo_height(), 220)
+        pad = 30
+
+        canvas.create_line(pad, h - pad, w - pad, h - pad, fill="#95a5a6")
+        canvas.create_line(pad, h - pad, pad, pad, fill="#95a5a6")
+
+        max_y = max(tenant_avg, neighbor_avg, 1)
+        values = [("You", tenant_avg, "#2ecc71"), ("Neighbours", neighbor_avg, "#9b59b6")]
+
+        bar_w = 60
+        gap = 50
+        start_x = (w - (2 * bar_w + gap)) / 2
+
+        for i, (label, val, color) in enumerate(values):
+            x0 = start_x + i * (bar_w + gap)
+            x1 = x0 + bar_w
+            y1 = h - pad
+            y0 = y1 - ((val / max_y) * (h - (2 * pad)))
+            canvas.create_rectangle(x0, y0, x1, y1, fill=color, outline=color)
+            canvas.create_text((x0 + x1) / 2, y0 - 10, text=f"{val:.0f}", fill="#4c5d73", font=("Arial", 9, "bold"))
+            canvas.create_text((x0 + x1) / 2, h - 12, text=label, fill="#4c5d73", font=("Arial", 9))
 
     def _get_allowed_report_types(self):
         full_access = ["Occupancy", "Financial", "Maintenance"]
@@ -148,6 +310,9 @@ class ReportManagementPage:
         self.frame.after(100, self.logic.export_to_pdf)
 
     def on_show(self):
+        if self.role == "Tenant":
+            self._render_tenant_dashboard()
+            return
         self._load_city_filter_options()
         self.generate_report()
 

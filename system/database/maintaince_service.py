@@ -16,10 +16,34 @@ def get_all_requests(user_info=None, selected_city=None):
     conn = check_connection()
     cursor = conn.cursor()
     
-    # Check if user is a manager
+    # Check roles
     is_manager = False
+    is_tenant = False
+    user_id = None
     if user_info and len(user_info) > 4:
         is_manager = (user_info[4] == "Manager")
+        is_tenant = (user_info[4] == "Tenant")
+    if user_info and len(user_info) > 0:
+        user_id = user_info[0]
+
+    if is_tenant:
+        query = """
+            SELECT 
+                mr.request_id,
+                u.first_name || ' ' || u.surname AS tenant_name,
+                mr.issue,
+                DATE(mr.created_date) AS created_date,
+                mr.Maintenance_status
+            FROM Maintenance_Request mr
+            JOIN Tenant t ON mr.tenant_id = t.tenant_id
+            JOIN User u ON t.user_id = u.user_id
+            WHERE t.user_id = ?
+            ORDER BY mr.created_date DESC
+        """
+        cursor.execute(query, (user_id,))
+        results = cursor.fetchall()
+        conn.close()
+        return results
     
     if is_manager:
         # Manager query: Include city_name column

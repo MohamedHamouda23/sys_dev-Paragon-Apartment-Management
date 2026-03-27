@@ -15,6 +15,9 @@ mysql-connector-python>=8.1.0
 # Optional: Environment variables management
 python-dotenv>=1.0.0
 
+# Calendar widget for date picker
+tkcalendar>=1.6.1
+
 # PDF export for reports
 reportlab>=4.2.0
 

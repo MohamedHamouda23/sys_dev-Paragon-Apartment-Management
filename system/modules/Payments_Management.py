@@ -10,6 +10,11 @@ from reportlab.lib import colors
 
 from main.helpers import create_button, clear_frame, show_placeholder, create_scrollable_treeview
 from database.payment_service import get_all_payments, get_tenant_payments, get_payment_details
+from database.tenant_portal_service import (
+    get_payment_history_series,
+    get_late_payment_by_property,
+    get_neighbor_comparison,
+)
 
 class PaymentsManagementPage:
     def __init__(self, parent, user_info=None):
@@ -22,6 +27,9 @@ class PaymentsManagementPage:
         self.current_status = "All Status"
         self.current_range = "All Time"
         self.current_late = "All (Late/On-Time)"
+        self.show_graphs = True
+        self.show_graph_btn = None
+        self.hide_graph_btn = None
 
         self.frame = tk.Frame(parent, bg="#c9e4c4")
         self._build_layout()
@@ -35,8 +43,32 @@ class PaymentsManagementPage:
         btns_inner.pack(anchor="center")
 
         
-        create_button(btns_inner, "Reset Filters", 120, 45, "#3B86FF", "white", 
-                      self._reset_filters).pack(side="left", padx=10)
+        create_button(btns_inner, "Refresh", 120, 45, "#3B86FF", "white", 
+                  self.refresh_payments).pack(side="left", padx=10)
+
+        if self.user_role == "Tenant":
+            self.show_graph_btn = create_button(
+                btns_inner,
+                "Show Graphs",
+                120,
+                45,
+                "#28a745",
+                "white",
+                lambda: self._set_graph_visibility(True),
+            )
+            self.show_graph_btn.pack(side="left", padx=10)
+
+            self.hide_graph_btn = create_button(
+                btns_inner,
+                "Hide Graphs",
+                120,
+                45,
+                "#dc3545",
+                "white",
+                lambda: self._set_graph_visibility(False),
+            )
+            self.hide_graph_btn.pack(side="left", padx=10)
+            self._update_graph_toggle_buttons()
 
         self.content_frame = tk.Frame(self.frame, bg="#c9e4c4")
         self.content_frame.pack(fill="both", expand=True, padx=20)
@@ -147,6 +179,23 @@ class PaymentsManagementPage:
             cb_l.pack(side="left", padx=5)
             cb_l.bind("<<ComboboxSelected>>", lambda e: self._handle_filter_change(e, "late"))
 
+        if self.user_role == "Tenant" and self.show_graphs:
+            graphs_wrap = tk.Frame(self.content_frame, bg="#c9e4c4")
+            graphs_wrap.pack(fill="both", expand=False, pady=(0, 10))
+
+            self.chart_payment = self._chart_card(graphs_wrap, "Payment History")
+            self.chart_late = self._chart_card(graphs_wrap, "Late Payments Per Property")
+            self.chart_compare = self._chart_card(graphs_wrap, "You vs Neighbours")
+
+            self._draw_line_chart(self.chart_payment, get_payment_history_series(self.user_id))
+            self._draw_bar_chart(self.chart_late, get_late_payment_by_property(self.user_id))
+            cmp_data = get_neighbor_comparison(self.user_id)
+            self._draw_compare_chart(
+                self.chart_compare,
+                cmp_data.get("tenant_avg", 0),
+                cmp_data.get("neighbor_avg", 0),
+            )
+
         # --- Treeview Configuration ---
         cols = ("tenant", "unit", "city", "due", "paid_dt", "paid_amt", "agreed", "stat", "late") if is_fm else \
             ("unit", "due", "paid_dt", "paid_amt", "agreed", "stat", "late")
@@ -154,7 +203,23 @@ class PaymentsManagementPage:
                 ("Unit", "Due Date", "Paid Date", "Paid", "Agreed", "Status", "Late")
         widths = (120, 140, 100, 100, 100, 80, 80, 120, 60) if is_fm else (180, 110, 110, 90, 90, 130, 70)
 
-        _, self.tree = create_scrollable_treeview(self.content_frame, cols, heads, widths, ["center"]*len(cols), height=12)
+        table_wrap = tk.Frame(self.content_frame, bg="white", bd=2, relief="groove")
+        table_wrap.pack(fill="both", expand=True, pady=(0, 12))
+        table_wrap.grid_rowconfigure(0, weight=1)
+        table_wrap.grid_columnconfigure(0, weight=1)
+
+        self.tree = ttk.Treeview(table_wrap, columns=cols, show="headings", height=12)
+        for c, h, w in zip(cols, heads, widths):
+            self.tree.heading(c, text=h)
+            self.tree.column(c, width=w, anchor="center")
+
+        y_scroll = ttk.Scrollbar(table_wrap, orient="vertical", command=self.tree.yview)
+        x_scroll = ttk.Scrollbar(table_wrap, orient="horizontal", command=self.tree.xview)
+        self.tree.configure(yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
+
+        self.tree.grid(row=0, column=0, sticky="nsew", padx=(8, 0), pady=(8, 0))
+        y_scroll.grid(row=0, column=1, sticky="ns", padx=(0, 8), pady=(8, 0))
+        x_scroll.grid(row=1, column=0, sticky="ew", padx=(8, 0), pady=(0, 8))
         self.tree.bind("<<TreeviewSelect>>", lambda e: self._on_row_select())
         
         for r in self._all_payments:
@@ -252,6 +317,114 @@ class PaymentsManagementPage:
         self.current_range = "All Time"
         self.current_late = "All (Late/On-Time)" # Add this
         self.refresh_payments()
+
+    def _set_graph_visibility(self, show):
+        self.show_graphs = bool(show)
+        self._update_graph_toggle_buttons()
+        self._render_view()
+
+    def _update_graph_toggle_buttons(self):
+        if self.user_role != "Tenant":
+            return
+        if not self.show_graph_btn or not self.hide_graph_btn:
+            return
+
+        if self.show_graphs:
+            self.show_graph_btn.pack_forget()
+            self.hide_graph_btn.pack(side="left", padx=10)
+        else:
+            self.hide_graph_btn.pack_forget()
+            self.show_graph_btn.pack(side="left", padx=10)
+
+    def _chart_card(self, parent, title):
+        card = tk.Frame(parent, bg="white", bd=1, relief="solid")
+        card.pack(side="left", fill="both", expand=True, padx=4)
+        tk.Label(card, text=title, bg="white", fg="#1f3b63", font=("Arial", 10, "bold")).pack(
+            anchor="w", padx=8, pady=(6, 4)
+        )
+        canvas = tk.Canvas(card, bg="#ffffff", width=240, height=170, highlightthickness=0)
+        canvas.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+        return canvas
+
+    def _draw_line_chart(self, canvas, data):
+        canvas.delete("all")
+        canvas.update_idletasks()
+        w = max(canvas.winfo_width(), 240)
+        h = max(canvas.winfo_height(), 170)
+        pad = 22
+
+        canvas.create_line(pad, h - pad, w - pad, h - pad, fill="#95a5a6")
+        canvas.create_line(pad, h - pad, pad, pad, fill="#95a5a6")
+
+        if not data:
+            canvas.create_text(w / 2, h / 2, text="No data", fill="#7f8c8d")
+            return
+
+        max_y = max(v for _, v in data) or 1
+        n = len(data)
+        step_x = (w - (2 * pad)) / max(1, n - 1)
+        points = []
+
+        for i, (label, value) in enumerate(data):
+            x = pad + i * step_x
+            y = h - pad - ((value / max_y) * (h - (2 * pad)))
+            points.extend([x, y])
+            canvas.create_oval(x - 2, y - 2, x + 2, y + 2, fill="#2c7fb8", outline="#2c7fb8")
+            if i % max(1, n // 4) == 0:
+                canvas.create_text(x, h - 9, text=label[5:], fill="#4c5d73", font=("Arial", 8))
+
+        if len(points) >= 4:
+            canvas.create_line(*points, fill="#2c7fb8", width=2)
+
+    def _draw_bar_chart(self, canvas, data):
+        canvas.delete("all")
+        canvas.update_idletasks()
+        w = max(canvas.winfo_width(), 240)
+        h = max(canvas.winfo_height(), 170)
+        pad = 22
+
+        canvas.create_line(pad, h - pad, w - pad, h - pad, fill="#95a5a6")
+        canvas.create_line(pad, h - pad, pad, pad, fill="#95a5a6")
+
+        if not data:
+            canvas.create_text(w / 2, h / 2, text="No late payments", fill="#7f8c8d")
+            return
+
+        max_y = max(v for _, v in data) or 1
+        bar_w = (w - (2 * pad)) / max(1, len(data))
+        for i, (label, value) in enumerate(data):
+            x0 = pad + i * bar_w + 6
+            x1 = pad + (i + 1) * bar_w - 6
+            y1 = h - pad
+            y0 = y1 - ((value / max_y) * (h - (2 * pad)))
+            canvas.create_rectangle(x0, y0, x1, y1, fill="#e67e22", outline="#d35400")
+            canvas.create_text((x0 + x1) / 2, y0 - 7, text=str(value), fill="#4c5d73", font=("Arial", 8))
+            canvas.create_text((x0 + x1) / 2, h - 9, text=label, fill="#4c5d73", font=("Arial", 8))
+
+    def _draw_compare_chart(self, canvas, tenant_avg, neighbor_avg):
+        canvas.delete("all")
+        canvas.update_idletasks()
+        w = max(canvas.winfo_width(), 240)
+        h = max(canvas.winfo_height(), 170)
+        pad = 25
+
+        canvas.create_line(pad, h - pad, w - pad, h - pad, fill="#95a5a6")
+        canvas.create_line(pad, h - pad, pad, pad, fill="#95a5a6")
+
+        max_y = max(tenant_avg, neighbor_avg, 1)
+        values = [("You", tenant_avg, "#2ecc71"), ("Neighbours", neighbor_avg, "#9b59b6")]
+        bar_w = 46
+        gap = 36
+        start_x = (w - (2 * bar_w + gap)) / 2
+
+        for i, (label, val, color) in enumerate(values):
+            x0 = start_x + i * (bar_w + gap)
+            x1 = x0 + bar_w
+            y1 = h - pad
+            y0 = y1 - ((val / max_y) * (h - (2 * pad)))
+            canvas.create_rectangle(x0, y0, x1, y1, fill=color, outline=color)
+            canvas.create_text((x0 + x1) / 2, y0 - 8, text=f"{val:.0f}", fill="#4c5d73", font=("Arial", 8, "bold"))
+            canvas.create_text((x0 + x1) / 2, h - 9, text=label, fill="#4c5d73", font=("Arial", 8))
 
 def create_page(parent, user_info):
     return PaymentsManagementPage(parent, user_info).frame

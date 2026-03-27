@@ -10,11 +10,16 @@ def check_connection(db_path="database/database.db"):
 
 
 # -------------------- Generic Helpers --------------------
-def fetch_all(query):
-    """Fetch all rows from a query."""
+def fetch_all(query, params=None):
+    """Fetch all rows from database with optional parameters"""
     conn = check_connection()
     cursor = conn.cursor()
-    cursor.execute(query)
+    
+    if params:
+        cursor.execute(query, params)
+    else:
+        cursor.execute(query)
+    
     result = cursor.fetchall()
     conn.close()
     return result

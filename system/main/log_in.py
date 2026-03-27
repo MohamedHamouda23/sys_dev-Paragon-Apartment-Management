@@ -34,6 +34,20 @@ class Log_window:
         # Entries
         self.email_entry = create_entry(frame, 0, "Email", label_size=20)
         self.password_entry = create_entry(frame, 1, "Password", label_size=20, show="*")
+        self._show_password = False
+
+        self.toggle_pwd_btn = tk.Button(
+            frame,
+            text="Show",
+            font=("Arial", 11, "bold"),
+            bg="#3B86FF",
+            fg="white",
+            relief="flat",
+            padx=10,
+            pady=6,
+            command=self._toggle_password_visibility,
+        )
+        self.toggle_pwd_btn.grid(row=1, column=2, padx=(0, 20), sticky="w")
 
         # Login button
         button_frame = tk.Frame(frame, bg="#ffffff")
@@ -47,6 +61,11 @@ class Log_window:
             fg="white",
             command=self.authenticate
         )
+
+    def _toggle_password_visibility(self):
+        self._show_password = not self._show_password
+        self.password_entry.config(show="" if self._show_password else "*")
+        self.toggle_pwd_btn.config(text="Hide" if self._show_password else "Show")
 
     def _go_back(self):
         self.login_root.destroy()
