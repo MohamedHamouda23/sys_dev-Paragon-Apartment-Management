@@ -2,7 +2,7 @@ from database.databaseConnection import check_connection, fetch_all, insert
 
 # ================= TENANTS =================
 
-def fetch_tenants(city_id=None):
+def fetch_tenants(city_id=None, tenant_id=None):
     query = """
         SELECT t.tenant_id, u.first_name || ' ' || u.surname
         FROM Tenant t
@@ -14,6 +14,10 @@ def fetch_tenants(city_id=None):
     if city_id is not None:
         query += " AND u.city_id = ?"
         params.append(city_id)
+
+    if tenant_id is not None:
+        query += " AND t.tenant_id = ?"
+        params.append(tenant_id)
 
     return fetch_all(query, tuple(params))
 
@@ -82,7 +86,7 @@ def fetch_leases(city_id=None, tenant_id=None):
             l.start_date,
             l.end_date,
             l.Agreed_rent,
-            loc.city_name,
+            TRIM(loc.city_name) AS city_name,
             CASE
                 WHEN COALESCE(l.early_termination_fee, 0) > 0 THEN 'Terminated'
                 WHEN DATE(l.end_date) < DATE('now') THEN 'Expired'

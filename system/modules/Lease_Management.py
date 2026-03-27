@@ -1,4 +1,3 @@
-# ============================================================================
 # LEASE MANAGEMENT MODULE
 # Handles lease creation and removal with early termination penalties
 # ============================================================================
@@ -464,7 +463,7 @@ class TenantLeaseExitPage:
             l.start_date,
             l.end_date,
             l.Agreed_rent,
-            loc.city_name,
+            TRIM(loc.city_name),
             CASE 
                 WHEN l.early_termination_fee > 0 THEN 'Terminated'
                 WHEN DATE(l.end_date) >= DATE('now') THEN 'Active'
