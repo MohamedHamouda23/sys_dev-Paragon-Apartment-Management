@@ -102,8 +102,8 @@ class PaymentsPage:
             messagebox.showinfo("Info", "This rent is already fully paid.")
             return
 
-        PaymentWindow(self.parent, self.user_id, self.selected_payment_id, outstanding, self.refresh_payments)
-
+        PaymentWindow(self.frame.winfo_toplevel(), self.user_id, self.selected_payment_id, outstanding, self.refresh_payments)
+        
     def _update_filter(self, key, val):
         if key == "status": self.current_status = val
         self._render_rows()

@@ -105,9 +105,13 @@ class UserManagementPage:
         # Clear existing rows
         for row in self.tree.get_children():
             self.tree.delete(row)
+        
+        # Get current logged-in user ID to exclude from list
+        current_user_id = self.user_info[0] if self.user_info else None
             
         # Insert user rows (scoped by admin city if applicable)
-        for user in get_all_users(scope_city_id=self.admin_scope_city_id):
+        # Exclude the logged-in user from the list to prevent self-deletion
+        for user in get_all_users(scope_city_id=self.admin_scope_city_id, exclude_user_id=current_user_id):
             self.tree.insert("", "end", values=user)
 
     # ========================================================================

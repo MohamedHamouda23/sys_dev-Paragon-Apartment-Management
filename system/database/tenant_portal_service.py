@@ -1,4 +1,3 @@
-# tenant_portal_service.py
 from datetime import datetime, timedelta
 from database.databaseConnection import check_connection
 from database.payment_service import update_late_status
@@ -225,64 +224,43 @@ def get_tenant_payments_with_balance(user_id):
     return out
 
 
-def simulate_payment(user_id, payment_id, new_payment_amount):
-    """
-    Increments payment amount. 
-    If previous record was 'Unpaid' (no date), initial amount is treated as 0.
-    Sets payment_date to current date.
-    """
-    update_late_status()
+def simulate_payment(user_id, payment_id, amount, mode):
     conn = check_connection()
     cursor = conn.cursor()
 
-    # 1. Fetch current status
-    cursor.execute(
-        """
-        SELECT COALESCE(p.amount, 0), l.Agreed_rent, p.due_date, p.payment_date
+    cursor.execute("""
+        SELECT l.Agreed_rent, COALESCE(p.amount, 0)
         FROM Payment p
         JOIN Lease l ON p.lease_id = l.lease_id
         JOIN Tenant t ON l.tenant_id = t.tenant_id
         WHERE p.payment_id = ? AND t.user_id = ?
-        """,
-        (payment_id, user_id),
-    )
+    """, (payment_id, user_id))
+
     row = cursor.fetchone()
     if not row:
         conn.close()
-        raise ValueError("Payment record not found.")
+        raise ValueError("Payment not found")
 
-    # Treat amount as 0 if no date was recorded previously
-    current_paid = float(row[0]) if row[3] else 0.0
-    agreed_rent = float(row[1])
-    due_date = datetime.strptime(str(row[2]), "%Y-%m-%d").date()
-    today = datetime.now().date()
+    rent, current_paid = row
+    rent = float(rent or 0)
+    current_paid = float(current_paid or 0)
+    amount = float(amount or 0)
 
-    # 2. Calculate the new total (Current + Added)
-    updated_total = round(current_paid + float(new_payment_amount), 2)
-    
-    # Validation: Don't allow overpaying
-    if updated_total > agreed_rent + 0.01:
-        conn.close()
-        raise ValueError(f"Amount exceeds balance. Remaining: £{agreed_rent - current_paid:.2f}")
+    if mode == "full":
+        new_total = rent
+    else:
+        new_total = amount  # ← FIXED: Use the custom amount directly
+        if new_total > rent:
+            new_total = rent
 
-    # 3. Determine if late
-    is_late = "Yes" if today > due_date and updated_total < (agreed_rent - 0.01) else "No"
-    
-    # 4. Update existing record with the payment date and new total
-    cursor.execute(
-        """
+    cursor.execute("""
         UPDATE Payment
-        SET payment_date = DATE('now'),
-            amount = ?,
-            is_late = ?
+        SET amount = ?, payment_date = DATE('now')
         WHERE payment_id = ?
-        """,
-        (updated_total, is_late, payment_id),
-    )
+    """, (new_total, payment_id))
 
     conn.commit()
     conn.close()
-    return updated_total
 
 
 def get_dashboard_metrics(user_id):

@@ -5,15 +5,9 @@ import secrets
 from database.databaseConnection import check_connection, fetch_all, insert
 
 
-PROTECTED_ADMIN_EMAILS = {
-    "bristol_admin@company.com",
-    "cardiff_admin@company.com",
-    "london_admin@company.com",
-    "manchester_admin@company.com",
-}
-
+# Password hashing constants
 PASSWORD_SCHEME = "pbkdf2_sha256"
-PASSWORD_ITERATIONS = 120000
+PASSWORD_ITERATIONS = 100000
 
 
 def _validate_email(email):
@@ -73,7 +67,7 @@ def _verify_password(stored_password, password_plain, first_name, surname):
     return str(stored_password) == str(password_plain)
 
 
-def get_all_users(scope_city_id=None):
+def get_all_users(scope_city_id=None, exclude_user_id=None):
     conn = check_connection()
     if conn is None:
         return []
@@ -96,6 +90,10 @@ def get_all_users(scope_city_id=None):
     if scope_city_id is not None:
         query += " AND u.city_id = ?"
         params.append(scope_city_id)
+
+    if exclude_user_id is not None:
+        query += " AND u.user_id != ?"
+        params.append(exclude_user_id)
 
     query += " ORDER BY u.user_id ASC"
     cursor.execute(query, params)
@@ -231,20 +229,16 @@ def delete_user(user_id, scope_city_id=None, acting_user_id=None, acting_role=No
 
     cursor = conn.cursor()
 
-    if acting_role == "Administrators" and acting_user_id == user_id:
+    # Prevent any user from deleting their own account (safety check)
+    if acting_user_id is not None and acting_user_id == user_id:
         conn.close()
-        raise ValueError("Administrators cannot delete their own account.")
+        raise ValueError("You cannot delete your own account.")
 
     cursor.execute("SELECT email FROM User_Access WHERE user_id = ?", (user_id,))
     email_row = cursor.fetchone()
     if email_row is None:
         conn.close()
         raise ValueError("User not found.")
-
-    target_email = email_row[0]
-    if target_email in PROTECTED_ADMIN_EMAILS:
-        conn.close()
-        raise ValueError("This branch administrator account is permanent and cannot be deleted.")
 
     if scope_city_id is not None:
         cursor.execute("SELECT city_id FROM User WHERE user_id = ?", (user_id,))

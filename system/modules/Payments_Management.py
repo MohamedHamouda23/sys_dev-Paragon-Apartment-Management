@@ -16,6 +16,11 @@ from database.tenant_portal_service import (
     get_tenant_payments_with_balance,
 )
 
+
+
+from main.PaymentGateway import PaymentWindow
+
+
 class PaymentsManagementPage:
     def __init__(self, parent, user_info=None):
         self.parent, self.user_info = parent, user_info
@@ -262,79 +267,129 @@ class PaymentsManagementPage:
         self._render_lifecycle_detail_panel(p_id, details)
         
     def _render_lifecycle_detail_panel(self, p_id, details):
-            clear_frame(self.detail_wrap)
-            container = tk.Frame(self.detail_wrap, bg="#f0f2f5")
-            container.pack(fill="both", expand=True, padx=15, pady=10)
+        clear_frame(self.detail_wrap)
 
-            # --- Header with Status Badge ---
-            header = tk.Frame(container, bg="white", bd=1, relief="solid")
-            header.pack(fill="x", pady=(0, 10))
-            
-            tk.Label(header, text=f"TRANSACTION MANAGEMENT: #{p_id}", 
-                    font=("Arial", 12, "bold"), bg="white", fg="#1f3b63").pack(side="left", padx=15, pady=10)
-            
-            status_text = str(details.get('status', 'Pending')).upper()
-            # Green for Paid, Orange for Unpaid/Pending
-            badge_bg = "#27ae60" if "PAID" in status_text else "#e67e22" 
-            tk.Label(header, text=status_text, bg=badge_bg, fg="white", 
-                    font=("Arial", 8, "bold"), padx=12, pady=2).pack(side="right", padx=15)
+        container = tk.Frame(self.detail_wrap, bg="#f0f2f5")
+        container.pack(fill="both", expand=True, padx=15, pady=10)
 
-            cols_frame = tk.Frame(container, bg="#f0f2f5")
-            cols_frame.pack(fill="x")
+        # HEADER
+        header = tk.Frame(container, bg="white", bd=1, relief="solid")
+        header.pack(fill="x", pady=(0, 10))
 
-            # --- Financial Calculation ---
-            # This handles both "Unpaid" (full amount) and "Partially Paid" (remainder)
-            agreed = float(details.get('agreed_rent', 0))
-            paid = float(details.get('paid_amount', 0))
-            diff = max(agreed - paid, 0)
+        tk.Label(
+            header,
+            text=f"TRANSACTION MANAGEMENT: #{p_id}",
+            font=("Arial", 12, "bold"),
+            bg="white",
+            fg="#1f3b63"
+        ).pack(side="left", padx=15, pady=10)
 
-            sections = [
-                ("Occupant Info", [
-                    ("Tenant", details.get('tenant_name')),
-                    ("Property", details.get('property')),
-                    ("Location", details.get('city', 'N/A'))
-                ]),
-                ("Billing Period", [
-                    ("Due Date", details.get('due_date')),
-                    ("Paid Date", details.get('payment_date')),
-                    ("Late status", details.get('is_late', 'No'))
-                ]),
-                ("Financial Breakdown", [
-                    ("Expected", f"£{agreed:.2f}"),
-                    ("Actual Paid", f"£{paid:.2f}"),
-                    ("Outstanding", f"£{diff:.2f}")
-                ])
-            ]
+        # 🔥 IMPORTANT: use correct paid logic
+        agreed = float(details.get('agreed_rent', 0))
 
-            # Render Information Cards
-            for title, items in sections:
-                card = tk.Frame(cols_frame, bg="white", bd=1, relief="solid")
-                card.pack(side="left", fill="both", expand=True, padx=2)
-                tk.Label(card, text=title, font=("Arial", 10, "bold"), bg="white", fg="#7f8c8d").pack(anchor="w", padx=10, pady=(8, 2))
-                for key, val in items:
-                    f = tk.Frame(card, bg="white")
-                    f.pack(fill="x", padx=10, pady=1)
-                    tk.Label(f, text=f"{key}:", font=("Arial", 9), bg="white", fg="#2c3e50").pack(side="left")
-                    tk.Label(f, text=str(val), font=("Arial", 9, "bold"), bg="white", fg="#1f3b63").pack(side="right")
+        payment_date = details.get("payment_date")
+        raw_paid = float(details.get("paid_amount", 0))
 
-            # --- Footer Actions ---
-            footer = tk.Frame(container, bg="#f0f2f5")
-            footer.pack(fill="x", pady=(10, 0))
-            
-            # 1. Invoice button (Always visible)
-            create_button(footer, "Generate PDF Invoice", 160, 35, "#1f3b63", "white", 
-                        lambda: self._download_invoice(details)).pack(side="right")
+        # ✅ FIX: unpaid = 0 always
+        if not payment_date or payment_date in ["-", "None", "N/A"]:
+            paid = 0.0
+        else:
+            paid = raw_paid
 
-            # 2. Pay Button: Only appears if user is Tenant AND status is not fully paid (diff > 0)
-            if self.user_role == "Tenant" and diff > 0:
-                create_button(footer, "Pay Remaining Balance", 180, 35, "#28a745", "white", 
-                            lambda: PaymentWindow(
-                                self.parent.winfo_toplevel(),
-                                self.user_id, 
-                                p_id, 
-                                diff, 
-                                self.refresh_payments
-                            )).pack(side="right", padx=10)
+        diff = max(agreed - paid, 0)
+
+        # STATUS
+        if paid == 0:
+            status_text = "UNPAID"
+            badge_bg = "#e74c3c"
+        elif paid < agreed:
+            status_text = "PARTIAL"
+            badge_bg = "#f39c12"
+        else:
+            status_text = "PAID"
+            badge_bg = "#27ae60"
+
+        tk.Label(
+            header,
+            text=status_text,
+            bg=badge_bg,
+            fg="white",
+            font=("Arial", 8, "bold"),
+            padx=12,
+            pady=2
+        ).pack(side="right", padx=15)
+
+        # BODY
+        cols_frame = tk.Frame(container, bg="#f0f2f5")
+        cols_frame.pack(fill="x")
+
+        sections = [
+            ("Occupant Info", [
+                ("Tenant", details.get('tenant_name')),
+                ("Property", details.get('property')),
+                ("Location", details.get('city', 'N/A'))
+            ]),
+            ("Billing Period", [
+                ("Due Date", details.get('due_date')),
+                ("Paid Date", payment_date if payment_date else "-"),
+                ("Late status", details.get('is_late', 'No'))
+            ]),
+            ("Financial Breakdown", [
+                ("Expected", f"£{agreed:.2f}"),
+                ("Actual Paid", f"£{paid:.2f}"),   # ✅ FIXED
+                ("Outstanding", f"£{diff:.2f}")
+            ])
+        ]
+
+        # RENDER CARDS
+        for title, items in sections:
+            card = tk.Frame(cols_frame, bg="white", bd=1, relief="solid")
+            card.pack(side="left", fill="both", expand=True, padx=2)
+
+            tk.Label(card, text=title, font=("Arial", 10, "bold"),
+                    bg="white", fg="#7f8c8d").pack(anchor="w", padx=10, pady=(8, 2))
+
+            for key, val in items:
+                f = tk.Frame(card, bg="white")
+                f.pack(fill="x", padx=10, pady=1)
+
+                tk.Label(f, text=f"{key}:", font=("Arial", 9),
+                        bg="white", fg="#2c3e50").pack(side="left")
+
+                tk.Label(f, text=str(val), font=("Arial", 9, "bold"),
+                        bg="white", fg="#1f3b63").pack(side="right")
+
+        # FOOTER
+        footer = tk.Frame(container, bg="#f0f2f5")
+        footer.pack(fill="x", pady=(10, 0))
+
+        create_button(
+            footer,
+            "Generate PDF Invoice",
+            160,
+            35,
+            "#1f3b63",
+            "white",
+            lambda: self._download_invoice(details)
+        ).pack(side="right")
+
+        # ✅ ONLY show if unpaid or partial
+        if self.user_role == "Tenant" and diff > 0:
+            create_button(
+                footer,
+                "Pay Remaining Balance",
+                180,
+                35,
+                "#28a745",
+                "white",
+                lambda: PaymentWindow(
+                    self.frame.winfo_toplevel(),  # ✅ FIXED
+                    self.user_id,
+                    p_id,
+                    diff,
+                    self.refresh_payments
+                )
+            ).pack(side="right", padx=10)
 
     def _handle_filter_change(self, event, filter_type):
         val = event.widget.get()
