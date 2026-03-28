@@ -1,14 +1,9 @@
-# payment_service.py
-from database.databaseConnection import check_connection
+from .db_utils import execute_query
 
 
 def update_late_status():
     """Updates the 'is_late' column. Late if past due date and unpaid/underpaid."""
-    conn = check_connection()
-    if not conn:
-        return
-    cursor = conn.cursor()
-    cursor.execute(
+    execute_query(
         """
         UPDATE Payment
         SET is_late = CASE
@@ -24,10 +19,10 @@ def update_late_status():
             THEN 'Yes'
             ELSE 'No'
         END
-        """
+        """,
+        (),
+        'none'
     )
-    conn.commit()
-    conn.close()
 
 
 def get_tenant_payments(user_id):
@@ -37,10 +32,8 @@ def get_tenant_payments(user_id):
     - only leases from the tenant's own city
     """
     update_late_status()
-    conn = check_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(
+    
+    rows = execute_query(
         """
         SELECT
             l.lease_id,
@@ -66,10 +59,8 @@ def get_tenant_payments(user_id):
         GROUP BY l.lease_id, apartment, l.Agreed_rent
         ORDER BY DATE(due_date) DESC, l.lease_id DESC
         """,
-        (user_id,),
+        (user_id,)
     )
-    rows = cursor.fetchall()
-    conn.close()
 
     out = []
     for lease_id, apartment, due_date, paid_amount, agreed_rent, status, is_late, payment_id in rows:
@@ -93,12 +84,7 @@ def get_all_payments():
     """Retrieves all payment records for Finance Manager."""
     update_late_status()
 
-    conn = check_connection()
-    if not conn:
-        return []
-
-    cursor = conn.cursor()
-    cursor.execute(
+    return execute_query(
         """
         SELECT u.first_name || ' ' || u.surname as tenant_name,
                b.street || ' (' || b.postcode || ')' as apartment,
@@ -125,21 +111,12 @@ def get_all_payments():
         """
     )
 
-    rows = cursor.fetchall()
-    conn.close()
-    return rows
-
 
 def get_payment_details(payment_id):
     """Fetch details for a single payment row."""
     update_late_status()
 
-    conn = check_connection()
-    if not conn:
-        return None
-
-    cursor = conn.cursor()
-    cursor.execute(
+    r = execute_query(
         """
         SELECT p.payment_id,
                u.first_name || ' ' || u.surname,
@@ -168,10 +145,8 @@ def get_payment_details(payment_id):
         WHERE p.payment_id = ?
         """,
         (payment_id,),
+        'one'
     )
-
-    r = cursor.fetchone()
-    conn.close()
 
     if not r:
         return None

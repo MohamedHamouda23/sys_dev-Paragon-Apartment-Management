@@ -2,7 +2,8 @@ import hashlib
 import hmac
 import secrets
 
-from database.databaseConnection import check_connection, fetch_all, insert
+from database.databaseConnection import check_connection
+from .db_utils import execute_query, execute_transaction, get_user_city_id
 
 
 # Password hashing constants
@@ -68,11 +69,6 @@ def _verify_password(stored_password, password_plain, first_name, surname):
 
 
 def get_all_users(scope_city_id=None, exclude_user_id=None):
-    conn = check_connection()
-    if conn is None:
-        return []
-
-    cursor = conn.cursor()
     query = """
         SELECT
             u.user_id,
@@ -96,184 +92,141 @@ def get_all_users(scope_city_id=None, exclude_user_id=None):
         params.append(exclude_user_id)
 
     query += " ORDER BY u.user_id ASC"
-    cursor.execute(query, params)
-    users = cursor.fetchall()
-    conn.close()
-    return users
+    return execute_query(query, tuple(params))
 
 
 def get_all_roles():
-    conn = check_connection()
-    if conn is None:
-        return []
-
-    cursor = conn.cursor()
-    cursor.execute("""
+    return execute_query("""
         SELECT role_id, role_name
         FROM Role
         WHERE role_name != 'Tenant'
         ORDER BY role_name ASC
     """)
-    roles = cursor.fetchall()
-    conn.close()
-    return roles
 
 
 def get_all_locations(scope_city_id=None):
-    conn = check_connection()
-    if conn is None:
-        return []
-
-    cursor = conn.cursor()
     if scope_city_id is None:
-        cursor.execute("SELECT city_id, city_name FROM Location ORDER BY city_name ASC")
+        return execute_query("SELECT city_id, city_name FROM Location ORDER BY city_name ASC")
     else:
-        cursor.execute(
+        return execute_query(
             "SELECT city_id, city_name FROM Location WHERE city_id = ? ORDER BY city_name ASC",
             (scope_city_id,)
         )
-    cities = cursor.fetchall()
-    conn.close()
-    return cities
 
 
 def create_user(first_name, surname, email, password_hash, role_id, city_id=None, scope_city_id=None):
-    conn = check_connection()
-    if conn is None:
-        raise ValueError("Database connection failed.")
-
     email = _validate_email(email)
 
     if scope_city_id is not None and city_id != scope_city_id:
-        conn.close()
         raise ValueError("Administrators can only create users in their assigned location.")
 
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT 1 FROM User_Access WHERE email = ?", (email,))
-    if cursor.fetchone():
-        conn.close()
+    # Check email uniqueness
+    existing = execute_query("SELECT 1 FROM User_Access WHERE email = ?", (email,), 'one')
+    if existing:
         raise ValueError("Email already exists.")
 
-    cursor.execute(
-        "INSERT INTO User (city_id, first_name, surname) VALUES (?, ?, ?)",
-        (city_id, first_name, surname)
-    )
-    new_user_id = cursor.lastrowid
-
-    stored_password = _hash_password_with_name_key(password_hash, first_name, surname)
-
-    cursor.execute(
-        "INSERT INTO User_Access (user_id, password_hash, role_id, email) VALUES (?, ?, ?, ?)",
-        (new_user_id, stored_password, role_id, email)
-    )
-    conn.commit()
-    conn.close()
+    # Create user and access records
+    conn = check_connection()
+    if conn is None:
+        raise ValueError("Database connection failed.")
+    
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "INSERT INTO User (city_id, first_name, surname) VALUES (?, ?, ?)",
+            (city_id, first_name, surname)
+        )
+        new_user_id = cursor.lastrowid
+        
+        stored_password = _hash_password_with_name_key(password_hash, first_name, surname)
+        cursor.execute(
+            "INSERT INTO User_Access (user_id, password_hash, role_id, email) VALUES (?, ?, ?, ?)",
+            (new_user_id, stored_password, role_id, email)
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def update_user(user_id, first_name, surname, email, role_id, city_id=None, password_hash=None, scope_city_id=None):
+    email = _validate_email(email)
+
     conn = check_connection()
     if conn is None:
         raise ValueError("Database connection failed.")
 
-    email = _validate_email(email)
-
     cursor = conn.cursor()
+    try:
+        if scope_city_id is not None:
+            user_row = execute_query("SELECT city_id FROM User WHERE user_id = ?", (user_id,), 'one')
+            if user_row is None:
+                raise ValueError("User not found.")
+            if user_row[0] != scope_city_id:
+                raise ValueError("Administrators can only update users in their assigned location.")
+            if city_id != scope_city_id:
+                raise ValueError("Administrators can only assign users to their own location.")
 
-    if scope_city_id is not None:
-        cursor.execute("SELECT city_id FROM User WHERE user_id = ?", (user_id,))
-        user_row = cursor.fetchone()
-        if user_row is None:
-            conn.close()
-            raise ValueError("User not found.")
-        if user_row[0] != scope_city_id:
-            conn.close()
-            raise ValueError("Administrators can only update users in their assigned location.")
-        if city_id != scope_city_id:
-            conn.close()
-            raise ValueError("Administrators can only assign users to their own location.")
+        # Check email uniqueness
+        existing = execute_query(
+            "SELECT 1 FROM User_Access WHERE email = ? AND user_id != ?",
+            (email, user_id),
+            'one'
+        )
+        if existing:
+            raise ValueError("Email already exists.")
 
-    cursor.execute(
-        "SELECT 1 FROM User_Access WHERE email = ? AND user_id != ?",
-        (email, user_id)
-    )
-    if cursor.fetchone():
+        cursor.execute(
+            "UPDATE User SET city_id = ?, first_name = ?, surname = ? WHERE user_id = ?",
+            (city_id, first_name, surname, user_id)
+        )
+
+        if password_hash:
+            stored_password = _hash_password_with_name_key(password_hash, first_name, surname)
+            cursor.execute(
+                "UPDATE User_Access SET email = ?, role_id = ?, password_hash = ? WHERE user_id = ?",
+                (email, role_id, stored_password, user_id)
+            )
+        else:
+            cursor.execute(
+                "UPDATE User_Access SET email = ?, role_id = ? WHERE user_id = ?",
+                (email, role_id, user_id)
+            )
+
+        conn.commit()
+    finally:
         conn.close()
-        raise ValueError("Email already exists.")
-
-    cursor.execute(
-        "UPDATE User SET city_id = ?, first_name = ?, surname = ? WHERE user_id = ?",
-        (city_id, first_name, surname, user_id)
-    )
-
-    if password_hash:
-        stored_password = _hash_password_with_name_key(password_hash, first_name, surname)
-        cursor.execute(
-            "UPDATE User_Access SET email = ?, role_id = ?, password_hash = ? WHERE user_id = ?",
-            (email, role_id, stored_password, user_id)
-        )
-    else:
-        cursor.execute(
-            "UPDATE User_Access SET email = ?, role_id = ? WHERE user_id = ?",
-            (email, role_id, user_id)
-        )
-
-    conn.commit()
-    conn.close()
 
 
 def delete_user(user_id, scope_city_id=None, acting_user_id=None, acting_role=None):
-    conn = check_connection()
-    if conn is None:
-        raise ValueError("Database connection failed.")
-
-    cursor = conn.cursor()
-
-    # Prevent any user from deleting their own account (safety check)
+    # Prevent any user from deleting their own account
     if acting_user_id is not None and acting_user_id == user_id:
-        conn.close()
         raise ValueError("You cannot delete your own account.")
 
-    cursor.execute("SELECT email FROM User_Access WHERE user_id = ?", (user_id,))
-    email_row = cursor.fetchone()
+    email_row = execute_query("SELECT email FROM User_Access WHERE user_id = ?", (user_id,), 'one')
     if email_row is None:
-        conn.close()
         raise ValueError("User not found.")
 
     if scope_city_id is not None:
-        cursor.execute("SELECT city_id FROM User WHERE user_id = ?", (user_id,))
-        user_row = cursor.fetchone()
+        user_row = execute_query("SELECT city_id FROM User WHERE user_id = ?", (user_id,), 'one')
         if user_row is None:
-            conn.close()
             raise ValueError("User not found.")
         if user_row[0] != scope_city_id:
-            conn.close()
             raise ValueError("Administrators can only delete users in their assigned location.")
 
-    cursor.execute("DELETE FROM User_Access WHERE user_id = ?", (user_id,))
-    cursor.execute("DELETE FROM User WHERE user_id = ?", (user_id,))
-    conn.commit()
-    conn.close()
+    operations = [
+        ("DELETE FROM User_Access WHERE user_id = ?", (user_id,)),
+        ("DELETE FROM User WHERE user_id = ?", (user_id,))
+    ]
+    execute_transaction(operations)
 
 
 def check_user(email, password):
-       
-    conn = check_connection()
-
-    if conn is None:
-        return None
-    
-    cursor = conn.cursor()
-    cursor.execute("""
+    row = execute_query("""
         SELECT ua.password_hash, u.first_name, u.surname
         FROM User_Access ua
         JOIN User u ON u.user_id = ua.user_id
         WHERE ua.email = ?
-    """, (email,))
-
-    row = cursor.fetchone()
-
-    conn.close()
+    """, (email,), 'one')
 
     if not row:
         return None
@@ -281,14 +234,9 @@ def check_user(email, password):
     stored_password, first_name, surname = row
     return 1 if _verify_password(stored_password, password, first_name, surname) else None
 
+
 def retrive_data(email, password=None):
-    
-    conn = check_connection()
-    if conn is None:
-        return None
-    
-    cursor = conn.cursor()
-    cursor.execute("""
+    return execute_query("""
         SELECT 
             u.user_id,
             u.first_name,
@@ -301,27 +249,15 @@ def retrive_data(email, password=None):
         JOIN Role r ON ua.role_id = r.role_id
         JOIN Location l ON u.city_id = l.city_id
         WHERE ua.email = ?
-    """, (email,))
-
-    user_data = cursor.fetchone()
-    conn.close()
-    return user_data
+    """, (email,), 'one')
 
 
 def get_login_debug_details(email):
     """Return minimal login debug info including stored password value."""
-    conn = check_connection()
-    if conn is None:
-        return None
-
-    cursor = conn.cursor()
-    cursor.execute("""
+    return execute_query("""
         SELECT u.first_name, u.surname, r.role_name, ua.password_hash
         FROM User u
         JOIN User_Access ua ON u.user_id = ua.user_id
         JOIN Role r ON ua.role_id = r.role_id
         WHERE ua.email = ?
-    """, (email,))
-    details = cursor.fetchone()
-    conn.close()
-    return details
+    """, (email,), 'one')

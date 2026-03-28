@@ -1,6 +1,10 @@
-from database.databaseConnection import check_connection, fetch_all, insert
+from database.databaseConnection import fetch_all, insert, check_connection
+from .db_utils import execute_query, validate_required_fields, validate_positive_number
 
-# ================= TENANTS =================
+
+# ============================================================================
+# TENANTS
+# ============================================================================
 
 def fetch_tenants(city_id=None, tenant_id=None):
     query = """
@@ -26,8 +30,9 @@ def build_tenant_map(tenants):
     return {name: t_id for t_id, name in tenants}
 
 
-
-# ================= APARTMENTS =================
+# ============================================================================
+# APARTMENTS
+# ============================================================================
 
 def fetch_available_apartments(city_id=None):
     query = """
@@ -62,21 +67,14 @@ def build_apartment_map(apartments, city_id=None):
     return result
 
 
-# ================= LEASES =================
+# ============================================================================
+# LEASES
+# ============================================================================
 
 def fetch_leases(city_id=None, tenant_id=None):
     """
     Returns rows in THIS exact order:
-    (
-        lease_id,
-        tenant_name,
-        apartment_display,
-        start_date,
-        end_date,
-        agreed_rent,
-        city_name,
-        status
-    )
+    (lease_id, tenant_name, apartment_display, start_date, end_date, agreed_rent, city_name, status)
     """
     query = """
         SELECT
@@ -122,24 +120,19 @@ def fetch_leases(city_id=None, tenant_id=None):
 
     return fetch_all(query, tuple(params))
 
+
 def create_lease(apartment_id, tenant_id, start_date, end_date, agreed_rent):
-    # prevent empty values
-    if (
-        apartment_id in (None, "")
-        or tenant_id in (None, "")
-        or not str(start_date).strip()
-        or not str(end_date).strip()
-        or not str(agreed_rent).strip()
-    ):
-        raise ValueError("All lease fields are required.")
+    # Validate all fields
+    validate_required_fields({
+        'apartment_id': apartment_id,
+        'tenant_id': tenant_id,
+        'start_date': start_date,
+        'end_date': end_date,
+        'agreed_rent': agreed_rent
+    })
 
-    try:
-        agreed_rent = float(agreed_rent)
-    except Exception:
-        raise ValueError("Rent must be a number.")
-
-    if agreed_rent <= 0:
-        raise ValueError("Rent must be greater than 0.")
+    # Validate rent is a positive number
+    agreed_rent = validate_positive_number(agreed_rent, 'Rent')
 
     insert(
         """
@@ -156,43 +149,34 @@ def create_lease(apartment_id, tenant_id, start_date, end_date, agreed_rent):
     )
 
 
-# ================= UPDATE / TERMINATION =================
+# ============================================================================
+# UPDATE / TERMINATION
+# ============================================================================
 
 def update_lease(lease_id, start_date, end_date, agreed_rent):
-    if lease_id in (None, ""):
-        raise ValueError("Lease ID is required.")
+    validate_required_fields({
+        'lease_id': lease_id,
+        'start_date': start_date,
+        'end_date': end_date,
+        'agreed_rent': agreed_rent
+    })
 
-    if not str(start_date).strip() or not str(end_date).strip() or not str(agreed_rent).strip():
-        raise ValueError("All update fields are required.")
+    agreed_rent = validate_positive_number(agreed_rent, 'Rent')
 
-    try:
-        agreed_rent = float(agreed_rent)
-    except Exception:
-        raise ValueError("Rent must be a number.")
-
-    if agreed_rent <= 0:
-        raise ValueError("Rent must be greater than 0.")
-
-    conn = check_connection()
-    cursor = conn.cursor()
-    cursor.execute(
+    execute_query(
         """
         UPDATE Lease
         SET start_date = ?, end_date = ?, Agreed_rent = ?
         WHERE lease_id = ?
         """,
-        (start_date, end_date, agreed_rent, lease_id)
+        (start_date, end_date, agreed_rent, lease_id),
+        'none'
     )
-    conn.commit()
-    conn.close()
 
 
 def update_lease_early_termination(lease_id, fee):
-    conn = check_connection()
-    cursor = conn.cursor()
-    cursor.execute(
+    execute_query(
         "UPDATE Lease SET early_termination_fee = ? WHERE lease_id = ?",
-        (fee, lease_id)
+        (fee, lease_id),
+        'none'
     )
-    conn.commit()
-    conn.close()

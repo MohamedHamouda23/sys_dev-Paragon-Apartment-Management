@@ -10,10 +10,10 @@ from reportlab.lib import colors
 from main.helpers import create_button, clear_frame, show_placeholder, create_scrollable_treeview
 from database.payment_service import get_all_payments, get_tenant_payments, get_payment_details
 from database.tenant_portal_service import (
-    get_payment_history_series,
-    get_late_payment_by_property,
     get_neighbor_comparison,
     get_tenant_payments_with_balance,
+    get_payment_history_series,
+    get_late_payment_by_property
 )
 
 

@@ -1,27 +1,12 @@
+
 from datetime import datetime, timedelta
-from database.databaseConnection import check_connection
+from database.databaseConnection import check_connection,fetch_all
 from database.payment_service import update_late_status
-
-
-def _fetch_one(query, params=()):
-    conn = check_connection()
-    cursor = conn.cursor()
-    cursor.execute(query, params)
-    row = cursor.fetchone()
-    conn.close()
-    return row
-
-
-def _fetch_all(query, params=()):
-    conn = check_connection()
-    cursor = conn.cursor()
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
-    conn.close()
-    return rows
+from .db_utils import execute_query, execute_transaction, get_user_id
 
 
 def ensure_tenant_portal_schema():
+    """Create tenant portal specific tables if they don't exist."""
     conn = check_connection()
     cursor = conn.cursor()
 
@@ -59,26 +44,17 @@ def ensure_tenant_portal_schema():
     conn.close()
 
 
+# ============================================================================
+# TENANT HELPERS
+# ============================================================================
+
 def get_tenant_id_from_user(user_id):
-    from database.databaseConnection import check_connection
-
-    conn = check_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT tenant_id
-        FROM Tenant
-        WHERE user_id = ?
-    """, (user_id,))
-
-    row = cursor.fetchone()
-    conn.close()
-
+    row = execute_query("SELECT tenant_id FROM Tenant WHERE user_id = ?", (user_id,), 'one')
     return row[0] if row else None
 
 
 def get_active_lease_for_user(user_id):
-    return _fetch_one(
+    return execute_query(
         """
         SELECT
             l.lease_id,
@@ -106,11 +82,16 @@ def get_active_lease_for_user(user_id):
         LIMIT 1
         """,
         (user_id,),
+        'one'
     )
 
 
+# ============================================================================
+# PROFILE & PAYMENTS
+# ============================================================================
+
 def get_tenant_profile(user_id):
-    row = _fetch_one(
+    row = execute_query(
         """
         SELECT
             u.first_name,
@@ -140,6 +121,7 @@ def get_tenant_profile(user_id):
         LIMIT 1
         """,
         (user_id,),
+        'one'
     )
 
     if not row:
@@ -162,9 +144,10 @@ def get_tenant_profile(user_id):
 
 
 def get_tenant_payments_with_balance(user_id):
-    """If payment_date is missing, status is 'Unpaid' and paid_amount is forced to 0.0."""
+    """Get tenant payments with balance calculations."""
     update_late_status()
-    rows = _fetch_all(
+    
+    rows = execute_query(
         """
         SELECT
             p.payment_id,
@@ -188,7 +171,7 @@ def get_tenant_payments_with_balance(user_id):
           AND u.city_id = b.city_id
         ORDER BY DATE(p.due_date) DESC
         """,
-        (user_id,),
+        (user_id,)
     )
 
     out = []
@@ -205,125 +188,116 @@ def get_tenant_payments_with_balance(user_id):
         else:
             status = "Paid"
 
-        out.append(
-            {
-                "payment_id": r[0],
-                "lease_id": r[1],
-                "due_date": r[2],
-                "payment_date": pay_date if pay_date else "-",
-                "paid_amount": paid,
-                "agreed_rent": agreed,
-                "outstanding": bal,
-                "is_late": r[6] or "No",
-                "status": status,
-                "property": f"{r[7]} ({r[8]})",
-                "apartment_type": r[9] or "N/A",
-                "city_id": r[10],
-            }
-        )
+        out.append({
+            "payment_id": r[0],
+            "lease_id": r[1],
+            "due_date": r[2],
+            "payment_date": pay_date if pay_date else "-",
+            "paid_amount": paid,
+            "agreed_rent": agreed,
+            "outstanding": bal,
+            "is_late": r[6] or "No",
+            "status": status,
+            "property": f"{r[7]} ({r[8]})",
+            "apartment_type": r[9] or "N/A",
+            "city_id": r[10],
+        })
     return out
 
 
 def simulate_payment(user_id, payment_id, amount, mode):
-    conn = check_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
+    """Simulate a payment for testing purposes."""
+    row = execute_query("""
         SELECT l.Agreed_rent, COALESCE(p.amount, 0)
         FROM Payment p
         JOIN Lease l ON p.lease_id = l.lease_id
         JOIN Tenant t ON l.tenant_id = t.tenant_id
         WHERE p.payment_id = ? AND t.user_id = ?
-    """, (payment_id, user_id))
+    """, (payment_id, user_id), 'one')
 
-    row = cursor.fetchone()
     if not row:
-        conn.close()
         raise ValueError("Payment not found")
 
     rent, current_paid = row
     rent = float(rent or 0)
-    current_paid = float(current_paid or 0)
     amount = float(amount or 0)
 
-    if mode == "full":
-        new_total = rent
-    else:
-        new_total = amount  # ← FIXED: Use the custom amount directly
-        if new_total > rent:
-            new_total = rent
+    new_total = rent if mode == "full" else min(amount, rent)
 
-    cursor.execute("""
+    execute_query("""
         UPDATE Payment
         SET amount = ?, payment_date = DATE('now')
         WHERE payment_id = ?
-    """, (new_total, payment_id))
+    """, (new_total, payment_id), 'none')
 
-    conn.commit()
-    conn.close()
 
+# ============================================================================
+# DASHBOARD & ANALYTICS
+# ============================================================================
 
 def get_dashboard_metrics(user_id):
+    """Get summary metrics for tenant dashboard."""
     payments = get_tenant_payments_with_balance(user_id)
     total_paid = round(sum(p["paid_amount"] for p in payments), 2)
     total_due = round(sum(p["agreed_rent"] for p in payments), 2)
     outstanding = round(sum(p["outstanding"] for p in payments), 2)
     late_count = sum(1 for p in payments if str(p["is_late"]).lower() == "yes")
 
-    alerts = []
-    if late_count > 0:
-        alerts.append("Payment overdue")
-        alerts.append("Late fee applied (if applicable)")
-
     return {
         "total_paid": total_paid,
         "total_due": total_due,
         "outstanding": outstanding,
-        "late_count": late_count,
-        "alerts": alerts,
+        "late_count": late_count
     }
 
 
-def get_payment_history_series(user_id):
-    # Sum only where a payment_date exists to avoid counting phantom amounts
-    rows = _fetch_all(
+def get_payment_history_chart(user_id, months=6):
+    """Get payment history for charting."""
+    cutoff = (datetime.now() - timedelta(days=months * 30)).strftime("%Y-%m-%d")
+    
+    return execute_query(
         """
-        SELECT strftime('%Y-%m', due_date) AS ym, SUM(COALESCE(amount, 0))
+        SELECT 
+            strftime('%Y-%m', p.due_date) AS month,
+            COALESCE(SUM(p.amount), 0) AS total_paid
         FROM Payment p
         JOIN Lease l ON p.lease_id = l.lease_id
         JOIN Tenant t ON l.tenant_id = t.tenant_id
-        WHERE t.user_id = ? AND p.payment_date IS NOT NULL
-        GROUP BY ym
-        ORDER BY ym
+        WHERE t.user_id = ?
+          AND p.payment_date IS NOT NULL
+          AND DATE(p.due_date) >= ?
+        GROUP BY month
+        ORDER BY month
         """,
-        (user_id,),
+        (user_id, cutoff)
     )
-    return [(r[0], float(r[1] or 0)) for r in rows]
 
 
-def get_late_payment_by_property(user_id):
-    update_late_status()
-    rows = _fetch_all(
+def get_late_payment_trend(user_id):
+    """Get late payment trends by building."""
+    rows = execute_query(
         """
-        SELECT
+        SELECT 
             b.postcode,
-            SUM(CASE WHEN COALESCE(p.is_late, 'No') = 'Yes' THEN 1 ELSE 0 END) AS late_count
+            COUNT(*) as late_count
         FROM Payment p
         JOIN Lease l ON p.lease_id = l.lease_id
         JOIN Tenant t ON l.tenant_id = t.tenant_id
         JOIN Apartments a ON l.apartment_id = a.apartment_id
         JOIN Buildings b ON a.building_id = b.building_id
         WHERE t.user_id = ?
+          AND COALESCE(p.is_late, 'No') = 'Yes'
         GROUP BY b.postcode
         ORDER BY late_count DESC
         """,
-        (user_id,),
+        (user_id,)
     )
     return [(r[0], int(r[1] or 0)) for r in rows]
 
 
 def get_neighbor_comparison(user_id):
-    tenant_row = _fetch_one(
+    """Compare tenant's payments with neighbors in same apartment type."""
+    tenant_row = execute_query(
         """
         SELECT
             COALESCE(AVG(p.amount), 0),
@@ -337,6 +311,7 @@ def get_neighbor_comparison(user_id):
         WHERE t.user_id = ? AND p.payment_date IS NOT NULL
         """,
         (user_id,),
+        'one'
     )
 
     if not tenant_row:
@@ -346,7 +321,7 @@ def get_neighbor_comparison(user_id):
     apt_type = tenant_row[1]
     city_id = tenant_row[2]
 
-    neighbor_row = _fetch_one(
+    neighbor_row = execute_query(
         """
         SELECT COALESCE(AVG(p.amount), 0)
         FROM Payment p
@@ -360,6 +335,7 @@ def get_neighbor_comparison(user_id):
           AND p.payment_date IS NOT NULL
         """,
         (apt_type, city_id, user_id),
+        'one'
     )
 
     neighbor_avg = float(neighbor_row[0] or 0)
@@ -370,8 +346,12 @@ def get_neighbor_comparison(user_id):
     }
 
 
+# ============================================================================
+# MAINTENANCE REQUESTS
+# ============================================================================
+
 def get_tenant_maintenance_requests(user_id):
-    rows = _fetch_all(
+    return execute_query(
         """
         SELECT
             mr.request_id,
@@ -387,12 +367,12 @@ def get_tenant_maintenance_requests(user_id):
         WHERE t.user_id = ?
         ORDER BY mr.created_date DESC
         """,
-        (user_id,),
+        (user_id,)
     )
-    return rows
 
 
 def submit_tenant_maintenance_request(user_id, category, description):
+    """Submit a new maintenance request."""
     lease = get_active_lease_for_user(user_id)
     if not lease:
         raise ValueError("No active lease found for tenant.")
@@ -400,37 +380,32 @@ def submit_tenant_maintenance_request(user_id, category, description):
     apartment_id = lease[2]
     tenant_id = lease[1]
 
-    conn = check_connection()
-    cursor = conn.cursor()
-    cursor.execute(
+    execute_query(
         """
         INSERT INTO Maintenance_Request
         (apartment_id, tenant_id, issue, description, Maintenance_status, priority, created_date)
         VALUES (?, ?, ?, ?, 'Open', 'Medium', ?)
         """,
         (apartment_id, tenant_id, category, description, datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+        'none'
     )
-    conn.commit()
-    conn.close()
 
+
+# ============================================================================
+# COMPLAINTS
+# ============================================================================
 
 def get_tenant_complaints(user_id):
     tenant_id = get_tenant_id_from_user(user_id)
     if not tenant_id:
         return []
     
-    conn = check_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
+    return execute_query("""
         SELECT complaint_id, description, date_submitted 
         FROM Complaints 
         WHERE tenant_id = ?
         ORDER BY date_submitted DESC
     """, (tenant_id,))
-    
-    rows = cursor.fetchall()
-    conn.close()
-    return rows
 
 
 def submit_tenant_complaint(user_id, description):
@@ -438,22 +413,23 @@ def submit_tenant_complaint(user_id, description):
     if not tenant_id:
         raise ValueError("Tenant not found for this user")
     
-    conn = check_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
+    execute_query("""
         INSERT INTO Complaints (tenant_id, description, date_submitted) 
         VALUES (?, ?, DATE('now'))
-    """, (tenant_id, description))
-    
-    conn.commit()
-    conn.close()
+    """, (tenant_id, description), 'none')
 
+
+# ============================================================================
+# NOTIFICATIONS
+# ============================================================================
 
 def get_notifications(user_id):
+    """Get all notifications for tenant."""
     update_late_status()
     notes = []
 
-    upcoming = _fetch_all(
+    # Upcoming payments
+    upcoming = execute_query(
         """
         SELECT due_date
         FROM Payment p
@@ -464,12 +440,13 @@ def get_notifications(user_id):
           AND DATE(p.due_date) BETWEEN DATE('now') AND DATE('now', '+7 day')
         ORDER BY DATE(p.due_date)
         """,
-        (user_id,),
+        (user_id,)
     )
     for r in upcoming:
         notes.append(f"Upcoming rent due date: {r[0]}")
 
-    late_rows = _fetch_all(
+    # Late payments
+    late_rows = execute_query(
         """
         SELECT due_date
         FROM Payment p
@@ -479,12 +456,13 @@ def get_notifications(user_id):
         ORDER BY DATE(p.due_date) DESC
         LIMIT 3
         """,
-        (user_id,),
+        (user_id,)
     )
     if late_rows:
         notes.append("Late payments detected on your account.")
 
-    maint = _fetch_all(
+    # Maintenance updates
+    maint = execute_query(
         """
         SELECT request_id, Maintenance_status
         FROM Maintenance_Request mr
@@ -493,12 +471,13 @@ def get_notifications(user_id):
         ORDER BY mr.created_date DESC
         LIMIT 3
         """,
-        (user_id,),
+        (user_id,)
     )
     for req_id, st in maint:
         notes.append(f"Maintenance update for request #{req_id}: {st}")
 
-    comp = _fetch_all(
+    # Complaint updates
+    comp = execute_query(
         """
         SELECT complaint_id, 'Submitted' 
         FROM Complaints c
@@ -507,7 +486,7 @@ def get_notifications(user_id):
         ORDER BY complaint_id DESC
         LIMIT 3
         """,
-        (user_id,),
+        (user_id,)
     )
     for comp_id, st in comp:
         notes.append(f"Complaint #{comp_id} status: {st}")
@@ -516,8 +495,10 @@ def get_notifications(user_id):
 
 
 def get_late_payment_notifications(user_id):
+    """Get late payment notifications."""
     update_late_status()
-    rows = _fetch_all(
+    
+    rows = execute_query(
         """
         SELECT due_date
         FROM Payment p
@@ -527,7 +508,7 @@ def get_late_payment_notifications(user_id):
           AND COALESCE(p.is_late, 'No') = 'Yes'
         ORDER BY DATE(p.due_date) DESC
         """,
-        (user_id,),
+        (user_id,)
     )
 
     if not rows:
@@ -536,7 +517,12 @@ def get_late_payment_notifications(user_id):
     return [f"Late payment overdue (due date: {r[0]})" for r in rows]
 
 
+# ============================================================================
+# EARLY TERMINATION
+# ============================================================================
+
 def submit_early_termination_request(user_id, requested_move_out, reason):
+    """Submit an early lease termination request."""
     ensure_tenant_portal_schema()
     lease = get_active_lease_for_user(user_id)
     if not lease:
@@ -556,25 +542,23 @@ def submit_early_termination_request(user_id, requested_move_out, reason):
 
     penalty = round(float(monthly_rent or 0) * 0.05, 2)
 
-    conn = check_connection()
-    cursor = conn.cursor()
-    cursor.execute(
+    execute_query(
         """
         INSERT INTO Early_Termination_Request
         (lease_id, tenant_id, request_date, requested_move_out, notice_days, penalty_amount, reason, status)
         VALUES (?, ?, DATE('now'), ?, ?, ?, ?, 'Pending')
         """,
         (lease_id, tenant_id, requested_move_out, notice_days, penalty, reason),
+        'none'
     )
-    conn.commit()
-    conn.close()
 
     return penalty
 
 
 def get_early_termination_requests(user_id):
+    """Get all early termination requests for a tenant."""
     ensure_tenant_portal_schema()
-    return _fetch_all(
+    return execute_query(
         """
         SELECT request_id, request_date, requested_move_out, notice_days, penalty_amount, status
         FROM Early_Termination_Request etr
@@ -582,5 +566,45 @@ def get_early_termination_requests(user_id):
         WHERE t.user_id = ?
         ORDER BY request_id DESC
         """,
+        (user_id,)
+    )
+
+
+def get_payment_history_series(user_id):
+    # Sum only where a payment_date exists to avoid counting phantom amounts
+    rows = fetch_all(
+        """
+        SELECT strftime('%Y-%m', due_date) AS ym, SUM(COALESCE(amount, 0))
+        FROM Payment p
+        JOIN Lease l ON p.lease_id = l.lease_id
+        JOIN Tenant t ON l.tenant_id = t.tenant_id
+        WHERE t.user_id = ? AND p.payment_date IS NOT NULL
+        GROUP BY ym
+        ORDER BY ym
+        """,
         (user_id,),
     )
+    return [(r[0], float(r[1] or 0)) for r in rows]
+
+
+
+def get_late_payment_by_property(user_id):
+    update_late_status()
+    rows = fetch_all(
+        """
+        SELECT
+            b.postcode,
+            SUM(CASE WHEN COALESCE(p.is_late, 'No') = 'Yes' THEN 1 ELSE 0 END) AS late_count
+        FROM Payment p
+        JOIN Lease l ON p.lease_id = l.lease_id
+        JOIN Tenant t ON l.tenant_id = t.tenant_id
+        JOIN Apartments a ON l.apartment_id = a.apartment_id
+        JOIN Buildings b ON a.building_id = b.building_id
+        WHERE t.user_id = ?
+        GROUP BY b.postcode
+        ORDER BY late_count DESC
+        """,
+        (user_id,),
+    )
+    return [(r[0], int(r[1] or 0)) for r in rows]
+
