@@ -105,10 +105,12 @@ class MaintenancePage:
         button_frame.place(relx=0.5, rely=0.5, anchor="center")
         
         # New Request button
-        create_button(
-            button_frame, text="✚ New Maintenance Request", width=250, height=55,
-            bg="#28a745", fg="white", command=self._new_request
-        ).pack()
+        btn = create_button(
+        button_frame, text="✚ New Maintenance Request", width=350, height=55,
+        bg="#28a745", fg="white", command=self._new_request
+    )
+        btn.pack()
+
         
         # Initialize tracking variables
         self.selected_request_id = None
@@ -178,11 +180,18 @@ class MaintenancePage:
 
         button_frame = tk.Frame(self.detail_wrap, bg="white")
         button_frame.place(relx=0.5, rely=0.5, anchor="center")
-        create_button(
-            button_frame, text="✚ New Maintenance Request", width=250, height=55,
-            bg="#28a745", fg="white", command=self._new_request
-        ).pack()
+        btn = create_button(
+        button_frame,
+        text="✚ New Maintenance Request",
+        width=300,
+        height=55,
+        bg="#E53935",
+        fg="white",
+        command=self._new_request
+    )
     
+
+
     def _render_request_rows(self):
         """Render request rows based on current filter"""
         # Clear existing rows

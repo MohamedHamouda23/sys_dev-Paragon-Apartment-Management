@@ -80,7 +80,7 @@ def page_template(main_window, user_info):
         "Administrators": ["Users", "Properties", "Tenants", "Lease", "Reports", "Request Lifecycle"],
         "Front-desk Staff": ["Tenants", "Lease", "Maintenance"],
         "Maintenance Staff": ["Request Lifecycle", "Reports"],
-        "Manager": ["Properties", "Tenants", "Lease", "Reports", "Maintenance", "Request Lifecycle"],
+        "Manager": ["Properties", "Lease", "Reports", "Maintenance", "Request Lifecycle"],
         "Finance Manager": ["Reports", "Payments"],
         "Tenant": ["Profile", "Payments", "Maintenance", "Complaints", "Lease"],
     }
