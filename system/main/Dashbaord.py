@@ -77,12 +77,12 @@ def page_template(main_window, user_info):
 
     role = user_info[4]
     ROLE_PAGES = {
-        "Administrators": ["Users", "Properties", "Tenants", "Lease", "Reports", "Request Lifecycle"],
-        "Front-desk Staff": ["Tenants", "Lease", "Maintenance"],
+        "Administrators": ["Users", "Properties", "Lease", "Reports", "Request Lifecycle"],
+        "Front-desk Staff": ["Tenants", "Lease", "Maintenance","complaints"],
         "Maintenance Staff": ["Request Lifecycle", "Reports"],
         "Manager": ["Properties", "Lease", "Reports", "Maintenance", "Request Lifecycle"],
         "Finance Manager": ["Reports", "Payments"],
-        "Tenant": ["Profile", "Payments", "Maintenance", "Complaints", "Lease"],
+        "Tenant": ["Profile", "Payments", "Maintenance", "Complaints", "Lease","Reports"],
     }
 
     allowed_pages = ROLE_PAGES.get(role, [])
@@ -117,3 +117,4 @@ def page_template(main_window, user_info):
         show_page(list(page_modules.keys())[0])
 
     root.mainloop()
+
