@@ -61,17 +61,18 @@ class ReportManagementPage:
             font=("Arial", 16, "bold"),
         ).pack(side="left")
 
-        tk.Button(
-            top_wrap,
-            text="Refresh",
-            command=self._render_tenant_dashboard,
-            bg="#3B86FF",
-            fg="white",
-            font=("Arial", 10, "bold"),
-            relief="flat",
-            padx=14,
-            pady=6,
-        ).pack(side="right")
+        btn = create_button(
+        top_wrap,
+        text="Refresh",
+        width=120,
+        height=35,
+        bg="#3B86FF",
+        fg="white",
+        command=self._render_tenant_dashboard
+    )
+
+        btn.pack_forget()
+        btn.pack(side="right")
 
         charts_wrap = tk.Frame(self.frame, bg="#c9e4c4")
         charts_wrap.pack(fill="both", expand=True, padx=24, pady=(4, 20))

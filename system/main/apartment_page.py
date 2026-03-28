@@ -394,20 +394,3 @@ class ApartmentManagerPage:
             current_window=None
         ).pack()
 
-
-# ============================================================================
-# LOGOUT FUNCTION
-# ============================================================================
-
-def logout_page(current_frame, parent_window):
-    """Destroy current frame and show login window"""
-    try:
-        current_frame.destroy()
-    except Exception:
-        pass
-    try:
-        parent_window.deiconify()
-    except Exception:
-        pass
-    from main.log_in import Log_window
-    Log_window(parent_window)

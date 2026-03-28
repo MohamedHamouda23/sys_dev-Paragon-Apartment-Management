@@ -198,13 +198,17 @@ class StaffAssignmentPanel:
 
             # Create slot buttons
             for slot in available:
-                slot_btn = tk.Button(self.slots_frame, 
-                                    text=self._format_slot_display(slot),
-                                    bg="#2ecc71" if slot == self.selected_slot else "#ecf0f1",
-                                    fg="white" if slot == self.selected_slot else "#2c3e50",
-                                    font=("Arial", 9, "bold"),
-                                    width=20, height=1, bd=0,
-                                    command=lambda s=slot: self._select_slot(s))
+                slot_btn = create_button(
+                self.slots_frame,
+                text=self._format_slot_display(slot),
+                width=160,
+                height=30,
+                bg="#2ecc71" if slot == self.selected_slot else "#ecf0f1",
+                fg="white" if slot == self.selected_slot else "#2c3e50",
+                command=lambda s=slot: self._select_slot(s)
+            )
+
+                slot_btn.pack_forget()
                 slot_btn.pack(side="left", padx=(0, 10))
 
         except Exception as e:

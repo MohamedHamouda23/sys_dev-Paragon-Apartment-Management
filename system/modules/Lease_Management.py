@@ -553,17 +553,18 @@ class TenantLeaseExitPage:
             btn_frame.pack(side="right", padx=10)
             
             # Termination button
-            tk.Button(
-                btn_frame,
-                text="Terminate Lease",
-                bg="#dc3545",
-                fg="white",
-                font=("Arial", 9, "bold"),
-                command=lambda lid=l_id, r=rent_amount: self._terminate_lease(lid, r),
-                relief="flat",
-                padx=10,
-                pady=5
-            ).pack()
+            btn = create_button(
+            btn_frame,
+            text="Terminate Lease",
+            width=150,
+            height=35,
+            bg="#dc3545",
+            fg="white",
+            command=lambda lid=l_id, r=rent_amount: self._terminate_lease(lid, r)
+        )
+
+            btn.pack_forget()
+            btn.pack(padx=10, pady=5)
             
             # Info about penalty
             tk.Label(btn_frame, text=f"Penalty: 5% (£{rent_amount * 0.05:,.2f})", 
