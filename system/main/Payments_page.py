@@ -32,7 +32,7 @@ class PaymentsPage:
         self.tree = create_scrollable_treeview(self.frame, ["ID", "Property", "Due Date", "Paid", "Total", "Status"])
         self.tree.pack(fill="both", expand=True, padx=20)
         
-        create_button(self.frame, "Make Payment", command=self._pay).pack(pady=10)
+        create_button(self.frame, "Make Payment", command=self._pay).pack(pady=(10, 30))
 
     def refresh_payments(self):
         self.data = get_tenant_payments_with_balance(self.user_id)
@@ -60,34 +60,85 @@ class PaymentsPage:
         if details:
             self._render_lifecycle_detail(details)
 
-    def _render_lifecycle_detail(self, details):
-        clear_frame(self.detail_container)
-        
-        # FIX: If payment_date is missing, paid amount is strictly 0.00
-        p_date = details.get('payment_date')
-        if not p_date or p_date in ["-", "N/A", "None"]:
-            paid_amount = 0.0
-        else:
-            paid_amount = float(details.get('paid_amount') or 0)
-            
-        rent = float(details.get('agreed_rent') or 0)
-        outstanding = max(rent - paid_amount, 0)
-        status = details.get('status', 'Unpaid')
+    def _render_lifecycle_detail_panel(self, payment_id, details):
+        clear_frame(self.detail_wrap)
 
-        tk.Label(self.detail_container, text="Payment Lifecycle", font=("Arial", 12, "bold"), bg="white").pack(pady=15)
-        
-        color = "#e74c3c" if status == "Unpaid" else "#f39c12" if "Partial" in status else "#27ae60"
-        tk.Label(self.detail_container, text=status.upper(), fg="white", bg=color, font=("Arial", 9, "bold"), padx=10).pack(pady=5)
+        # 1. Main container for the white box
+        # Use a small bottom pady here; the spacer handles the large gap
+        container = tk.Frame(self.detail_wrap, bg="#f0f2f5")
+        container.pack(fill="x", padx=15, pady=(10, 0))
 
-        info_f = tk.Frame(self.detail_container, bg="white")
-        info_f.pack(fill="x", padx=20, pady=10)
+        # --- Header ---
+        header = tk.Frame(container, bg="white", bd=1, relief="solid")
+        header.pack(fill="x", pady=(0, 5))
 
-        tk.Label(info_f, text=f"Agreed Rent: £{rent:.2f}", bg="white").pack(anchor="w")
-        tk.Label(info_f, text=f"Paid to Date: £{paid_amount:.2f}", bg="white", fg="green").pack(anchor="w")
-        tk.Label(info_f, text=f"Outstanding: £{outstanding:.2f}", bg="white", fg="red", font=("Arial", 10, "bold")).pack(anchor="w", pady=(5,0))
+        tk.Label(
+            header,
+            text=f"TRANSACTION MANAGEMENT: #{payment_id}",
+            font=("Arial", 11, "bold"),
+            bg="white",
+            fg="#1f3b63",
+        ).pack(side="left", padx=15, pady=8)
+
+        # Logic for calculations
+        agreed = float(details.get("agreed_rent", 0) or 0)
+        p_date = details.get("payment_date")
+        raw_paid = float(details.get("paid_amount", 0) or 0)
+        paid = 0.0 if not p_date or p_date in ["-", "None", "N/A"] else raw_paid
+        outstanding = max(agreed - paid, 0)
+        badge_bg = "#27ae60" if paid >= agreed else "#e74c3c"
+        status_text = "PAID" if paid >= agreed else "UNPAID"
+
+        tk.Label(
+            header,
+            text=status_text,
+            bg=badge_bg,
+            fg="white",
+            font=("Arial", 8, "bold"),
+            padx=12,
+            pady=2,
+        ).pack(side="right", padx=15)
+
+        # --- Info Cards ---
+        cols_frame = tk.Frame(container, bg="#f0f2f5")
+        cols_frame.pack(fill="x")
+
+        sections = [
+            ("Occupant Info", [("Tenant", details.get("tenant_name")), ("Property", details.get("property")), ("Location", details.get("city"))]),
+            ("Billing Period", [("Due Date", details.get("due_date")), ("Paid Date", p_date if p_date else "-"), ("Late status", details.get("is_late", "No"))]),
+            ("Financial Breakdown", [("Expected", f"£{agreed:.2f}"), ("Actual Paid", f"£{paid:.2f}"), ("Outstanding", f"£{outstanding:.2f}")])
+        ]
+
+        for title, items in sections:
+            card = tk.Frame(cols_frame, bg="white", bd=1, relief="solid")
+            card.pack(side="left", fill="both", expand=True, padx=2)
+            tk.Label(card, text=title, font=("Arial", 9, "bold"), bg="white", fg="#7f8c8d").pack(anchor="w", padx=10, pady=(5, 2))
+            for key, value in items:
+                row = tk.Frame(card, bg="white")
+                row.pack(fill="x", padx=10, pady=1)
+                tk.Label(row, text=f"{key}:", font=("Arial", 8), bg="white").pack(side="left")
+                tk.Label(row, text=str(value), font=("Arial", 8, "bold"), bg="white").pack(side="right")
+
+        # --- Footer (Buttons) ---
+        footer = tk.Frame(container, bg="#f0f2f5")
+        footer.pack(fill="x", pady=(15, 15)) 
+
+        create_button(
+            footer, "Generate PDF Invoice", 160, 35, "#1f3b63", "white", 
+            lambda: self._download_invoice(details)
+        ).pack(side="left")
 
         if self.user_role == "Tenant" and outstanding > 0.01:
-            create_button(self.detail_container, "Make Payment", command=self._open_payment_gateway, bg="#27ae60", fg="white").pack(pady=20)
+            create_button(
+                footer, "Pay Now", 140, 35, "#28a745", "white", 
+                lambda: PaymentWindow(self.frame.winfo_toplevel(), self.user_id, payment_id, outstanding, self.refresh_payments)
+            ).pack(side="left", padx=15)
+
+        # --- THE FIX: BOTTOM SPACER ---
+        # This frame matches your background color (#c9e4c4) and adds 60px of height.
+        # This forces the scrollable area to show empty space at the very start of the scroll.
+        bottom_spacer = tk.Frame(self.detail_wrap, bg="#c9e4c4", height=60)
+        bottom_spacer.pack(fill="x")
 
     def _open_payment_gateway(self):
         details = get_payment_details(self.selected_payment_id)
