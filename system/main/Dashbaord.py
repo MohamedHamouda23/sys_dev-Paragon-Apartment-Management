@@ -82,7 +82,7 @@ def page_template(main_window, user_info):
         "Maintenance Staff": ["Request Lifecycle", "Reports"],
         "Manager": ["Properties", "Lease", "Reports", "Maintenance", "Request Lifecycle"],
         "Finance Manager": ["Reports", "Payments"],
-        "Tenant": ["Profile", "Payments", "Maintenance", "Complaints", "Lease","Reports"],
+        "Tenant": ["Profile", "Payments", "Maintenance","Request Lifecycle" , "Complaints", "Lease","Reports"],
     }
 
     allowed_pages = ROLE_PAGES.get(role, [])

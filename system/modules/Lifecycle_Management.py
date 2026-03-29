@@ -408,35 +408,47 @@ class MaintenanceDetailPanel:
         btn_frame = tk.Frame(parent, bg="#f0f2f5")
         btn_frame.pack(anchor="e", pady=(15, 0))
 
-        # Open status: Show approve/deny buttons
-        if status == "Open":
-            create_button(btn_frame, text="Approve Request", bg="#27ae60", fg="white",
-                        command=lambda: self.on_approve(request_id)).pack(side="left", padx=(0, 10))
-            create_button(btn_frame, text="Deny Request", bg="#e74c3c", fg="white",
-                        command=lambda: self.on_deny(request_id)).pack(side="left")
-        
-        # In Progress status: Show priority update and resolve button
-        elif status == "In Progress":
-            # Priority update label
-            tk.Label(btn_frame, text="Update Priority:", bg="#f0f2f5", 
-                     font=("Arial", 10, "bold")).pack(side="left", padx=(0, 5))
-            
-            # Priority dropdown with immediate update
-            current_prio = self._get_field('priority', "Medium")
-            self.priority_update_dropdown = ttk.Combobox(
-                btn_frame, values=["High", "Medium", "Low"], 
-                state="readonly", width=10
-            )
-            self.priority_update_dropdown.set(current_prio)
-            self.priority_update_dropdown.pack(side="left", padx=(0, 20))
-            
-            # Bind selection event for immediate update
-            self.priority_update_dropdown.bind("<<ComboboxSelected>>", 
-                lambda e: self._handle_immediate_priority_update(request_id))
+        role = self.user_info[4] if self.user_info and len(self.user_info) > 4 else None
+        is_tenant = (role == "Tenant")
 
-            # Resolve button
-            create_button(btn_frame, text="Mark as Resolved", bg="#27ae60", fg="white",
-                        command=self._open_resolve_form).pack(side="left")
+        # Open status: show approve/deny for non-tenants only
+        if status == "Open":
+            if not is_tenant:
+                create_button(
+                    btn_frame, text="Approve Request", bg="#27ae60", fg="white",
+                    command=lambda: self.on_approve(request_id)
+                ).pack(side="left", padx=(0, 10))
+
+                create_button(
+                    btn_frame, text="Deny Request", bg="#e74c3c", fg="white",
+                    command=lambda: self.on_deny(request_id)
+                ).pack(side="left")
+
+        # In Progress status: keep same
+        elif status == "In Progress":
+            if not is_tenant:
+                tk.Label(
+                    btn_frame, text="Update Priority:", bg="#f0f2f5",
+                    font=("Arial", 10, "bold")
+                ).pack(side="left", padx=(0, 5))
+
+                current_prio = self._get_field('priority', "Medium")
+                self.priority_update_dropdown = ttk.Combobox(
+                    btn_frame, values=["High", "Medium", "Low"],
+                    state="readonly", width=10
+                )
+                self.priority_update_dropdown.set(current_prio)
+                self.priority_update_dropdown.pack(side="left", padx=(0, 20))
+
+                self.priority_update_dropdown.bind(
+                    "<<ComboboxSelected>>",
+                    lambda e: self._handle_immediate_priority_update(request_id)
+                )
+
+                create_button(
+                    btn_frame, text="Mark as Resolved", bg="#27ae60", fg="white",
+                    command=self._open_resolve_form
+                ).pack(side="left")
 
     def _handle_immediate_priority_update(self, request_id):
         """Handle immediate priority update when dropdown changes"""

@@ -135,8 +135,10 @@ def fetch_financial_rows(city_id=None, late_filter="All", paid_filter="All"):
     return execute_query(query, tuple(params))
 
 
-def fetch_maintenance_rows(city_id=None):
-    """Fetch maintenance request data."""
+# In report_service.py
+
+def fetch_maintenance_rows(city_id=None, tenant_id=None):
+    """Fetch maintenance request data with optional tenant filtering."""
     query = """
         SELECT
             mr.request_id,
@@ -152,11 +154,20 @@ def fetch_maintenance_rows(city_id=None):
         JOIN Location l ON a.city_id = l.city_id
     """
     
+    where_clauses = []
+    params = []
+    
     if city_id is not None:
-        query += " WHERE a.city_id = ?"
-        params = (city_id,)
-    else:
-        params = ()
+        where_clauses.append("a.city_id = ?")
+        params.append(city_id)
+        
+    # NEW: Filter by tenant if ID is provided
+    if tenant_id is not None:
+        where_clauses.append("mr.tenant_id = ?")
+        params.append(tenant_id)
+    
+    if where_clauses:
+        query += " WHERE " + " AND ".join(where_clauses)
     
     query += " ORDER BY mr.request_id DESC"
-    return execute_query(query, params)
+    return execute_query(query, tuple(params))

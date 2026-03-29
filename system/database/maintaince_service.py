@@ -290,12 +290,15 @@ def register_request(apartment_id, tenant_id, issue, priority):
 # ============================================================================
 
 def get_all_tenants(user_info=None):
-    """Get all tenants filtered by role."""
+    """Get tenants who have at least one lease, filtered by role/city."""
     query, params = build_city_filter(
         """
-        SELECT t.tenant_id, u.first_name || ' ' || u.surname AS full_name
+        SELECT DISTINCT
+            t.tenant_id,
+            u.first_name || ' ' || u.surname AS full_name
         FROM Tenant t
         JOIN User u ON t.user_id = u.user_id
+        JOIN Lease l ON l.tenant_id = t.tenant_id
         """,
         "u.city_id",
         user_info
@@ -317,6 +320,65 @@ def get_all_apartments(user_info=None):
     )
     query += " ORDER BY b.postcode"
     return execute_query(query, params)
+
+
+
+def get_valid_lease_apartments_for_tenant(tenant_id, user_info=None):
+    """Get apartment options for a tenant based only on that tenant's leases."""
+    query = """
+        SELECT DISTINCT
+            a.apartment_id,
+            'Apartment ' || a.apartment_id || ' - ' || a.type || ' - ' || b.postcode ||
+            CASE
+                WHEN l.start_date IS NOT NULL OR l.end_date IS NOT NULL THEN
+                    ' (' || COALESCE(l.start_date, '?') || ' to ' || COALESCE(l.end_date, '?') || ')'
+                ELSE ''
+            END AS apartment_label
+        FROM Lease l
+        JOIN Apartments a ON l.apartment_id = a.apartment_id
+        JOIN Buildings b ON a.building_id = b.building_id
+        WHERE l.tenant_id = ?
+        ORDER BY
+            CASE
+                WHEN DATE(COALESCE(l.end_date, DATE('now'))) >= DATE('now') THEN 0
+                ELSE 1
+            END,
+            DATE(COALESCE(l.end_date, DATE('now'))) DESC,
+            b.postcode,
+            a.type
+    """
+    return execute_query(query, (tenant_id,))
+
+
+def get_valid_lease_apartments_for_user(user_id):
+    """Get apartment options for a tenant user based on all of their lease records."""
+    query = """
+        SELECT DISTINCT
+            a.apartment_id,
+            'Apartment ' || a.apartment_id || ' - ' || a.type || ' - ' || b.postcode ||
+            CASE
+                WHEN l.start_date IS NOT NULL OR l.end_date IS NOT NULL THEN
+                    ' (' || COALESCE(l.start_date, '?') || ' to ' || COALESCE(l.end_date, '?') || ')'
+                ELSE ''
+            END AS apartment_label,
+            t.tenant_id,
+            u.first_name || ' ' || u.surname AS tenant_name
+        FROM Lease l
+        JOIN Tenant t ON l.tenant_id = t.tenant_id
+        JOIN User u ON t.user_id = u.user_id
+        JOIN Apartments a ON l.apartment_id = a.apartment_id
+        JOIN Buildings b ON a.building_id = b.building_id
+        WHERE t.user_id = ?
+        ORDER BY
+            CASE
+                WHEN DATE(COALESCE(l.end_date, DATE('now'))) >= DATE('now') THEN 0
+                ELSE 1
+            END,
+            DATE(COALESCE(l.end_date, DATE('now'))) DESC,
+            b.postcode,
+            a.type
+    """
+    return execute_query(query, (user_id,))
 
 
 # ============================================================================
