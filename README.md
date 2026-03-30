@@ -49,15 +49,15 @@ system/
 
 ```bash
 
-### 1️⃣ Clone the Repository
+1️⃣ Clone the Repository
 
 git clone https://github.com/your-username/your-repository.git
 
-### 2️⃣ Navigate to Project Directory
+2️⃣ Navigate to Project Directory
 
 cd system
 
-### 3️⃣ Run the System
+3️⃣ Run the System
 
 python3 -m main.index
 ```
