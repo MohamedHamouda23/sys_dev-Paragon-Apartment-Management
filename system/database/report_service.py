@@ -88,7 +88,15 @@ def fetch_financial_rows(city_id=None, late_filter="All", paid_filter="All"):
     late_filter = (late_filter or "All").strip().lower()
     paid_filter = (paid_filter or "All").strip().lower()
 
-    query = """
+    # Normalize mixed legacy values in Is_late (1/0, true/false, yes/no).
+    late_expr = """
+        CASE
+            WHEN LOWER(COALESCE(CAST(p.Is_late AS TEXT), '0')) IN ('1', 'true', 'yes') THEN 1
+            ELSE 0
+        END
+    """
+
+    query = f"""
         SELECT
             p.payment_id,
             l2.city_name,
@@ -100,7 +108,7 @@ def fetch_financial_rows(city_id=None, late_filter="All", paid_filter="All"):
                 ELSE 'No'
             END AS is_paid,
             CASE
-                WHEN COALESCE(p.Is_late, 0) = 1 THEN 'Yes'
+                WHEN {late_expr} = 1 THEN 'Yes'
                 ELSE 'No'
             END AS is_late
         FROM Payment p
@@ -124,9 +132,9 @@ def fetch_financial_rows(city_id=None, late_filter="All", paid_filter="All"):
         where_clauses.append("p.payment_date IS NULL")
 
     if late_filter == "late":
-        where_clauses.append("COALESCE(p.Is_late, 0) = 1")
+        where_clauses.append(f"{late_expr} = 1")
     elif late_filter == "not late":
-        where_clauses.append("COALESCE(p.Is_late, 0) = 0")
+        where_clauses.append(f"{late_expr} = 0")
 
     if where_clauses:
         query += " WHERE " + " AND ".join(where_clauses)
@@ -137,8 +145,8 @@ def fetch_financial_rows(city_id=None, late_filter="All", paid_filter="All"):
 
 # In report_service.py
 
-def fetch_maintenance_rows(city_id=None, tenant_id=None):
-    """Fetch maintenance request data with optional tenant filtering."""
+def fetch_maintenance_rows(city_id=None):
+    """Fetch maintenance request data."""
     query = """
         SELECT
             mr.request_id,
@@ -161,13 +169,28 @@ def fetch_maintenance_rows(city_id=None, tenant_id=None):
         where_clauses.append("a.city_id = ?")
         params.append(city_id)
         
-    # NEW: Filter by tenant if ID is provided
-    if tenant_id is not None:
-        where_clauses.append("mr.tenant_id = ?")
-        params.append(tenant_id)
-    
     if where_clauses:
         query += " WHERE " + " AND ".join(where_clauses)
     
     query += " ORDER BY mr.request_id DESC"
     return execute_query(query, tuple(params))
+
+
+def log_report_generation(report_type, user_id=None):
+    """Persist a single report-generation event in the Report table."""
+    report_type = (report_type or "").strip().title()
+    if report_type not in ("Financial", "Occupancy", "Maintenance"):
+        return None
+
+    return execute_query(
+        """
+        INSERT INTO Report (
+            user_id,
+            date_created,
+            report_type
+        )
+        VALUES (?, DATETIME('now'), ?)
+        """,
+        (user_id, report_type),
+        'none'
+    )

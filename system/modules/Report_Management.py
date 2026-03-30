@@ -70,7 +70,16 @@ class ReportLogicHandler:
             pdf.setFillColorRGB(0.12, 0.23, 0.39)
             pdf.drawString(left_margin, report_y, self.page.current_report_title)
 
-            summary_labels = list(self.page.summary_cards.keys())
+            visible_labels = []
+            for label in getattr(self.page, "summary_card_order", []):
+                frame = self.page.summary_card_frames.get(label)
+                if frame and frame.winfo_manager() == "grid":
+                    visible_labels.append(label)
+
+            if not visible_labels:
+                visible_labels = list(self.page.summary_cards.keys())
+
+            summary_labels = visible_labels
             summary_values = [self.page.summary_cards[label].cget("text") for label in summary_labels]
             box_gap, box_count = 8, max(1, len(summary_labels))
             box_w, box_h = (table_width - (box_gap * (box_count - 1))) / box_count, 34

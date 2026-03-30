@@ -4,13 +4,8 @@ from database.property_service import get_all_cities
 from main.helpers import create_button
 from database.report_service import (
     fetch_summary_snapshot, fetch_occupancy_rows,
-    fetch_financial_rows, fetch_maintenance_rows
-)
-from database.tenant_portal_service import (
-    get_payment_history_series,
-    get_late_payment_by_property,
-    get_neighbor_comparison,
-    get_tenant_id_from_user
+    fetch_financial_rows, fetch_maintenance_rows,
+    log_report_generation
 )
 from modules.Report_Management import ReportLogicHandler
 
@@ -47,6 +42,9 @@ class ReportManagementPage:
         self.building_filter = tk.StringVar(value="All Buildings")
 
         self.summary_cards = {}
+        self.summary_card_frames = {}
+        self.summary_card_order = []
+        self.cards_row = None
         self.tree = None
         self.current_report_title = ""
         self.current_headings = []
@@ -54,7 +52,11 @@ class ReportManagementPage:
 
         self.city_cb = None
         self.report_cb = None
+        self.building_label = None
         self.building_filter_cb = None
+        self.late_filter_cb = None
+        self.paid_filter_cb = None
+        self.generate_btn = None
         self.report_label_to_key = {}
 
         self._build_layout()
@@ -68,8 +70,7 @@ class ReportManagementPage:
             "Administrators": full_access,
             "Manager": full_access,
             "Maintenance Staff": ["Maintenance"],
-            "Finance Manager": ["Financial"],
-            "Tenant": ["Maintenance"]
+            "Finance Manager": ["Financial"]
         }
         return permissions.get(self.role, full_access)
 
@@ -120,10 +121,11 @@ class ReportManagementPage:
             self.report_cb.bind("<<ComboboxSelected>>", self._on_report_type_change)
 
         # Building filter in main controls
-        tk.Label(
+        self.building_label = tk.Label(
             controls, text="Building:", bg="#c9e4c4", fg="#1f3b63",
             font=("Arial", 11, "bold")
-        ).pack(side="left", padx=(0, 8))
+        )
+        self.building_label.pack(side="left", padx=(0, 8))
 
         self.building_filter_cb = ttk.Combobox(
             controls,
@@ -134,9 +136,9 @@ class ReportManagementPage:
             font=("Arial", 10)
         )
         self.building_filter_cb.pack(side="left", padx=(0, 14))
-        self.building_filter_cb.bind("<<ComboboxSelected>>", lambda _e: self.generate_report())
+        self.building_filter_cb.bind("<<ComboboxSelected>>", self._on_building_filter_change)
 
-        create_button(
+        self.generate_btn = create_button(
             controls,
             text="Generate",
             width=120,
@@ -144,7 +146,8 @@ class ReportManagementPage:
             bg="#3B86FF",
             fg="white",
             command=self._generate_and_export
-        ).pack(side="left")
+        )
+        self.generate_btn.pack(side="left")
 
         # Financial filters
         self.financial_filter_wrap = tk.Frame(top_wrap, bg="#c9e4c4")
@@ -169,7 +172,12 @@ class ReportManagementPage:
                 font=("Arial", 10)
             )
             cb.pack(side="left", padx=(0, 16))
-            cb.bind("<<ComboboxSelected>>", lambda _e: self.generate_report())
+            cb.bind("<<ComboboxSelected>>", self._on_financial_filter_change)
+
+            if lbl == "Late Filter:":
+                self.late_filter_cb = cb
+            elif lbl == "Paid Filter:":
+                self.paid_filter_cb = cb
 
         summary_wrap = tk.Frame(self.frame, bg="white", bd=2, relief="groove")
         summary_wrap.pack(fill="x", padx=24, pady=(4, 10))
@@ -182,8 +190,8 @@ class ReportManagementPage:
             fg="#1f3b63"
         ).pack(pady=(10, 8))
 
-        cards_row = tk.Frame(summary_wrap, bg="white")
-        cards_row.pack(fill="x", padx=10, pady=(0, 10))
+        self.cards_row = tk.Frame(summary_wrap, bg="white")
+        self.cards_row.pack(fill="x", padx=10, pady=(0, 10))
 
         all_cards = [
             ("Apartments", "0", "#3B86FF"),
@@ -202,9 +210,12 @@ class ReportManagementPage:
             display_cards = all_cards
 
         for idx, (label, val, col) in enumerate(display_cards):
-            card = tk.Frame(cards_row, bg=col, bd=1, relief="solid")
+            card = tk.Frame(self.cards_row, bg=col, bd=1, relief="solid")
             card.grid(row=0, column=idx, padx=5, sticky="ew")
-            cards_row.grid_columnconfigure(idx, weight=1)
+            self.cards_row.grid_columnconfigure(idx, weight=1)
+
+            self.summary_card_frames[label] = card
+            self.summary_card_order.append(label)
 
             self.summary_cards[label] = tk.Label(
                 card,
@@ -239,6 +250,37 @@ class ReportManagementPage:
         self.table_host = tk.Frame(results_wrap, bg="white")
         self.table_host.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
+    def _update_summary_cards_visibility(self, report_key):
+        """Show only relevant snapshot cards for the selected report type."""
+        visible_by_report = {
+            "Occupancy": {"Apartments", "Occupancy"},
+            "Financial": {"Apartments", "Collected"},
+            "Maintenance": {"Apartments", "Maintenance"},
+        }
+        requested_visible = visible_by_report.get(report_key, set(self.summary_card_order))
+
+        visible_labels = [
+            label for label in self.summary_card_order
+            if label in requested_visible and label in self.summary_card_frames
+        ]
+
+        # Fallback: if role-based card set does not contain expected labels, keep current cards visible.
+        if not visible_labels:
+            visible_labels = [label for label in self.summary_card_order if label in self.summary_card_frames]
+
+        for frame in self.summary_card_frames.values():
+            frame.grid_forget()
+
+        total_slots = max(1, len(self.summary_card_order))
+        start_col = max(0, (total_slots - len(visible_labels)) // 2)
+
+        for col in range(total_slots):
+            self.cards_row.grid_columnconfigure(col, weight=1)
+
+        for idx, label in enumerate(visible_labels):
+            frame = self.summary_card_frames[label]
+            frame.grid(row=0, column=start_col + idx, padx=5, sticky="ew")
+
     def _load_city_filter_options(self):
         city_rows = get_all_cities()
         self.city_name_to_id = {name: cid for cid, name in city_rows}
@@ -266,6 +308,56 @@ class ReportManagementPage:
         self._refresh_building_filter_options()
         self.generate_report()
 
+    def _on_building_filter_change(self, _event=None):
+        # Use after_idle to ensure combobox widget state is committed before refresh.
+        self.frame.after_idle(self.generate_report)
+
+    def _set_report_filter_visibility(self, report_key):
+        """Show report-specific filter controls and keep layout stable."""
+        if report_key == "Financial":
+            if not self.financial_filter_wrap.winfo_manager():
+                self.financial_filter_wrap.pack(anchor="center", pady=(8, 2))
+
+            if self.building_label and self.building_label.winfo_manager():
+                self.building_label.pack_forget()
+            if self.building_filter_cb and self.building_filter_cb.winfo_manager():
+                self.building_filter_cb.pack_forget()
+            return
+
+        if self.financial_filter_wrap.winfo_manager():
+            self.financial_filter_wrap.pack_forget()
+
+        if self.building_label and not self.building_label.winfo_manager():
+            self.building_label.pack(side="left", padx=(0, 8), before=self.generate_btn)
+        if self.building_filter_cb and not self.building_filter_cb.winfo_manager():
+            self.building_filter_cb.pack(side="left", padx=(0, 14), before=self.generate_btn)
+
+    def _on_financial_filter_change(self, _event=None):
+        self.generate_report()
+
+    def _get_financial_filter_values(self):
+        """Read current financial filter values directly from combobox widgets."""
+        late_value = self.late_filter.get()
+        paid_value = self.paid_filter.get()
+
+        if self.late_filter_cb is not None:
+            late_value = self.late_filter_cb.get() or late_value
+        if self.paid_filter_cb is not None:
+            paid_value = self.paid_filter_cb.get() or paid_value
+
+        # Keep vars in sync with widget state.
+        self.late_filter.set(late_value)
+        self.paid_filter.set(paid_value)
+        return late_value, paid_value
+
+    def _get_selected_building(self):
+        """Read current building filter value directly from combobox widget."""
+        selected = self.building_filter.get()
+        if self.building_filter_cb is not None:
+            selected = self.building_filter_cb.get() or selected
+        self.building_filter.set(selected)
+        return (selected or "All Buildings").strip()
+
     def _resolve_city_id(self):
         if self.is_admin and self.assigned_city_id:
             return self.assigned_city_id
@@ -281,6 +373,13 @@ class ReportManagementPage:
         city_id = self._resolve_city_id()
         building_values = ["All Buildings"]
 
+        # Managers must pick a specific city before building-level filtering is available.
+        if self.role == "Manager" and city_id is None and report_key in ("Occupancy", "Maintenance"):
+            self.building_filter.set("All Buildings")
+            self.building_filter_cb["values"] = ["All Buildings"]
+            self.building_filter_cb.config(state="disabled")
+            return
+
         try:
             if report_key == "Occupancy":
                 rows = fetch_occupancy_rows(city_id)
@@ -289,11 +388,6 @@ class ReportManagementPage:
 
             elif report_key == "Maintenance":
                 rows = fetch_maintenance_rows(city_id)
-
-                if self.role == "Tenant":
-                    tenant_id = get_tenant_id_from_user(self.user_id)
-                    tenant_request_ids = [req[0] for req in self._get_tenant_maintenance_ids(tenant_id)]
-                    rows = [r for r in rows if r[0] in tenant_request_ids]
 
                 building_values += sorted({str(r[2]) for r in rows if len(r) > 2 and r[2]})
                 self.building_filter_cb.config(state="readonly")
@@ -314,10 +408,6 @@ class ReportManagementPage:
 
     def generate_report(self):
         city_id = self._resolve_city_id()
-        tenant_id = None
-
-        if self.role == "Tenant":
-            tenant_id = get_tenant_id_from_user(self.user_id)
 
         snapshot = fetch_summary_snapshot(city_id)
 
@@ -332,21 +422,23 @@ class ReportManagementPage:
 
         report_key = self.selected_report_type.get()
         city_label = self.selected_city.get()
-        selected_building = self.building_filter.get()
 
-        if report_key == "Financial":
-            self.financial_filter_wrap.pack(anchor="center", pady=(8, 2))
-        else:
-            self.financial_filter_wrap.pack_forget()
+        self._update_summary_cards_visibility(report_key)
+        self._set_report_filter_visibility(report_key)
 
         # keep building filter options synced
         self._refresh_building_filter_options()
+        selected_building = self._get_selected_building()
 
         if report_key == "Occupancy":
             rows = fetch_occupancy_rows(city_id)
 
             if selected_building != "All Buildings":
-                rows = [r for r in rows if str(r[2]) == selected_building]
+                selected_norm = selected_building.strip().lower()
+                rows = [r for r in rows if str(r[2]).strip().lower() == selected_norm]
+
+            if "Apartments" in self.summary_cards:
+                self.summary_cards["Apartments"].config(text=str(len(rows)))
 
             self._render_table(
                 f"Occupancy Report - {city_label}",
@@ -357,10 +449,25 @@ class ReportManagementPage:
             )
 
         elif report_key == "Financial":
-            rows = fetch_financial_rows(city_id, self.late_filter.get(), self.paid_filter.get())
+            late_value, paid_value = self._get_financial_filter_values()
+            rows = fetch_financial_rows(city_id, late_value, paid_value)
 
-            if self.role == "Tenant":
-                rows = [r for r in rows if r[2] == f"{self.user_info[1]} {self.user_info[2]}"]
+            # Defensive UI-side filtering in case backend cache/module state is stale.
+            paid_choice = (paid_value or "All").strip().lower()
+            late_choice = (late_value or "All").strip().lower()
+
+            if paid_choice == "paid":
+                rows = [r for r in rows if str(r[5]).strip().lower() == "yes"]
+            elif paid_choice == "not paid":
+                rows = [r for r in rows if str(r[5]).strip().lower() == "no"]
+
+            if late_choice == "late":
+                rows = [r for r in rows if str(r[6]).strip().lower() == "yes"]
+            elif late_choice == "not late":
+                rows = [r for r in rows if str(r[6]).strip().lower() == "no"]
+
+            if "Apartments" in self.summary_cards:
+                self.summary_cards["Apartments"].config(text=str(len(rows)))
 
             self._render_table(
                 "Financial Summary",
@@ -373,13 +480,13 @@ class ReportManagementPage:
         elif report_key == "Maintenance":
             all_rows = fetch_maintenance_rows(city_id)
 
-            if self.role == "Tenant":
-                tenant_request_ids = [req[0] for req in self._get_tenant_maintenance_ids(tenant_id)]
-                all_rows = [r for r in all_rows if r[0] in tenant_request_ids]
-
             rows = all_rows
             if selected_building != "All Buildings":
-                rows = [r for r in all_rows if str(r[2]) == selected_building]
+                selected_norm = selected_building.strip().lower()
+                rows = [r for r in all_rows if str(r[2]).strip().lower() == selected_norm]
+
+            if "Apartments" in self.summary_cards:
+                self.summary_cards["Apartments"].config(text=str(len(rows)))
 
             self._render_table(
                 "Maintenance Records",
@@ -389,13 +496,6 @@ class ReportManagementPage:
                 rows
             )
 
-    def _get_tenant_maintenance_ids(self, tenant_id):
-        from database.db_utils import execute_query
-        return execute_query(
-            "SELECT request_id FROM Maintenance_Request WHERE tenant_id = ?",
-            (tenant_id,)
-        )
-
     def _render_table(self, title, columns, headings, widths, rows):
         for w in self.table_host.winfo_children():
             w.destroy()
@@ -403,7 +503,11 @@ class ReportManagementPage:
         self.results_title.config(text=title)
         self.current_report_title = title
         self.current_headings = list(headings)
-        self.current_rows = rows
+        display_rows = [
+            tuple(f"{v:.2f}" if isinstance(v, float) else ("" if v is None else v) for v in r)
+            for r in rows
+        ]
+        self.current_rows = display_rows
 
         if not rows:
             tk.Label(
@@ -426,17 +530,14 @@ class ReportManagementPage:
 
         tree.pack(fill="both", expand=True)
 
-        for r in rows:
-            tree.insert(
-                "",
-                "end",
-                values=tuple(f"{v:.2f}" if isinstance(v, float) else v for v in r)
-            )
+        for row in display_rows:
+            tree.insert("", "end", values=row)
 
         self.tree = tree
 
     def _generate_and_export(self):
         self.generate_report()
+        log_report_generation(self.selected_report_type.get(), self.user_id)
         self.frame.after(100, self.logic.export_to_pdf)
 
     def on_show(self):

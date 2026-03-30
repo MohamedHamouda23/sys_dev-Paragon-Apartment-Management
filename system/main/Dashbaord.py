@@ -78,11 +78,11 @@ def page_template(main_window, user_info):
     role = user_info[4]
     ROLE_PAGES = {
         "Administrators": ["Users", "Properties", "Lease", "Reports", "Request Lifecycle"],
-        "Front-desk Staff": ["Tenants", "Lease", "Maintenance","complaints"],
+        "Front-desk Staff": ["Tenants", "Maintenance","complaints"],
         "Maintenance Staff": ["Request Lifecycle", "Reports"],
         "Manager": ["Properties", "Lease", "Reports", "Maintenance", "Request Lifecycle"],
         "Finance Manager": ["Reports", "Payments"],
-        "Tenant": ["Profile", "Payments", "Maintenance","Request Lifecycle" , "Complaints", "Lease","Reports"],
+        "Tenant": ["Profile", "Payments", "Maintenance", "Request Lifecycle", "Complaints", "Lease"],
     }
 
     allowed_pages = ROLE_PAGES.get(role, [])

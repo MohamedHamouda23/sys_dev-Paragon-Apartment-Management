@@ -27,6 +27,7 @@ class LeaseManagerPage:
 
         self.all_leases = []
         self.city_filter_var = tk.StringVar(value="All Cities")
+        self.building_filter_var = tk.StringVar(value="All Buildings")
 
         from database.tenant_portal_service import get_tenant_id_from_user
 
@@ -39,23 +40,29 @@ class LeaseManagerPage:
         self._build_layout()
         self._load_leases()
 
-    def _get_filtered_manager_leases(self):
-        if self.user_role != "Manager":
-            return self.all_leases
+    def _get_filtered_leases(self):
+        leases = list(self.all_leases)
 
-        selected_city = "All Cities"
-        if hasattr(self, "city_filter_cb") and self.city_filter_cb.winfo_exists():
-            selected_city = (self.city_filter_cb.get() or "All Cities").strip()
+        if self.user_role == "Manager":
+            selected_city = "All Cities"
+            if hasattr(self, "city_filter_cb") and self.city_filter_cb.winfo_exists():
+                selected_city = (self.city_filter_cb.get() or "All Cities").strip()
+            else:
+                selected_city = (self.city_filter_var.get() or "All Cities").strip()
+
+            if selected_city != "All Cities":
+                leases = [lease for lease in leases if str(lease[6]).strip() == selected_city]
+
+        selected_building = "All Buildings"
+        if hasattr(self, "building_filter_cb") and self.building_filter_cb.winfo_exists():
+            selected_building = (self.building_filter_cb.get() or "All Buildings").strip()
         else:
-            selected_city = (self.city_filter_var.get() or "All Cities").strip()
+            selected_building = (self.building_filter_var.get() or "All Buildings").strip()
 
-        if selected_city == "All Cities":
-            return self.all_leases
+        if selected_building != "All Buildings":
+            leases = [lease for lease in leases if str(lease[2]).strip() == selected_building]
 
-        return [
-            lease for lease in self.all_leases
-            if str(lease[6]).strip() == selected_city
-        ]
+        return leases
 
     def _refresh_manager_city_filter(self):
         if self.user_role != "Manager" or not hasattr(self, "city_filter_cb"):
@@ -74,26 +81,42 @@ class LeaseManagerPage:
             self.city_filter_cb.set("All Cities")
             self.city_filter_var.set("All Cities")
 
-    def _load_leases(self):
+    def _refresh_building_filter(self):
+        if self.user_role not in ["Manager", "Administrators"] or not hasattr(self, "building_filter_cb"):
+            return
+
+        current_value = (self.building_filter_cb.get() or "All Buildings").strip()
+
+        candidate_rows = list(self.all_leases)
+        if self.user_role == "Manager" and hasattr(self, "city_filter_cb"):
+            selected_city = (self.city_filter_cb.get() or "All Cities").strip()
+            if selected_city == "All Cities":
+                self.building_filter_cb["values"] = ["All Buildings"]
+                self.building_filter_cb.set("All Buildings")
+                self.building_filter_var.set("All Buildings")
+                self.building_filter_cb.config(state="disabled")
+                return
+
+            self.building_filter_cb.config(state="readonly")
+            if selected_city != "All Cities":
+                candidate_rows = [lease for lease in candidate_rows if str(lease[6]).strip() == selected_city]
+        else:
+            self.building_filter_cb.config(state="readonly")
+
+        buildings = sorted({str(lease[2]).strip() for lease in candidate_rows if lease[2]})
+        values = ["All Buildings"] + buildings
+        self.building_filter_cb["values"] = values
+
+        if current_value in values:
+            self.building_filter_cb.set(current_value)
+            self.building_filter_var.set(current_value)
+        else:
+            self.building_filter_cb.set("All Buildings")
+            self.building_filter_var.set("All Buildings")
+
+    def _render_leases(self, leases):
         for row in self.tree.get_children():
             self.tree.delete(row)
-
-        self.tree.tag_configure("Active", background="#E8F5E9", foreground="#2E7D32")
-        self.tree.tag_configure("Terminated", background="#FFEBEE", foreground="#C62828")
-        self.tree.tag_configure("Expired", background="#FFF8E1", foreground="#F57F17")
-
-        leases = []
-
-        if self.user_role == "Tenant":
-            leases = fetch_leases(tenant_id=self.tenant_id, city_id=self.assigned_city_id)
-        elif self.user_role == "Manager":
-            self.all_leases = fetch_leases()
-            self._refresh_manager_city_filter()
-            leases = self._get_filtered_manager_leases()
-        elif self.user_role in ["Administrators", "Front-desk Staff"]:
-            leases = fetch_leases(city_id=self.assigned_city_id)
-        else:
-            leases = fetch_leases(city_id=self.assigned_city_id)
 
         priority = {"Active": 0, "Expired": 1, "Terminated": 2}
         leases = sorted(leases, key=lambda lease: priority.get(lease[7], 99))
@@ -115,6 +138,26 @@ class LeaseManagerPage:
                 ),
                 tags=(status,),
             )
+
+    def _load_leases(self):
+        self.tree.tag_configure("Active", background="#E8F5E9", foreground="#2E7D32")
+        self.tree.tag_configure("Terminated", background="#FFEBEE", foreground="#C62828")
+        self.tree.tag_configure("Expired", background="#FFF8E1", foreground="#F57F17")
+
+        if self.user_role == "Tenant":
+            self.all_leases = fetch_leases(tenant_id=self.tenant_id, city_id=self.assigned_city_id)
+        elif self.user_role == "Manager":
+            self.all_leases = fetch_leases()
+            self._refresh_manager_city_filter()
+        elif self.user_role in ["Administrators", "Front-desk Staff"]:
+            self.all_leases = fetch_leases(city_id=self.assigned_city_id)
+        else:
+            self.all_leases = fetch_leases(city_id=self.assigned_city_id)
+
+        if self.user_role in ["Manager", "Administrators"]:
+            self._refresh_building_filter()
+
+        self._render_leases(self._get_filtered_leases())
 
     def _on_manager_city_filter_change(self, event=None):
         if self.user_role != "Manager":
@@ -122,32 +165,16 @@ class LeaseManagerPage:
 
         selected_city = (event.widget.get() if event else self.city_filter_cb.get() or "All Cities").strip()
         self.city_filter_var.set(selected_city)
+        self._refresh_building_filter()
+        self._render_leases(self._get_filtered_leases())
 
-        for row in self.tree.get_children():
-            self.tree.delete(row)
+    def _on_building_filter_change(self, event=None):
+        if self.user_role not in ["Manager", "Administrators"]:
+            return
 
-        leases = self._get_filtered_manager_leases()
-
-        priority = {"Active": 0, "Expired": 1, "Terminated": 2}
-        leases = sorted(leases, key=lambda lease: priority.get(lease[7], 99))
-
-        for lease in leases:
-            (l_id, tenant_name, apt_display, start, end, rent, city_val, status) = lease
-            self.tree.insert(
-                "",
-                "end",
-                values=(
-                    l_id,
-                    tenant_name,
-                    apt_display,
-                    start,
-                    end,
-                    f"£{float(rent):,.2f}",
-                    city_val,
-                    status,
-                ),
-                tags=(status,),
-            )
+        selected_building = (event.widget.get() if event else self.building_filter_cb.get() or "All Buildings").strip()
+        self.building_filter_var.set(selected_building)
+        self._render_leases(self._get_filtered_leases())
 
     def _build_layout(self):
         top_btn_frame = tk.Frame(self.frame, bg="#c9e4c4")
@@ -165,26 +192,47 @@ class LeaseManagerPage:
 
         tk.Label(content_frame, text="Lease Information", bg="#c9e4c4", font=("Arial", 16, "bold")).pack(pady=(0, 10))
 
-        if self.user_role == "Manager":
+        if self.user_role in ["Manager", "Administrators"]:
             filter_frame = tk.Frame(content_frame, bg="#c9e4c4")
             filter_frame.pack(fill="x", pady=(0, 10))
 
+            if self.user_role == "Manager":
+                tk.Label(
+                    filter_frame,
+                    text="Filter by City:",
+                    bg="#c9e4c4",
+                    font=("Arial", 11, "bold")
+                ).pack(side="left", padx=(0, 8))
+
+                self.city_filter_cb = ttk.Combobox(
+                    filter_frame,
+                    textvariable=self.city_filter_var,
+                    state="readonly",
+                    values=["All Cities"],
+                    width=22
+                )
+                self.city_filter_cb.pack(side="left", padx=(0, 12))
+                self.city_filter_cb.bind("<<ComboboxSelected>>", self._on_manager_city_filter_change)
+
             tk.Label(
                 filter_frame,
-                text="Filter by City:",
+                text="Filter by Building:",
                 bg="#c9e4c4",
                 font=("Arial", 11, "bold")
             ).pack(side="left", padx=(0, 8))
 
-            self.city_filter_cb = ttk.Combobox(
+            self.building_filter_cb = ttk.Combobox(
                 filter_frame,
-                textvariable=self.city_filter_var,
+                textvariable=self.building_filter_var,
                 state="readonly",
-                values=["All Cities"],
-                width=22
+                values=["All Buildings"],
+                width=36
             )
-            self.city_filter_cb.pack(side="left")
-            self.city_filter_cb.bind("<<ComboboxSelected>>", self._on_manager_city_filter_change)
+            self.building_filter_cb.pack(side="left")
+            self.building_filter_cb.bind("<<ComboboxSelected>>", self._on_building_filter_change)
+
+            if self.user_role == "Manager":
+                self.building_filter_cb.config(state="disabled")
 
         table_wrap, self.tree = create_scrollable_treeview(
             parent=content_frame,

@@ -44,8 +44,11 @@ class ApartmentManagerPage:
         self.is_manager = self.user_role == "Manager"
 
         self._all_apartments = []
+        self._source_apartments = []
         self._manager_city_filter_var = None
         self._manager_city_filter_cb = None
+        self._building_filter_var = None
+        self._building_filter_cb = None
         self.apt_tree = None
         self.top_buttons = {}
         
@@ -145,30 +148,50 @@ class ApartmentManagerPage:
             apartments = get_all_apartments(scope_city_id=self.assigned_city_id)
         else:
             apartments = get_all_apartments()
+        self._source_apartments = apartments
         self._all_apartments = apartments
 
         # Create table wrapper
         from tkinter import ttk
 
-        if self.is_manager:
+        if self.is_manager or self.is_admin:
             search_wrap = tk.Frame(self.box_frame, bg="#c9e4c4")
             search_wrap.pack(fill="x", pady=(0, 10))
 
-            tk.Label(search_wrap, text="City", bg="#c9e4c4", fg="#1f3b63", font=FONT_LABEL).pack(side="left", padx=(0, 10))
+            if self.is_manager:
+                tk.Label(search_wrap, text="City", bg="#c9e4c4", fg="#1f3b63", font=FONT_LABEL).pack(side="left", padx=(0, 10))
 
-            city_options = ["All Cities"] + sorted({apt[1] for apt in apartments if apt[1]})
-            self._manager_city_filter_var = tk.StringVar(value="All Cities")
-            city_filter_cb = ttk.Combobox(
+                city_options = ["All Cities"] + sorted({apt[1] for apt in apartments if apt[1]})
+                self._manager_city_filter_var = tk.StringVar(value="All Cities")
+                city_filter_cb = ttk.Combobox(
+                    search_wrap,
+                    textvariable=self._manager_city_filter_var,
+                    values=city_options,
+                    state="readonly",
+                    width=24,
+                    font=("Arial", 11)
+                )
+                city_filter_cb.pack(side="left", padx=(0, 10), ipady=3)
+                self._manager_city_filter_cb = city_filter_cb
+                city_filter_cb.bind("<<ComboboxSelected>>", self._on_apartment_city_filter_change)
+
+            tk.Label(search_wrap, text="Building", bg="#c9e4c4", fg="#1f3b63", font=FONT_LABEL).pack(side="left", padx=(0, 10))
+
+            self._building_filter_var = tk.StringVar(value="All Buildings")
+            self._building_filter_cb = ttk.Combobox(
                 search_wrap,
-                textvariable=self._manager_city_filter_var,
-                values=city_options,
+                textvariable=self._building_filter_var,
+                values=["All Buildings"],
                 state="readonly",
-                width=24,
+                width=30,
                 font=("Arial", 11)
             )
-            city_filter_cb.pack(side="left", padx=(0, 10), ipady=3)
-            self._manager_city_filter_cb = city_filter_cb
-            city_filter_cb.bind("<<ComboboxSelected>>", lambda _e: self._run_manager_search(city_filter_cb.get()))
+            self._building_filter_cb.pack(side="left", padx=(0, 10), ipady=3)
+            self._building_filter_cb.bind("<<ComboboxSelected>>", self._on_apartment_building_filter_change)
+            if self.is_manager:
+                self._building_filter_cb.config(state="disabled")
+            self._refresh_property_building_filter_options()
+            self._apply_property_filters()
 
         table_wrap = tk.Frame(self.box_frame, bg="white", bd=2, relief="groove")
         table_wrap.pack(fill="both", expand=True, pady=(0, 12))
@@ -216,26 +239,67 @@ class ApartmentManagerPage:
         # Insert apartment rows
         self._render_apartment_rows()
 
-    def _run_manager_search(self, selected_city=None):
-        """Apply manager city filter from dropdown and refresh table rows"""
-        if selected_city is None:
-            if self._manager_city_filter_cb is not None:
-                selected_city = self._manager_city_filter_cb.get()
-            elif self._manager_city_filter_var is not None:
-                selected_city = self._manager_city_filter_var.get()
-            else:
-                selected_city = "All Cities"
+    def _refresh_property_building_filter_options(self):
+        """Update building dropdown options based on current city filter."""
+        if self._building_filter_cb is None:
+            return
 
-        selected_city = (selected_city or "All Cities").strip()
-        if selected_city == "All Cities":
-            if self.is_admin and self.assigned_city_id is not None:
-                self._all_apartments = get_all_apartments(scope_city_id=self.assigned_city_id)
-            else:
-                self._all_apartments = get_all_apartments()
+        current_value = (self._building_filter_cb.get() or "All Buildings").strip()
+        rows = list(self._source_apartments)
+
+        if self.is_manager and self._manager_city_filter_cb is not None:
+            selected_city = (self._manager_city_filter_cb.get() or "All Cities").strip()
+            if selected_city == "All Cities":
+                self._building_filter_cb["values"] = ["All Buildings"]
+                self._building_filter_cb.set("All Buildings")
+                self._building_filter_var.set("All Buildings")
+                self._building_filter_cb.config(state="disabled")
+                return
+
+            self._building_filter_cb.config(state="readonly")
+            if selected_city != "All Cities":
+                rows = [apt for apt in rows if str(apt[1]).strip() == selected_city]
         else:
-            all_rows = get_all_apartments()
-            self._all_apartments = [apt for apt in all_rows if str(apt[1]).strip() == selected_city]
+            self._building_filter_cb.config(state="readonly")
+
+        building_values = ["All Buildings"] + sorted(
+            {f"{str(apt[2]).strip()} ({str(apt[3]).strip()})" for apt in rows if apt[2] and apt[3]}
+        )
+        self._building_filter_cb["values"] = building_values
+
+        if current_value in building_values:
+            self._building_filter_cb.set(current_value)
+            self._building_filter_var.set(current_value)
+        else:
+            self._building_filter_cb.set("All Buildings")
+            self._building_filter_var.set("All Buildings")
+
+    def _apply_property_filters(self):
+        """Apply city/building filters to apartment rows."""
+        rows = list(self._source_apartments)
+
+        if self.is_manager and self._manager_city_filter_cb is not None:
+            selected_city = (self._manager_city_filter_cb.get() or "All Cities").strip()
+            if selected_city != "All Cities":
+                rows = [apt for apt in rows if str(apt[1]).strip() == selected_city]
+
+        if self._building_filter_cb is not None:
+            selected_building = (self._building_filter_cb.get() or "All Buildings").strip()
+            if selected_building != "All Buildings":
+                rows = [
+                    apt for apt in rows
+                    if f"{str(apt[2]).strip()} ({str(apt[3]).strip()})" == selected_building
+                ]
+
+        self._all_apartments = rows
         self._render_apartment_rows()
+
+    def _on_apartment_city_filter_change(self, _event=None):
+        self._refresh_property_building_filter_options()
+        self._apply_property_filters()
+
+    def _on_apartment_building_filter_change(self, _event=None):
+        self._apply_property_filters()
 
     def _render_apartment_rows(self):
         """Render apartments in table"""
