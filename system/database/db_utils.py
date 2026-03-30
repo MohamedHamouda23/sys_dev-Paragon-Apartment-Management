@@ -165,33 +165,3 @@ def add_where_clauses(base_query, clauses_dict):
         query = base_query
     
     return query, tuple(params)
-
-
-# ============================================================================
-# VALIDATION HELPERS
-# ============================================================================
-
-def validate_required_fields(fields_dict):
-    """
-    Validate that required fields are not empty.
-    
-    Args:
-        fields_dict: Dict of {field_name: value}
-    
-    Raises:
-        ValueError if any field is empty
-    """
-    for field_name, value in fields_dict.items():
-        if value in (None, "") or not str(value).strip():
-            raise ValueError(f"{field_name} is required.")
-
-
-def validate_positive_number(value, field_name):
-    """Validate that a value is a positive number."""
-    try:
-        num = float(value)
-        if num <= 0:
-            raise ValueError(f"{field_name} must be greater than 0.")
-        return num
-    except (ValueError, TypeError):
-        raise ValueError(f"{field_name} must be a valid number.")

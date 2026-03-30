@@ -5,6 +5,7 @@
 
 from database.databaseConnection import check_connection
 from datetime import datetime
+import random
 from .db_utils import execute_query, execute_transaction, is_manager, get_user_city_id, get_user_id, is_tenant, build_city_filter
 
 
@@ -197,6 +198,38 @@ def get_staff_task_count_for_date(staff_name, date_str):
             slot_counts[time_slot] = slot_counts.get(time_slot, 0) + 1
     
     return slot_counts
+
+
+def get_available_staff_for_slot(date_str, slot, user_info=None):
+    """Get staff with no active assignment in the selected date/time slot."""
+    query, params = build_city_filter(
+        """
+        SELECT e.employee_id, e.Full_name
+        FROM Employee e
+        JOIN User u ON e.employee_id = u.user_id
+        LEFT JOIN Maintenance_Assignment ma
+            ON ma.employee_id = e.employee_id
+            AND DATE(ma.assigned_date) = ?
+            AND strftime('%H:%M', ma.assigned_date) = ?
+            AND ma.is_current = 1
+        """,
+        "u.city_id",
+        user_info
+    )
+    query += """
+        GROUP BY e.employee_id, e.Full_name
+        HAVING COUNT(ma.assignment_id) = 0
+        ORDER BY e.Full_name
+    """
+    return execute_query(query, (date_str, slot, *params))
+
+
+def pick_random_available_staff_for_slot(date_str, slot, user_info=None):
+    """Pick one available staff member at random for the selected slot."""
+    available = get_available_staff_for_slot(date_str, slot, user_info=user_info) or []
+    if not available:
+        return None
+    return random.choice(available)
 
 
 # ============================================================================

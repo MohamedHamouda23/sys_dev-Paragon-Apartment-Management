@@ -1,5 +1,88 @@
 from database.databaseConnection import fetch_all, insert, check_connection
-from .db_utils import execute_query, validate_required_fields, validate_positive_number
+from .db_utils import execute_query
+from validations import validate_required_fields, validate_positive_number
+from datetime import date
+from calendar import monthrange
+
+
+def _add_months(base_date, months):
+    """Add months while keeping day-of-month stable when possible."""
+    year = base_date.year + ((base_date.month - 1 + months) // 12)
+    month = ((base_date.month - 1 + months) % 12) + 1
+    day = min(base_date.day, monthrange(year, month)[1])
+    return date(year, month, day)
+
+
+def _monthly_due_dates(start_dt, end_dt, horizon_dt):
+    """Yield monthly due dates from start to min(end, horizon)."""
+    final_dt = min(end_dt, horizon_dt)
+    due = start_dt
+    while due <= final_dt:
+        yield due
+        due = _add_months(due, 1)
+
+
+def sync_lease_payments_up_to_horizon(conn=None, lease_id=None, months_ahead=1):
+    """Ensure monthly payment rows exist up to N months ahead for one or all leases."""
+    own_conn = conn is None
+    conn = conn or check_connection()
+    cursor = conn.cursor()
+
+    today = date.today()
+    horizon_dt = _add_months(today, months_ahead)
+
+    query = "SELECT lease_id, start_date, end_date FROM Lease"
+    params = ()
+    if lease_id is not None:
+        query += " WHERE lease_id = ?"
+        params = (lease_id,)
+
+    cursor.execute(query, params)
+    leases = cursor.fetchall()
+    inserted_count = 0
+
+    for l_id, start_date, end_date in leases:
+        if not start_date or not end_date:
+            continue
+
+        start_dt = date.fromisoformat(str(start_date))
+        end_dt = date.fromisoformat(str(end_date))
+        if end_dt < start_dt:
+            continue
+
+        # Keep only near-term placeholders; do not remove paid/partial future entries.
+        cursor.execute(
+            """
+            DELETE FROM Payment
+            WHERE lease_id = ?
+              AND DATE(due_date) > DATE(?)
+              AND payment_date IS NULL
+              AND COALESCE(amount, 0) = 0
+            """,
+            (l_id, horizon_dt.isoformat()),
+        )
+
+        for due_dt in _monthly_due_dates(start_dt, end_dt, horizon_dt):
+            due_str = due_dt.isoformat()
+            cursor.execute(
+                "SELECT 1 FROM Payment WHERE lease_id = ? AND due_date = ? LIMIT 1",
+                (l_id, due_str),
+            )
+            if cursor.fetchone() is None:
+                cursor.execute(
+                    """
+                    INSERT INTO Payment (lease_id, due_date, payment_date, amount, Is_late)
+                    VALUES (?, ?, NULL, 0, 'No')
+                    """,
+                    (l_id, due_str),
+                )
+                inserted_count += 1
+
+    if own_conn:
+        conn.commit()
+        conn.close()
+
+    return inserted_count
 
 
 # ============================================================================
@@ -134,19 +217,48 @@ def create_lease(apartment_id, tenant_id, start_date, end_date, agreed_rent):
     # Validate rent is a positive number
     agreed_rent = validate_positive_number(agreed_rent, 'Rent')
 
-    insert(
-        """
-        INSERT INTO Lease (
-            apartment_id,
-            tenant_id,
-            start_date,
-            end_date,
-            Agreed_rent,
-            early_termination_fee
-        ) VALUES (?, ?, ?, ?, ?, 0)
-        """,
-        (apartment_id, tenant_id, start_date, end_date, agreed_rent)
-    )
+    start_dt = date.fromisoformat(str(start_date))
+    end_dt = date.fromisoformat(str(end_date))
+    if end_dt < start_dt:
+        raise ValueError("End date must be on or after start date.")
+
+    conn = check_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            """
+            INSERT INTO Lease (
+                apartment_id,
+                tenant_id,
+                start_date,
+                end_date,
+                Agreed_rent,
+                early_termination_fee
+            ) VALUES (?, ?, ?, ?, ?, 0)
+            """,
+            (apartment_id, tenant_id, start_date, end_date, agreed_rent),
+        )
+        lease_id = cursor.lastrowid
+
+        cursor.execute(
+            """
+            UPDATE Apartments
+            SET occupancy_status = 'Occupied'
+            WHERE apartment_id = ?
+            """,
+            (apartment_id,),
+        )
+
+        # Generate initial monthly payment rows only up to one month in advance.
+        payments_created = sync_lease_payments_up_to_horizon(conn=conn, lease_id=lease_id, months_ahead=1)
+
+        conn.commit()
+        return {"lease_id": lease_id, "payments_created": payments_created}
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 # ============================================================================

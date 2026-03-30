@@ -4,19 +4,12 @@ import secrets
 
 from database.databaseConnection import check_connection
 from .db_utils import execute_query, execute_transaction, get_user_city_id
+from validations import validate_email_address
 
 
 # Password hashing constants
 PASSWORD_SCHEME = "pbkdf2_sha256"
 PASSWORD_ITERATIONS = 100000
-
-
-def _validate_email(email):
-    normalized = (email or "").strip()
-    if "@" not in normalized:
-        raise ValueError("Email must contain '@'.")
-    return normalized
-
 
 def _name_key(first_name, surname):
     """Build a deterministic key material from user name fields."""
@@ -115,7 +108,7 @@ def get_all_locations(scope_city_id=None):
 
 
 def create_user(first_name, surname, email, password_hash, role_id, city_id=None, scope_city_id=None):
-    email = _validate_email(email)
+    email = validate_email_address(email)
 
     if scope_city_id is not None and city_id != scope_city_id:
         raise ValueError("Administrators can only create users in their assigned location.")
@@ -149,7 +142,7 @@ def create_user(first_name, surname, email, password_hash, role_id, city_id=None
 
 
 def update_user(user_id, first_name, surname, email, role_id, city_id=None, password_hash=None, scope_city_id=None):
-    email = _validate_email(email)
+    email = validate_email_address(email)
 
     conn = check_connection()
     if conn is None:

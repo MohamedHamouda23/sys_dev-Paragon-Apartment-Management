@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+from validations import validate_tenant_form
 
 
 from main.helpers import (
@@ -11,7 +12,6 @@ from database.tenant_service import (
     create_tenant,
     update_tenant,
     delete_tenant,
-    get_all_complaints_with_tenant
 )
 from database.tenant_portal_service import (
     get_tenant_profile,
@@ -26,7 +26,9 @@ class TenantManagementPage:
         self.frame = tk.Frame(parent, bg="#c9e4c4")
         self.user_info = user_info
         self.user_role = user_info[4] if user_info and len(user_info) > 4 else None
+        self.is_front_desk = self.user_role == "Front-desk Staff"
         self.user_id = user_info[0] if user_info else None
+        self.assigned_city_id = user_info[5] if user_info and len(user_info) > 5 else None
         self.selected_tenant_id = None
 
         if self.user_role == "Tenant":
@@ -110,14 +112,12 @@ class TenantManagementPage:
         btns_inner_frame.pack(anchor="center")
 
         create_button(btns_inner_frame, "Add Tenant", 140, 45, "#3B86FF", "white", self.add_tenant).pack(side="left", padx=8)
-        create_button(btns_inner_frame, "Update Tenant", 140, 45, "#3B86FF", "white", self.update_tenant).pack(side="left", padx=8)
-        create_button(btns_inner_frame, "Delete Tenant", 140, 45, "#3B86FF", "white", self.delete_tenant).pack(side="left", padx=8)
-        create_button(btns_inner_frame, "View Complaints", 160, 45, "#3B86FF", "white", self.view_complaints).pack(side="left", padx=8)
+        if self.user_role != "Front-desk Staff":
+            create_button(btns_inner_frame, "Update Tenant", 140, 45, "#3B86FF", "white", self.update_tenant).pack(side="left", padx=8)
+            create_button(btns_inner_frame, "Delete Tenant", 140, 45, "#3B86FF", "white", self.delete_tenant).pack(side="left", padx=8)
 
         content_frame = tk.Frame(self.frame, bg="#c9e4c4")
         content_frame.pack(fill="both", expand=True, padx=20, pady=(6, 20))
-
-        tk.Label(content_frame, text="Tenant Information", bg="#c9e4c4", font=("Arial", 16, "bold")).pack(pady=(0, 10))
 
         table_wrap = tk.Frame(content_frame, bg="white", bd=2, relief="groove")
         table_wrap.pack(fill="both", expand=True, pady=(0, 12))
@@ -168,7 +168,13 @@ class TenantManagementPage:
         self.lease_period_entry = self._form_field(form, "Lease Period", 2, 2)
         self.apartment_type_entry = self._form_field(form, "Apartment Type", 2, 4)
 
+        # Derived fields from Lease/Apartments are display-only in tenant management.
+        self.lease_period_entry.config(state="readonly")
+        self.apartment_type_entry.config(state="readonly")
+
         self.occupation_entry = self._form_field(form, "Occupation", 3, 0)
+        self.password_entry = self._form_field(form, "Password", 3, 2)
+        self.password_entry.config(show="*")
 
         form.grid_columnconfigure(1, weight=1)
         form.grid_columnconfigure(3, weight=1)
@@ -188,11 +194,19 @@ class TenantManagementPage:
         for row in self.tree.get_children():
             self.tree.delete(row)
 
-        for tenant in get_all_tenants():
+        for tenant in self._get_scoped_tenants():
             self.tree.insert("", "end", values=tenant)
+
+    def _get_scoped_tenants(self):
+        city_id = self.assigned_city_id if self.user_role in ["Administrators", "Front-desk Staff"] else None
+        return get_all_tenants(city_id=city_id)
 
     # ---------------------------------------------------
     def _on_row_select(self, _event=None):
+        if self.is_front_desk:
+            # Front-desk can view records in table, but form remains add-only.
+            return
+
         selected = self.tree.selection()
         if not selected:
             return
@@ -208,27 +222,62 @@ class TenantManagementPage:
         ]
 
         for entry, value in zip(entries, values[1:]):
-            entry.delete(0, tk.END)
-            entry.insert(0, value)
+            # Temporarily unlock readonly entries so selected row values can be displayed.
+            if str(entry.cget("state")) == "readonly":
+                entry.config(state="normal")
+                entry.delete(0, tk.END)
+                entry.insert(0, value)
+                entry.config(state="readonly")
+            else:
+                entry.delete(0, tk.END)
+                entry.insert(0, value)
+
+    def _clear_form(self):
+        entries = [
+            self.first_name_entry, self.surname_entry, self.email_entry,
+            self.telephone_entry, self.reference_name_entry, self.reference_email_entry,
+            self.ni_entry, self.lease_period_entry, self.apartment_type_entry,
+            self.occupation_entry, self.password_entry,
+        ]
+
+        for entry in entries:
+            if str(entry.cget("state")) == "readonly":
+                entry.config(state="normal")
+                entry.delete(0, tk.END)
+                entry.config(state="readonly")
+            else:
+                entry.delete(0, tk.END)
+
+        self.selected_tenant_id = None
 
     # ---------------------------------------------------
     def add_tenant(self):
         try:
             data = self._collect_form_data()
-            create_tenant(*data)
+            validate_tenant_form(data)
+            password = self.password_entry.get().strip()
+            if not password:
+                raise ValueError("Password is required for tenant login.")
+            create_tenant(*data, password_plain=password, city_id=self.assigned_city_id)
             self._load_tenants()
-            messagebox.showinfo("Success", "Tenant added successfully.")
+            self._clear_form()
+            messagebox.showinfo("Success", "Tenant added successfully.", parent=self.frame)
         except Exception as error:
             messagebox.showerror("Error", str(error))
 
     # ---------------------------------------------------
     def update_tenant(self):
+        if self.user_role == "Front-desk Staff":
+            messagebox.showerror("Permission Denied", "Front-desk Staff cannot update tenant records.")
+            return
+
         if self.selected_tenant_id is None:
             messagebox.showerror("Selection Error", "Please select a tenant first.")
             return
 
         try:
             data = self._collect_form_data()
+            validate_tenant_form(data)
             update_tenant(self.selected_tenant_id, *data)
             self._load_tenants()
             messagebox.showinfo("Success", "Tenant updated successfully.")
@@ -237,6 +286,10 @@ class TenantManagementPage:
 
     # ---------------------------------------------------
     def delete_tenant(self):
+        if self.user_role == "Front-desk Staff":
+            messagebox.showerror("Permission Denied", "Front-desk Staff cannot delete tenant records.")
+            return
+
         if self.selected_tenant_id is None:
             messagebox.showerror("Selection Error", "Please select a tenant first.")
             return
@@ -254,67 +307,27 @@ class TenantManagementPage:
 
     # ---------------------------------------------------
     def _collect_form_data(self):
+        reference_name = self.reference_name_entry.get().strip()
+        reference_email = self.reference_email_entry.get().strip()
+
+        # Treat placeholders as empty optional values.
+        if reference_name.lower() in {"none", "-"}:
+            reference_name = ""
+        if reference_email.lower() in {"none", "-"}:
+            reference_email = ""
+
         return (
             self.first_name_entry.get().strip(),
             self.surname_entry.get().strip(),
             self.email_entry.get().strip(),
             self.telephone_entry.get().strip(),
-            self.reference_name_entry.get().strip(),
-            self.reference_email_entry.get().strip(),
+            reference_name,
+            reference_email,
             self.ni_entry.get().strip(),
             self.lease_period_entry.get().strip(),
             self.apartment_type_entry.get().strip(),
             self.occupation_entry.get().strip(),
         )
-
-    # ---------------------------------------------------
-    # GLOBAL COMPLAINT VIEWER (NO TENANT SELECTION REQUIRED)
-    # ---------------------------------------------------
-    def view_complaints(self):
-        win = tk.Toplevel(self.frame)
-        win.title("All Tenant Complaints")
-        win.geometry("900x500")
-        win.config(bg="#c9e4c4")
-
-        tk.Label(win, text="All Tenant Complaints",
-                 bg="#c9e4c4", font=("Arial", 16, "bold")).pack(pady=10)
-
-        table_wrap = tk.Frame(win, bg="white", bd=2, relief="groove")
-        table_wrap.pack(fill="both", expand=True, padx=20, pady=10)
-
-        columns = ("complaint_id", "tenant_id", "name", "description", "date_submitted")
-        tree = ttk.Treeview(table_wrap, columns=columns, show="headings", height=15)
-
-        tree.heading("complaint_id", text="Complaint ID")
-        tree.heading("tenant_id", text="Tenant ID")
-        tree.heading("name", text="Tenant Name")
-        tree.heading("description", text="Complaint")
-        tree.heading("date_submitted", text="Date Submitted")
-
-        tree.column("complaint_id", width=100, anchor="center")
-        tree.column("tenant_id", width=100, anchor="center")
-        tree.column("name", width=180)
-        tree.column("description", width=350)
-        tree.column("date_submitted", width=150)
-
-        y_scroll = ttk.Scrollbar(table_wrap, orient="vertical", command=tree.yview)
-        tree.configure(yscrollcommand=y_scroll.set)
-
-        tree.pack(side="left", fill="both", expand=True, padx=(8, 0), pady=8)
-        y_scroll.pack(side="right", fill="y", pady=8, padx=(0, 8))
-
-        complaints = get_all_complaints_with_tenant()
-
-        for c in complaints:
-            complaint_id, tenant_id, first, surname, desc, date = c
-            tree.insert("", "end", values=(
-                complaint_id,
-                tenant_id,
-                f"{first} {surname}",
-                desc,
-                date
-            ))
-
 
 def create_page(parent, user_info=None):
     page = TenantManagementPage(parent, user_info=user_info)

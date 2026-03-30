@@ -112,10 +112,10 @@ class Log_window:
         self._show_password = not self._show_password
         if self._show_password:
             self.password_entry.config(show="")
-            self.toggle_btn.config(text="Hide Password")
+            self.toggle_btn.itemconfig("text", text="Hide Password")
         else:
             self.password_entry.config(show="*")
-            self.toggle_btn.config(text="Show Password")
+            self.toggle_btn.itemconfig("text", text="Show Password")
 
     def _go_back(self):
         self.login_root.destroy()

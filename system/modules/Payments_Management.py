@@ -3,13 +3,9 @@ from tkinter import ttk, messagebox, filedialog
 from datetime import datetime, timedelta
 from collections import defaultdict
 
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4
-from reportlab.lib import colors
-
 from main.helpers import create_button, clear_frame, show_placeholder
 from database.payment_service import get_all_payments, get_tenant_payments, get_payment_details
-from database.tenant_portal_service import get_tenant_payments_with_balance
+from database.tenant_portal_service import get_tenant_payments_with_balance, get_neighbor_comparison
 from main.PaymentGateway import PaymentWindow
 
 
@@ -24,13 +20,51 @@ class PaymentsManagementPage:
         self.current_status = "All Status"
         self.current_range = "All Time"
         self.current_late = "All"
-        self.show_graphs = True
+        self.show_graphs = False
         self.show_graph_btn = None
         self.hide_graph_btn = None
 
         self.frame = tk.Frame(parent, bg="#c9e4c4")
         self._build_layout()
-        self.refresh_payments()
+        try:
+            self.refresh_payments()
+        except Exception as exc:
+            self._show_page_error(f"Payments failed to load: {exc}")
+
+    def _show_page_error(self, message):
+        clear_frame(self.content_frame)
+        error_box = tk.Frame(self.content_frame, bg="white", bd=2, relief="groove")
+        error_box.pack(fill="x", pady=(8, 12), padx=4)
+
+        tk.Label(
+            error_box,
+            text="Payments Page Error",
+            bg="white",
+            fg="#c0392b",
+            font=("Arial", 12, "bold"),
+        ).pack(anchor="w", padx=12, pady=(10, 4))
+
+        tk.Label(
+            error_box,
+            text=str(message),
+            bg="white",
+            fg="#2c3e50",
+            justify="left",
+            wraplength=860,
+            font=("Arial", 10),
+        ).pack(anchor="w", padx=12, pady=(0, 10))
+
+    def _normalize_status(self, status):
+        """Normalize status labels to a canonical display/filter set."""
+        raw = str(status or "").strip().lower()
+
+        if raw in {"paid", "fully paid", "fully payed", "payed"}:
+            return "Fully Paid"
+        if raw in {"pending", "partial", "pending partial", "pending (partial)"}:
+            return "Pending (Partial)"
+        if raw in {"unpaid", "not paid"}:
+            return "Unpaid"
+        return str(status or "").strip()
 
     def _build_layout(self):
         # 1. Create a Canvas and a Scrollbar to handle small window sizes
@@ -57,9 +91,6 @@ class PaymentsManagementPage:
         # Pack the canvas and scrollbar into the main self.frame
         self.scrollbar.pack(side="right", fill="y")
         self.canvas.pack(side="left", fill="both", expand=True)
-
-        # Enable mousewheel scrolling
-        self.canvas.bind_all("<MouseWheel>", lambda e: self.canvas.yview_scroll(int(-1*(e.delta/120)), "units"))
 
         # --- Everything below now packs into self.scrollable_frame ---
 
@@ -113,6 +144,17 @@ class PaymentsManagementPage:
         show_placeholder(self.detail_wrap, "Select a payment record to view the Lifecycle breakdown")
 
     def _download_invoice(self, details):
+        try:
+            from reportlab.pdfgen import canvas
+            from reportlab.lib.pagesizes import A4
+            from reportlab.lib import colors
+        except Exception:
+            messagebox.showerror(
+                "PDF Error",
+                "PDF export dependency is missing. Install 'reportlab' to download invoices.",
+            )
+            return
+
         p_id = details.get("payment_id", "N/A")
         file_path = filedialog.asksaveasfilename(
             defaultextension=".pdf",
@@ -172,27 +214,32 @@ class PaymentsManagementPage:
             messagebox.showerror("PDF Error", f"Failed to generate PDF: {exc}")
 
     def refresh_payments(self):
-        if self.user_role == "Finance Manager":
-            self._all_payments = get_all_payments() or []
-        elif self.user_role == "Tenant":
-            tenant_rows = get_tenant_payments_with_balance(self.user_id) or []
-            self._all_payments = [
-                (
-                    row["property"],
-                    row["due_date"],
-                    row["payment_date"],
-                    row["paid_amount"],
-                    row["agreed_rent"],
-                    row["status"],
-                    row.get("is_late", "No"),
-                    row["payment_id"],
-                )
-                for row in tenant_rows
-            ]
-        else:
-            self._all_payments = get_tenant_payments(self.user_id) or []
+        try:
+            if self.user_role == "Finance Manager":
+                self._all_payments = get_all_payments() or []
+            elif self.user_role == "Tenant":
+                tenant_rows = get_tenant_payments_with_balance(self.user_id) or []
+                self._all_payments = [
+                    (
+                        row["property"],
+                        row["due_date"],
+                        row["payment_date"],
+                        row["paid_amount"],
+                        row["agreed_rent"],
+                        row["status"],
+                        row.get("is_late", "No"),
+                        row["lease_id"],
+                        row["payment_id"],
+                    )
+                    for row in tenant_rows
+                ]
+            else:
+                self._all_payments = get_tenant_payments(self.user_id) or []
 
-        self._render_view()
+            self._render_view()
+        except Exception as exc:
+            self._all_payments = []
+            self._show_page_error(exc)
 
     def _safe_parse_date(self, value):
         if not value or value in ["-", "None", "N/A"]:
@@ -214,7 +261,8 @@ class PaymentsManagementPage:
         return float(row[6] if self.user_role == "Finance Manager" else row[4] or 0)
 
     def _row_status(self, row):
-        return str(row[7] if self.user_role == "Finance Manager" else row[5] or "")
+        raw_status = row[7] if self.user_role == "Finance Manager" else row[5]
+        return self._normalize_status(raw_status)
 
     def _row_late(self, row):
         return str(row[8] if self.user_role == "Finance Manager" else row[6] or "No")
@@ -224,6 +272,11 @@ class PaymentsManagementPage:
 
     def _row_property(self, row):
         return str(row[1] if self.user_role == "Finance Manager" else row[0])
+
+    def _row_lease_key(self, row):
+        if self.user_role == "Tenant" and len(row) > 8:
+            return f"Lease {row[7]}"
+        return self._row_property(row)
 
     def _row_payment_id(self, row):
         return row[-1]
@@ -246,7 +299,7 @@ class PaymentsManagementPage:
     def _matches_status(self, status):
         if self.current_status == "All Status":
             return True
-        return status == self.current_status
+        return self._normalize_status(status) == self._normalize_status(self.current_status)
 
     def _matches_late(self, late_value):
         if self.current_late == "All":
@@ -290,10 +343,15 @@ class PaymentsManagementPage:
 
     def _build_late_chart_data(self, rows):
         late_counts = defaultdict(int)
+        all_properties = set()
         for row in rows:
+            property_key = self._row_property(row)
+            all_properties.add(property_key)
             if self._row_late(row) == "Yes":
-                late_counts[self._row_property(row)] += 1
-        return sorted(late_counts.items(), key=lambda item: (-item[1], item[0]))
+                late_counts[property_key] += 1
+
+        data = [(property_key, late_counts.get(property_key, 0)) for property_key in all_properties]
+        return sorted(data, key=lambda item: item[0])
 
     def _build_summary_chart_data(self, rows):
         total_paid = 0.0
@@ -304,6 +362,19 @@ class PaymentsManagementPage:
             total_paid += paid
             total_outstanding += max(agreed - paid, 0)
         return total_paid, total_outstanding
+
+    def _build_neighbor_compare_data(self):
+        """Return tenant-vs-neighbor payment comparison for tenant graph."""
+        if self.user_role != "Tenant" or not self.user_id:
+            return [("You", 0.0), ("Neighbor 1", 0.0), ("Neighbor 2", 0.0)]
+
+        comparison = get_neighbor_comparison(self.user_id) or {}
+        tenant_avg = float(comparison.get("tenant_avg") or 0)
+        neighbor_1_label = str(comparison.get("neighbor_1_label") or "Neighbor 1")
+        neighbor_1_avg = float(comparison.get("neighbor_1_avg") or 0)
+        neighbor_2_label = str(comparison.get("neighbor_2_label") or "Neighbor 2")
+        neighbor_2_avg = float(comparison.get("neighbor_2_avg") or 0)
+        return [("You", tenant_avg), (neighbor_1_label, neighbor_1_avg), (neighbor_2_label, neighbor_2_avg)]
 
     def _render_view(self):
         clear_frame(self.content_frame)
@@ -320,7 +391,7 @@ class PaymentsManagementPage:
         cb_r.bind("<<ComboboxSelected>>", lambda e: self._handle_filter_change(e, "range"))
 
         tk.Label(f_bar, text="Status:", bg="#c9e4c4", font=("Arial", 9, "bold")).pack(side="left", padx=(10, 0))
-        status_values = ["All Status", "Paid", "Pending (Partial)", "Unpaid"]
+        status_values = ["All Status", "Fully Paid", "Pending (Partial)", "Unpaid"]
         cb_s = ttk.Combobox(f_bar, values=status_values, state="readonly", width=16)
         cb_s.set(self.current_status)
         cb_s.pack(side="left", padx=5)
@@ -342,32 +413,31 @@ class PaymentsManagementPage:
 
         if self.user_role == "Tenant" and self.show_graphs:
             graphs_wrap = tk.Frame(self.content_frame, bg="#c9e4c4")
-            graphs_wrap.pack(fill="both", expand=False, pady=(0, 10))
+            graphs_wrap.pack(fill="x", expand=False, pady=(0, 10))
+
+            graph_row = tk.Frame(graphs_wrap, bg="#c9e4c4")
+            graph_row.pack(anchor="center")
 
             self.chart_payment = self._chart_card(
-                graphs_wrap,
+                graph_row,
                 "Payment History",
                 "Shows the filtered paid amount over time",
             )
             self.chart_late = self._chart_card(
-                graphs_wrap,
-                "Late Payments Per Property",
-                "Counts only filtered late payments",
+                graph_row,
+                "Late Payments Per Apartment",
+                "Y-axis: late count, X-axis: apartment",
             )
             self.chart_summary = self._chart_card(
-                graphs_wrap,
-                "Paid vs Outstanding",
-                "Matches the filtered table totals",
+                graph_row,
+                "You vs Nearby Tenants",
+                "Average paid amount per payment",
             )
 
             self._draw_line_chart(self.chart_payment, self._build_line_chart_data(filtered_rows))
-            self._draw_bar_chart(self.chart_late, self._build_late_chart_data(filtered_rows))
-            total_paid, total_outstanding = self._build_summary_chart_data(filtered_rows)
-            self._draw_compare_chart(
-                self.chart_summary,
-                ("Paid", total_paid),
-                ("Outstanding", total_outstanding),
-            )
+            self._draw_late_lease_bar_chart(self.chart_late, self._build_late_chart_data(filtered_rows))
+            compare_items = self._build_neighbor_compare_data()
+            self._draw_compare_chart(self.chart_summary, compare_items)
 
         cols = (
             ("tenant", "unit", "city", "due", "paid_dt", "paid_amt", "agreed", "stat", "late")
@@ -403,10 +473,15 @@ class PaymentsManagementPage:
         y_scroll.grid(row=0, column=1, sticky="ns", padx=(0, 8), pady=(8, 0))
         x_scroll.grid(row=1, column=0, sticky="ew", padx=(8, 0), pady=(0, 8))
         self.tree.bind("<<TreeviewSelect>>", lambda _e: self._on_row_select())
+        self.tree.bind("<MouseWheel>", lambda e: self.tree.yview_scroll(int(-1 * (e.delta / 120)), "units"))
 
         for row in filtered_rows:
             payment_id = self._row_payment_id(row)
-            self.tree.insert("", "end", values=row[: len(cols)], tags=(payment_id,))
+            display_values = list(row[: len(cols)])
+            status_col_idx = 7 if is_fm else 5
+            if len(display_values) > status_col_idx:
+                display_values[status_col_idx] = self._normalize_status(display_values[status_col_idx])
+            self.tree.insert("", "end", values=display_values, tags=(payment_id,))
 
     def _on_row_select(self):
         selection = self.tree.selection()
@@ -519,10 +594,10 @@ class PaymentsManagementPage:
 
         create_button(
             button_wrap,
-            "Generate PDF Invoice",
-            170,
-            36,
-            "#1f3b63",
+            "Download PDF Invoice",
+            240,
+            42,
+            "#2d6cdf",
             "white",
             lambda: self._download_invoice(details),
         ).pack(side="left", padx=6)
@@ -582,37 +657,52 @@ class PaymentsManagementPage:
             self.show_graph_btn.pack(side="left", padx=10)
 
     def _chart_card(self, parent, title, subtitle):
-        card = tk.Frame(parent, bg="white", bd=1, relief="solid")
-        card.pack(side="left", fill="both", expand=True, padx=4)
+        card = tk.Frame(parent, bg="white", bd=1, relief="solid", width=300, height=250)
+        card.pack(side="left", padx=6)
+        card.pack_propagate(False)
 
         tk.Label(card, text=title, bg="white", fg="#1f3b63", font=("Arial", 10, "bold")).pack(anchor="w", padx=8, pady=(8, 2))
         tk.Label(card, text=subtitle, bg="white", fg="#5d6d7e", font=("Arial", 8)).pack(anchor="w", padx=8, pady=(0, 4))
 
-        canvas = tk.Canvas(card, bg="#ffffff", width=260, height=190, highlightthickness=0)
-        canvas.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+        canvas = tk.Canvas(card, bg="#ffffff", width=280, height=180, highlightthickness=0)
+        canvas.pack(fill="none", expand=False, padx=8, pady=(0, 8))
         return canvas
+
+    def _redraw_tenant_charts(self, filtered_rows, compare_items):
+        if self.user_role != "Tenant" or not self.show_graphs:
+            return
+        if not all(hasattr(self, name) for name in ("chart_payment", "chart_late", "chart_summary")):
+            return
+
+        self._draw_line_chart(self.chart_payment, self._build_line_chart_data(filtered_rows))
+        self._draw_late_lease_bar_chart(self.chart_late, self._build_late_chart_data(filtered_rows))
+        self._draw_compare_chart(self.chart_summary, compare_items)
 
     def _draw_line_chart(self, canvas, data):
         canvas.delete("all")
         canvas.update_idletasks()
-        width = max(canvas.winfo_width(), 260)
-        height = max(canvas.winfo_height(), 190)
+        width = max(canvas.winfo_width(), int(float(canvas.cget("width"))), 260)
+        height = max(canvas.winfo_height(), int(float(canvas.cget("height"))), 180)
         pad = 28
 
+        plot_w = min(width - (2 * pad), 340)
+        x0 = (width - plot_w) / 2
+        x1 = x0 + plot_w
+
         canvas.create_rectangle(0, 0, width, height, fill="#ffffff", outline="")
-        canvas.create_line(pad, height - pad, width - pad, height - pad, fill="#b0b8c1", width=2)
-        canvas.create_line(pad, height - pad, pad, pad, fill="#b0b8c1", width=2)
+        canvas.create_line(x0, height - pad, x1, height - pad, fill="#b0b8c1", width=2)
+        canvas.create_line(x0, height - pad, x0, pad, fill="#b0b8c1", width=2)
 
         if not data:
             canvas.create_text(width / 2, height / 2, text="No payment data", fill="#7f8c8d", font=("Arial", 10, "bold"))
             return
 
         max_y = max(value for _, value in data) or 1
-        step_x = (width - (2 * pad)) / max(1, len(data) - 1)
+        step_x = plot_w / max(1, len(data) - 1)
         points = []
 
         for i, (label, value) in enumerate(data):
-            x = pad + (i * step_x)
+            x = x0 + (i * step_x)
             y = height - pad - ((value / max_y) * (height - (2 * pad)))
             points.extend([x, y])
             canvas.create_oval(x - 4, y - 4, x + 4, y + 4, fill="#2c7fb8", outline="#2c7fb8")
@@ -621,63 +711,71 @@ class PaymentsManagementPage:
         if len(points) >= 4:
             canvas.create_line(*points, fill="#2c7fb8", width=3, smooth=True)
 
-    def _draw_bar_chart(self, canvas, data):
+    def _draw_late_lease_bar_chart(self, canvas, data):
         canvas.delete("all")
         canvas.update_idletasks()
-        width = max(canvas.winfo_width(), 260)
-        height = max(canvas.winfo_height(), 190)
+        width = max(canvas.winfo_width(), int(float(canvas.cget("width"))), 260)
+        height = max(canvas.winfo_height(), int(float(canvas.cget("height"))), 180)
         pad = 28
 
+        plot_w = min(width - (2 * pad), 340)
+        x0 = (width - plot_w) / 2
+        x1 = x0 + plot_w
+
         canvas.create_rectangle(0, 0, width, height, fill="#ffffff", outline="")
-        canvas.create_line(pad, height - pad, width - pad, height - pad, fill="#b0b8c1", width=2)
-        canvas.create_line(pad, height - pad, pad, pad, fill="#b0b8c1", width=2)
+        canvas.create_line(x0, height - pad, x1, height - pad, fill="#b0b8c1", width=2)
+        canvas.create_line(x0, height - pad, x0, pad, fill="#b0b8c1", width=2)
 
         if not data:
             canvas.create_text(width / 2, height / 2, text="No late payments", fill="#7f8c8d", font=("Arial", 10, "bold"))
             return
 
-        display_data = data[:6]
+        display_data = data[:8]
         max_y = max(value for _, value in display_data) or 1
-        slot_width = (width - (2 * pad)) / max(1, len(display_data))
+        slot_width = plot_w / max(1, len(display_data))
+        palette = ["#e67e22", "#3498db", "#9b59b6", "#2ecc71", "#e74c3c", "#f1c40f", "#1abc9c", "#34495e"]
 
         for i, (label, value) in enumerate(display_data):
-            x0 = pad + (i * slot_width) + 10
-            x1 = pad + ((i + 1) * slot_width) - 10
+            bar_x0 = x0 + (i * slot_width) + 8
+            bar_x1 = x0 + ((i + 1) * slot_width) - 8
             y1 = height - pad
             y0 = y1 - ((value / max_y) * (height - (2 * pad)))
+            color = palette[i % len(palette)]
 
-            canvas.create_rectangle(x0, y0, x1, y1, fill="#e67e22", outline="#d35400", width=1)
-            canvas.create_text((x0 + x1) / 2, y0 - 10, text=str(value), fill="#4c5d73", font=("Arial", 8, "bold"))
+            canvas.create_rectangle(bar_x0, y0, bar_x1, y1, fill=color, outline=color, width=1)
+            canvas.create_text((bar_x0 + bar_x1) / 2, y0 - 10, text=str(value), fill="#4c5d73", font=("Arial", 8, "bold"))
+            short_label = label if len(label) <= 14 else f"{label[:12]}.."
+            canvas.create_text((bar_x0 + bar_x1) / 2, height - 12, text=short_label, fill="#4c5d73", font=("Arial", 7))
 
-            short_label = label if len(label) <= 12 else f"{label[:10]}.."
-            canvas.create_text((x0 + x1) / 2, height - 12, text=short_label, fill="#4c5d73", font=("Arial", 8))
-
-    def _draw_compare_chart(self, canvas, left_item, right_item):
+    def _draw_compare_chart(self, canvas, items):
         canvas.delete("all")
         canvas.update_idletasks()
-        width = max(canvas.winfo_width(), 260)
-        height = max(canvas.winfo_height(), 190)
+        width = max(canvas.winfo_width(), int(float(canvas.cget("width"))), 260)
+        height = max(canvas.winfo_height(), int(float(canvas.cget("height"))), 180)
         pad = 30
 
         canvas.create_rectangle(0, 0, width, height, fill="#ffffff", outline="")
-        canvas.create_line(pad, height - pad, width - pad, height - pad, fill="#b0b8c1", width=2)
-        canvas.create_line(pad, height - pad, pad, pad, fill="#b0b8c1", width=2)
+        plot_w = min(width - (2 * pad), 340)
+        x0 = (width - plot_w) / 2
+        x1 = x0 + plot_w
+        canvas.create_line(x0, height - pad, x1, height - pad, fill="#b0b8c1", width=2)
+        canvas.create_line(x0, height - pad, x0, pad, fill="#b0b8c1", width=2)
 
-        values = [left_item, right_item]
-        max_y = max(left_item[1], right_item[1], 1)
-        bar_w = 58
-        gap = 48
-        start_x = (width - (2 * bar_w + gap)) / 2
-        colors = ["#2ecc71", "#9b59b6"]
+        values = list(items) if items else [("You", 0.0), ("Neighbor 1", 0.0), ("Neighbor 2", 0.0)]
+        max_y = max([v for _, v in values] + [1])
+        palette = ["#2ecc71", "#9b59b6", "#3498db", "#f39c12"]
+        slot_width = plot_w / max(1, len(values))
 
-        for i, ((label, value), color) in enumerate(zip(values, colors)):
-            x0 = start_x + i * (bar_w + gap)
-            x1 = x0 + bar_w
+        for i, (label, value) in enumerate(values):
+            color = palette[i % len(palette)]
+            bar_x0 = x0 + (i * slot_width) + 10
+            bar_x1 = x0 + ((i + 1) * slot_width) - 10
             y1 = height - pad
             y0 = y1 - ((value / max_y) * (height - (2 * pad)))
-            canvas.create_rectangle(x0, y0, x1, y1, fill=color, outline=color)
-            canvas.create_text((x0 + x1) / 2, y0 - 10, text=f"£{value:.0f}", fill="#4c5d73", font=("Arial", 8, "bold"))
-            canvas.create_text((x0 + x1) / 2, height - 12, text=label, fill="#4c5d73", font=("Arial", 8))
+            canvas.create_rectangle(bar_x0, y0, bar_x1, y1, fill=color, outline=color)
+            canvas.create_text((bar_x0 + bar_x1) / 2, y0 - 10, text=f"£{value:.0f}", fill="#4c5d73", font=("Arial", 8, "bold"))
+            short_label = label if len(label) <= 12 else f"{label[:10]}.."
+            canvas.create_text((bar_x0 + bar_x1) / 2, height - 12, text=short_label, fill="#4c5d73", font=("Arial", 8))
 
 
 def create_page(parent, user_info):

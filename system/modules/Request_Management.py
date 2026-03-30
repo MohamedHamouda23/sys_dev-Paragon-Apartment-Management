@@ -125,15 +125,25 @@ class RegisterRequestPanel:
         self.issue_entry.grid(row=3, column=1, sticky="w", pady=4)
 
         self._lbl(wrapper, "Priority:", row=4)
-        self.priority_var = tk.StringVar(value="Medium")
-        ttk.Combobox(
-            wrapper,
-            textvariable=self.priority_var,
-            values=["High", "Medium", "Low"],
-            state="readonly",
-            width=15,
-            font=("Arial", 10),
-        ).grid(row=4, column=1, sticky="w", pady=4)
+        if self.user_role == "Tenant":
+            tk.Label(
+                wrapper,
+                text="Set automatically by maintenance team",
+                font=("Arial", 10),
+                bg="white",
+                anchor="w",
+            ).grid(row=4, column=1, sticky="w", pady=4)
+            self.priority_var = None
+        else:
+            self.priority_var = tk.StringVar(value="Medium")
+            ttk.Combobox(
+                wrapper,
+                textvariable=self.priority_var,
+                values=["High", "Medium", "Low"],
+                state="readonly",
+                width=15,
+                font=("Arial", 10),
+            ).grid(row=4, column=1, sticky="w", pady=4)
 
         wrapper.grid_columnconfigure(1, weight=1)
 
@@ -215,7 +225,7 @@ class RegisterRequestPanel:
     def _submit(self):
         """Handle form submission"""
         issue = self.issue_entry.get().strip()
-        priority = self.priority_var.get().strip()
+        priority = self.priority_var.get().strip() if self.priority_var is not None else "Medium"
 
         if self.user_role == "Tenant":
             if not self._tenant_context:
@@ -233,7 +243,7 @@ class RegisterRequestPanel:
                 return
 
             try:
-                validate_request_form(tenant_name, apt_label, issue, priority)
+                validate_request_form(tenant_name, apt_label, issue, priority, require_priority=False)
             except ValueError as e:
                 messagebox.showerror("Validation Error", str(e))
                 return

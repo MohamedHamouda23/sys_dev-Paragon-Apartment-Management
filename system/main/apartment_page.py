@@ -17,7 +17,9 @@ from database.property_service import (
     create_city,
     build_city_map,
     create_building,
-    get_all_apartments
+    get_all_apartments,
+    get_apartments_by_status,
+    update_apartment_status,
 )
 
 from modules.Property_Management import AddApartmentStepper
@@ -49,6 +51,8 @@ class ApartmentManagerPage:
         self._manager_city_filter_cb = None
         self._building_filter_var = None
         self._building_filter_cb = None
+        self._status_filter_var = None
+        self._status_filter_cb = None
         self.apt_tree = None
         self.top_buttons = {}
         
@@ -83,8 +87,13 @@ class ApartmentManagerPage:
         actions = [
             ("Add Property", self.on_add_property),
             ("Add Building", self.show_add_building_stepper),
-            ("Apartments", self.refresh_apartments),
         ]
+
+        if self.is_admin or self.is_manager:
+            actions.append(("Update", self.show_update_status_stepper))
+
+        actions.append(("Apartments", self.refresh_apartments))
+
         if not self.is_admin:
             actions.insert(1, ("Add City", self.show_add_city_stepper))
 
@@ -115,6 +124,18 @@ class ApartmentManagerPage:
         elif not show and is_visible:
             apartments_btn.pack_forget()
 
+    def _toggle_update_button(self, show):
+        """Show or hide the Update top button based on current view"""
+        update_btn = self.top_buttons.get("Update")
+        if not update_btn:
+            return
+
+        is_visible = update_btn.winfo_manager() != ""
+        if show and not is_visible:
+            update_btn.pack(side="left", padx=8)
+        elif not show and is_visible:
+            update_btn.pack_forget()
+
     # ========================================================================
     # SUCCESS STATE
     # ========================================================================
@@ -143,6 +164,9 @@ class ApartmentManagerPage:
     def refresh_apartments(self):
         """Load and display all apartments in table"""
         self._toggle_apartments_button(False)
+        self._toggle_update_button(True)
+        # Previous table widgets are destroyed by clear_frame; reset stale refs first.
+        self.apt_tree = None
         clear_frame(self.box_frame)
         if self.is_admin and self.assigned_city_id is not None:
             apartments = get_all_apartments(scope_city_id=self.assigned_city_id)
@@ -188,6 +212,20 @@ class ApartmentManagerPage:
             )
             self._building_filter_cb.pack(side="left", padx=(0, 10), ipady=3)
             self._building_filter_cb.bind("<<ComboboxSelected>>", self._on_apartment_building_filter_change)
+
+            tk.Label(search_wrap, text="Status", bg="#c9e4c4", fg="#1f3b63", font=FONT_LABEL).pack(side="left", padx=(0, 10))
+            self._status_filter_var = tk.StringVar(value="All Status")
+            self._status_filter_cb = ttk.Combobox(
+                search_wrap,
+                textvariable=self._status_filter_var,
+                values=["All Status", "Vacant", "Unavailable"],
+                state="readonly",
+                width=16,
+                font=("Arial", 11)
+            )
+            self._status_filter_cb.pack(side="left", padx=(0, 10), ipady=3)
+            self._status_filter_cb.bind("<<ComboboxSelected>>", self._on_apartment_status_filter_change)
+
             if self.is_manager:
                 self._building_filter_cb.config(state="disabled")
             self._refresh_property_building_filter_options()
@@ -291,6 +329,11 @@ class ApartmentManagerPage:
                     if f"{str(apt[2]).strip()} ({str(apt[3]).strip()})" == selected_building
                 ]
 
+        if self._status_filter_cb is not None:
+            selected_status = (self._status_filter_cb.get() or "All Status").strip()
+            if selected_status != "All Status":
+                rows = [apt for apt in rows if str(apt[6]).strip() == selected_status]
+
         self._all_apartments = rows
         self._render_apartment_rows()
 
@@ -301,15 +344,28 @@ class ApartmentManagerPage:
     def _on_apartment_building_filter_change(self, _event=None):
         self._apply_property_filters()
 
+    def _on_apartment_status_filter_change(self, _event=None):
+        self._apply_property_filters()
+
     def _render_apartment_rows(self):
         """Render apartments in table"""
         if not self.apt_tree:
+            return
+
+        try:
+            if not self.apt_tree.winfo_exists():
+                return
+        except tk.TclError:
             return
 
         self.apt_tree.delete(*self.apt_tree.get_children())
 
         for apt in self._all_apartments:
             self.apt_tree.insert("", "end", values=apt)
+
+    def on_show(self):
+        """Refresh data when page is opened from side navigation."""
+        self.refresh_apartments()
 
     # ========================================================================
     # ACTIONS
@@ -318,7 +374,182 @@ class ApartmentManagerPage:
     def on_add_property(self):
         """Open add apartment wizard"""
         self._toggle_apartments_button(True)
+        self._toggle_update_button(True)
         AddApartmentStepper(self.box_frame, self.refresh_apartments, user_info=self.user_info)
+
+    def show_update_status_stepper(self):
+        """Show role-scoped apartments and allow Admin/Manager to update status."""
+        if not (self.is_admin or self.is_manager):
+            messagebox.showerror("Permission Denied", "Only Administrators and Managers can update apartment status.", parent=self.frame)
+            return
+
+        self._toggle_apartments_button(True)
+        self._toggle_update_button(False)
+        clear_frame(self.box_frame)
+
+        from tkinter import ttk
+
+        wrap = tk.Frame(self.box_frame, bg="#c9e4c4")
+        wrap.pack(fill="both", expand=True)
+
+        card_frame = tk.Frame(wrap, bg="white", bd=2, relief="groove")
+        card_frame.pack(fill="both", expand=True)
+
+        tk.Label(
+            card_frame,
+            text="Update Apartment Status",
+            bg="white",
+            fg="#1f3b63",
+            font=("Arial", 16, "bold"),
+        ).pack(anchor="w", padx=14, pady=(12, 4))
+
+        tk.Label(
+            card_frame,
+            text="Showing apartments available to your role. Use filter to focus on Unavailable units.",
+            bg="white",
+            fg="#5d6d7e",
+            font=("Arial", 10),
+        ).pack(anchor="w", padx=14, pady=(0, 10))
+
+        table_wrap = tk.Frame(card_frame, bg="white")
+        table_wrap.pack(fill="both", expand=True, padx=10, pady=(0, 8))
+
+        columns = ("id", "city", "address", "postcode", "rooms", "type", "status")
+        tree = ttk.Treeview(table_wrap, columns=columns, show="headings", height=10)
+
+        tree.heading("id", text="ID")
+        tree.heading("city", text="City")
+        tree.heading("address", text="Address")
+        tree.heading("postcode", text="Postcode")
+        tree.heading("rooms", text="Rooms")
+        tree.heading("type", text="Type")
+        tree.heading("status", text="Status")
+
+        tree.column("id", width=55, anchor="center")
+        tree.column("city", width=120, anchor="w")
+        tree.column("address", width=180, anchor="w")
+        tree.column("postcode", width=110, anchor="w")
+        tree.column("rooms", width=70, anchor="center")
+        tree.column("type", width=110, anchor="w")
+        tree.column("status", width=110, anchor="w")
+
+        y_scroll = ttk.Scrollbar(table_wrap, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=y_scroll.set)
+
+        tree.pack(side="left", fill="both", expand=True)
+        y_scroll.pack(side="right", fill="y")
+
+        controls = tk.Frame(card_frame, bg="white")
+        controls.pack(fill="x", padx=12, pady=(0, 12))
+
+        tk.Label(controls, text="View:", bg="white", fg="#1f3b63", font=("Arial", 10, "bold")).pack(side="left", padx=(0, 8))
+        view_status_cb = ttk.Combobox(
+            controls,
+            values=["All Status", "Unavailable", "Vacant"],
+            state="readonly",
+            width=16,
+            font=("Arial", 10),
+        )
+        view_status_cb.set("Unavailable")
+        view_status_cb.pack(side="left", padx=(0, 16))
+
+        status_label = tk.Label(controls, text="New Status:", bg="white", fg="#1f3b63", font=("Arial", 10, "bold"))
+        status_label.pack(side="left", padx=(0, 8))
+        status_cb = ttk.Combobox(
+            controls,
+            values=["Vacant", "Unavailable"],
+            state="readonly",
+            width=14,
+            font=("Arial", 10),
+        )
+        status_cb.set("Vacant")
+        status_cb.pack(side="left", padx=(0, 10))
+
+        update_btn = None
+
+        def _sync_update_controls():
+            selected = tree.selection()
+            occupied_selected = False
+            if selected:
+                values = tree.item(selected[0], "values")
+                current_status = str(values[6]).strip() if len(values) > 6 else ""
+                occupied_selected = (current_status == "Occupied")
+
+            if occupied_selected:
+                if status_label.winfo_manager() != "":
+                    status_label.pack_forget()
+                if status_cb.winfo_manager() != "":
+                    status_cb.pack_forget()
+                if update_btn.winfo_manager() != "":
+                    update_btn.pack_forget()
+            else:
+                if status_label.winfo_manager() == "":
+                    status_label.pack(side="left", padx=(0, 8))
+                if status_cb.winfo_manager() == "":
+                    status_cb.pack(side="left", padx=(0, 10))
+                if update_btn.winfo_manager() == "":
+                    update_btn.pack(side="left", padx=4)
+
+        def load_rows():
+            tree.delete(*tree.get_children())
+            scope_city_id = self.assigned_city_id if self.is_admin else None
+            selected_view = (view_status_cb.get() or "All Status").strip()
+
+            if selected_view == "All Status":
+                rows = get_all_apartments(scope_city_id=scope_city_id)
+            else:
+                rows = get_apartments_by_status(selected_view, scope_city_id=scope_city_id)
+
+            for row in rows:
+                tree.insert("", "end", values=row)
+
+        def apply_update():
+            selected = tree.selection()
+            if not selected:
+                messagebox.showerror("Selection Error", "Please select an apartment to update.", parent=self.frame)
+                return
+
+            values = tree.item(selected[0], "values")
+            apartment_id = values[0]
+            current_status = str(values[6]).strip() if len(values) > 6 else ""
+            new_status = status_cb.get().strip()
+
+            if current_status == "Occupied":
+                messagebox.showwarning(
+                    "Update Blocked",
+                    "Occupied apartments cannot be changed manually.",
+                    parent=self.frame,
+                )
+                return
+
+            if not new_status:
+                messagebox.showerror("Validation Error", "Please select a new status.", parent=self.frame)
+                return
+
+            try:
+                update_apartment_status(apartment_id, new_status)
+                messagebox.showinfo("Success", f"Apartment #{apartment_id} updated to {new_status}.", parent=self.frame)
+                load_rows()
+            except Exception as e:
+                messagebox.showerror("Error", str(e), parent=self.frame)
+
+        update_btn = create_button(
+            controls,
+            text="Apply Update",
+            width=150,
+            height=42,
+            bg="#3B86FF",
+            fg="white",
+            command=apply_update,
+            next_window_func=None,
+            current_window=None,
+        )
+        update_btn.pack(side="left", padx=4)
+
+        tree.bind("<<TreeviewSelect>>", lambda _e: _sync_update_controls())
+        view_status_cb.bind("<<ComboboxSelected>>", lambda _e: load_rows())
+        load_rows()
+        _sync_update_controls()
 
     # ========================================================================
     # ADD CITY
@@ -327,6 +558,7 @@ class ApartmentManagerPage:
     def show_add_city_stepper(self):
         """Show form to add new city"""
         self._toggle_apartments_button(True)
+        self._toggle_update_button(True)
         clear_frame(self.box_frame)
 
         # Create form container
@@ -380,6 +612,7 @@ class ApartmentManagerPage:
     def show_add_building_stepper(self):
         """Show form to add new building"""
         self._toggle_apartments_button(True)
+        self._toggle_update_button(True)
         clear_frame(self.box_frame)
 
         # Create form container

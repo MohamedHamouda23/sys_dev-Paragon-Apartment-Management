@@ -27,6 +27,8 @@ class StaffAssignmentPanel:
         self.request_id = request_id
         self.tenant_name = tenant_name
         self.user_info = user_info
+        self.user_role = user_info[4] if user_info and len(user_info) > 4 else None
+        self.is_tenant = self.user_role == "Tenant"
         self.on_submit = on_submit
         self.on_cancel = on_cancel
         self.assignment_completed = False
@@ -56,8 +58,12 @@ class StaffAssignmentPanel:
         main_frame.pack(fill="both", expand=True, padx=20, pady=15)
 
         # Header
-        styled_label(main_frame, f"Assign Staff to Request #{self.request_id}", 
-                    font=("Arial", 14, "bold"), fg="#2c3e50").pack(anchor="w")
+        title = (
+            f"Set Availability for Request #{self.request_id}"
+            if self.is_tenant
+            else f"Assign Staff to Request #{self.request_id}"
+        )
+        styled_label(main_frame, title, font=("Arial", 14, "bold"), fg="#2c3e50").pack(anchor="w")
         
         if self.tenant_name:
             styled_label(main_frame, f"Tenant: {self.tenant_name}", 
@@ -66,37 +72,54 @@ class StaffAssignmentPanel:
         form_frame = tk.Frame(main_frame, bg="#f8f9fa", bd=1, relief="solid")
         form_frame.pack(fill="x", pady=10)
 
-        # Staff selection dropdown
-        staff_row = tk.Frame(form_frame, bg="#f8f9fa")
-        staff_row.pack(fill="x", pady=8, padx=15)
-        
-        styled_label(staff_row, "Staff Member:", font=("Arial", 10, "bold"), 
-                    fg="#2c3e50").pack(side="left")
-        
-        if not self._staff_list:
-            styled_label(staff_row, "No staff available", font=("Arial", 10), 
-                        fg="#e74c3c").pack(side="left", padx=(5, 0))
-            return
-            
-        self._staff_names = [name for _, name in self._staff_list]
-        self._staff_ids = [eid for eid, _ in self._staff_list]
-        self.staff_dropdown = ttk.Combobox(staff_row, values=self._staff_names, state="readonly", width=30)
-        self.staff_dropdown.pack(side="left", padx=(5, 0))
-        self.staff_dropdown.bind('<<ComboboxSelected>>', lambda e: self._check_availability())
-        if self._staff_names:
-            self.staff_dropdown.current(0)
+        if self.is_tenant:
+            info_row = tk.Frame(form_frame, bg="#f8f9fa")
+            info_row.pack(fill="x", pady=8, padx=15)
+            styled_label(info_row, "Staff Member:", font=("Arial", 10, "bold"), fg="#2c3e50").pack(side="left")
+            styled_label(
+                info_row,
+                "Assigned automatically based on slot availability",
+                font=("Arial", 10),
+                fg="#34495e",
+            ).pack(side="left", padx=(5, 0))
 
-        # Priority dropdown
-        priority_row = tk.Frame(form_frame, bg="#f8f9fa")
-        priority_row.pack(fill="x", pady=8, padx=15)
-        
-        styled_label(priority_row, "Priority:", font=("Arial", 10, "bold"), 
-                    fg="#2c3e50").pack(side="left")
-        
-        self.priority_dropdown = ttk.Combobox(priority_row, values=["High", "Medium", "Low"], 
-                                              state="readonly", width=15)
-        self.priority_dropdown.set("Medium")
-        self.priority_dropdown.pack(side="left", padx=(5, 0))
+            priority_row = tk.Frame(form_frame, bg="#f8f9fa")
+            priority_row.pack(fill="x", pady=8, padx=15)
+            styled_label(priority_row, "Priority:", font=("Arial", 10, "bold"), fg="#2c3e50").pack(side="left")
+            styled_label(
+                priority_row,
+                "Set by maintenance team",
+                font=("Arial", 10),
+                fg="#34495e",
+            ).pack(side="left", padx=(5, 0))
+        else:
+            # Staff selection dropdown
+            staff_row = tk.Frame(form_frame, bg="#f8f9fa")
+            staff_row.pack(fill="x", pady=8, padx=15)
+
+            styled_label(staff_row, "Staff Member:", font=("Arial", 10, "bold"), fg="#2c3e50").pack(side="left")
+
+            if not self._staff_list:
+                styled_label(staff_row, "No staff available", font=("Arial", 10), fg="#e74c3c").pack(side="left", padx=(5, 0))
+                return
+
+            self._staff_names = [name for _, name in self._staff_list]
+            self._staff_ids = [eid for eid, _ in self._staff_list]
+            self.staff_dropdown = ttk.Combobox(staff_row, values=self._staff_names, state="readonly", width=30)
+            self.staff_dropdown.pack(side="left", padx=(5, 0))
+            self.staff_dropdown.bind('<<ComboboxSelected>>', lambda e: self._check_availability())
+            if self._staff_names:
+                self.staff_dropdown.current(0)
+
+            # Priority dropdown
+            priority_row = tk.Frame(form_frame, bg="#f8f9fa")
+            priority_row.pack(fill="x", pady=8, padx=15)
+
+            styled_label(priority_row, "Priority:", font=("Arial", 10, "bold"), fg="#2c3e50").pack(side="left")
+
+            self.priority_dropdown = ttk.Combobox(priority_row, values=["High", "Medium", "Low"], state="readonly", width=15)
+            self.priority_dropdown.set("Medium")
+            self.priority_dropdown.pack(side="left", padx=(5, 0))
 
         # Date entry field
         date_row = tk.Frame(form_frame, bg="#f8f9fa")
@@ -135,8 +158,8 @@ class StaffAssignmentPanel:
         desc_row = tk.Frame(form_frame, bg="#f8f9fa")
         desc_row.pack(fill="x", pady=8, padx=15)
         
-        styled_label(desc_row, "Assignment Description:", font=("Arial", 10, "bold"), 
-                    fg="#2c3e50").pack(side="left", anchor="n")
+        desc_label = "Request Description:" if self.is_tenant else "Assignment Description:"
+        styled_label(desc_row, desc_label, font=("Arial", 10, "bold"), fg="#2c3e50").pack(side="left", anchor="n")
         
         self.comment_text = tk.Text(desc_row, width=50, height=4, font=("Arial", 10), 
                                    bd=1, relief="solid")
@@ -148,12 +171,15 @@ class StaffAssignmentPanel:
 
         # Cancel button
         create_button(btn_frame, text="Cancel",
-                     bg="#95a5a6", fg="white",
+                 width=170, height=45,
+                 bg="#95a5a6", fg="white",
                      command=self.on_cancel if self.on_cancel else lambda: None).pack(side="left", padx=(0, 10))
 
         # Assign button
-        self.assign_button = create_button(btn_frame, text="Assign & Schedule",
-                                          bg="#3498db", fg="white",
+        action_text = "Submit Availability" if self.is_tenant else "Assign & Schedule"
+        self.assign_button = create_button(btn_frame, text=action_text,
+                          width=230, height=45,
+                          bg="#3498db", fg="white",
                                           command=self._submit)
         self.assign_button.pack(side="left")
 
@@ -165,7 +191,10 @@ class StaffAssignmentPanel:
         date_str = self.date_entry.get().strip()
         staff_name = self.staff_dropdown.get().strip() if self.staff_dropdown else ""
         
-        if not date_str or not staff_name:
+        if not date_str:
+            return
+
+        if not self.is_tenant and not staff_name:
             return
             
         # Validate date format
@@ -177,16 +206,21 @@ class StaffAssignmentPanel:
         clear_frame(self.slots_frame)
 
         try:
-            # Get task counts for each time slot
-            from database.maintaince_service import get_staff_task_count_for_date
-            task_counts = get_staff_task_count_for_date(staff_name, date_str) or {}
-
-            # Find available slots (less than 1 task per slot)
             available = []
-            for slot in self.TIME_SLOTS:
-                count = task_counts.get(slot, 0)
-                if count < 1:
-                    available.append(slot)
+            if self.is_tenant:
+                from database.maintaince_service import get_available_staff_for_slot
+                for slot in self.TIME_SLOTS:
+                    slot_staff = get_available_staff_for_slot(date_str, slot, user_info=self.user_info) or []
+                    if slot_staff:
+                        available.append(slot)
+            else:
+                # Get task counts for each time slot for selected staff member
+                from database.maintaince_service import get_staff_task_count_for_date
+                task_counts = get_staff_task_count_for_date(staff_name, date_str) or {}
+                for slot in self.TIME_SLOTS:
+                    count = task_counts.get(slot, 0)
+                    if count < 1:
+                        available.append(slot)
 
             self._available_slots = available
 
@@ -229,24 +263,50 @@ class StaffAssignmentPanel:
         """Submit staff assignment"""
         # Prevent double submission
         if self.assignment_completed:
-            messagebox.showwarning("Already Assigned", "Staff has already been assigned to this request.")
+            messagebox.showwarning(
+                "Already Assigned",
+                "Staff has already been assigned to this request.",
+                parent=self.parent,
+            )
             return
             
-        staff_name = self.staff_dropdown.get().strip()
-        priority = self.priority_dropdown.get().strip()
+        staff_name = self.staff_dropdown.get().strip() if self.staff_dropdown else ""
+        priority = self.priority_dropdown.get().strip() if self.priority_dropdown else "Medium"
         date_str = self.date_entry.get().strip()
         comment = self.comment_text.get("1.0", "end").strip()
 
         # Validate form inputs
         try:
-            validate_staff_assignment(staff_name, priority, date_str, self.selected_slot, comment)
+            validate_staff_assignment(
+                staff_name,
+                priority,
+                date_str,
+                self.selected_slot,
+                comment,
+                require_staff=not self.is_tenant,
+                require_priority=not self.is_tenant,
+            )
         except ValueError as e:
-            messagebox.showerror("Validation Error", str(e))
+            messagebox.showerror("Validation Error", str(e), parent=self.parent)
             return
 
         # Save assignment to database
         try:
-            employee_id = self._staff_ids[self._staff_names.index(staff_name)]
+            if self.is_tenant:
+                from database.maintaince_service import pick_random_available_staff_for_slot
+                chosen = pick_random_available_staff_for_slot(date_str, self.selected_slot, user_info=self.user_info)
+                if not chosen:
+                    messagebox.showerror(
+                        "No Staff Available",
+                        "No maintenance staff is available for the selected date and time.",
+                        parent=self.parent,
+                    )
+                    return
+                employee_id, staff_name = chosen
+                priority = "Medium"
+            else:
+                employee_id = self._staff_ids[self._staff_names.index(staff_name)]
+
             scheduled_dt = f"{date_str} {self.selected_slot}:00"
             
             from database.maintaince_service import assign_and_schedule
@@ -255,14 +315,19 @@ class StaffAssignmentPanel:
             if result:
                 self.assignment_completed = True
                 self.assign_button.config(state="disabled", bg="#95a5a6")
-                messagebox.showinfo("Success", f"Staff assigned successfully to Request #{self.request_id}")
-                
+
                 if self.on_submit:
                     self.on_submit(self.request_id, staff_name, comment)
+                else:
+                    messagebox.showinfo(
+                        "Success",
+                        f"Staff assigned successfully to Request #{self.request_id}",
+                        parent=self.parent,
+                    )
             else:
-                messagebox.showerror("Error", "Failed to assign staff")
+                messagebox.showerror("Error", "Failed to assign staff", parent=self.parent)
         except Exception as e:
-            messagebox.showerror("Error", str(e))
+            messagebox.showerror("Error", str(e), parent=self.parent)
 
 
 # ============================================================================
@@ -446,7 +511,12 @@ class MaintenanceDetailPanel:
                 )
 
                 create_button(
-                    btn_frame, text="Mark as Resolved", bg="#27ae60", fg="white",
+                    btn_frame,
+                    text="Mark as Resolved",
+                    width=230,
+                    height=45,
+                    bg="#27ae60",
+                    fg="white",
                     command=self._open_resolve_form
                 ).pack(side="left")
 
@@ -495,8 +565,24 @@ class MaintenanceDetailPanel:
         # Action buttons
         btn_frame = tk.Frame(form_frame, bg="white")
         btn_frame.pack(anchor="e", padx=15, pady=(15, 10))
-        create_button(btn_frame, text="Cancel", bg="#95a5a6", fg="white", command=lambda: self._render()).pack(side="left", padx=(0, 10))
-        create_button(btn_frame, text="Submit Resolution", bg="#27ae60", fg="white", command=self._submit_resolution).pack(side="left")
+        create_button(
+            btn_frame,
+            text="Cancel",
+            width=170,
+            height=45,
+            bg="#95a5a6",
+            fg="white",
+            command=lambda: self._render()
+        ).pack(side="left", padx=(0, 10))
+        create_button(
+            btn_frame,
+            text="Submit Resolution",
+            width=230,
+            height=45,
+            bg="#27ae60",
+            fg="white",
+            command=self._submit_resolution
+        ).pack(side="left")
 
     def _submit_resolution(self):
         """Submit resolution form"""
@@ -512,7 +598,7 @@ class MaintenanceDetailPanel:
             if self.on_resolve:
                 self.on_resolve(notes, repair_cost, repair_time)
         except ValueError as e:
-            messagebox.showerror("Validation Error", str(e))
+            messagebox.showerror("Validation Error", str(e), parent=self.parent)
 
 
 def create_page(parent, user_info):

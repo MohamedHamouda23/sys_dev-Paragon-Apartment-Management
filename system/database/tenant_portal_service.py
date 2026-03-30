@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta
 from database.databaseConnection import check_connection,fetch_all
 from database.payment_service import update_late_status
+from database.lease_service import sync_lease_payments_up_to_horizon
 from .db_utils import execute_query, execute_transaction, get_user_id
 
 
@@ -145,31 +146,43 @@ def get_tenant_profile(user_id):
 
 def get_tenant_payments_with_balance(user_id):
     """Get tenant payments with balance calculations."""
-    update_late_status()
-    
+
+    sync_lease_payments_up_to_horizon(months_ahead=1)
+
     rows = execute_query(
         """
         SELECT
-            p.payment_id,
-            p.lease_id,
-            p.due_date,
+            COALESCE(p.payment_id, 0) AS payment_id,
+            l.lease_id,
+            COALESCE(p.due_date, l.start_date) AS due_date,
             p.payment_date,
             COALESCE(p.amount, 0),
             l.Agreed_rent,
-            COALESCE(p.is_late, 'No'),
+            CASE
+                WHEN p.payment_date IS NOT NULL
+                     AND DATE(p.payment_date) > DATE(p.due_date)
+                THEN 'Yes'
+                WHEN DATE(COALESCE(p.due_date, l.start_date)) < DATE('now')
+                     AND (
+                         p.payment_date IS NULL
+                         OR COALESCE(p.amount, 0) < COALESCE(l.Agreed_rent, 0)
+                     )
+                THEN 'Yes'
+                ELSE 'No'
+            END AS is_late,
             b.street,
             b.postcode,
             a.type,
             b.city_id
-        FROM Payment p
-        JOIN Lease l ON p.lease_id = l.lease_id
+        FROM Lease l
+        LEFT JOIN Payment p ON p.lease_id = l.lease_id
         JOIN Tenant t ON l.tenant_id = t.tenant_id
         JOIN User u ON t.user_id = u.user_id
         JOIN Apartments a ON l.apartment_id = a.apartment_id
         JOIN Buildings b ON a.building_id = b.building_id
         WHERE t.user_id = ?
           AND u.city_id = b.city_id
-        ORDER BY DATE(p.due_date) DESC
+        ORDER BY DATE(COALESCE(p.due_date, l.start_date)) DESC
         """,
         (user_id,)
     )
@@ -286,7 +299,16 @@ def get_late_payment_trend(user_id):
         JOIN Apartments a ON l.apartment_id = a.apartment_id
         JOIN Buildings b ON a.building_id = b.building_id
         WHERE t.user_id = ?
-          AND COALESCE(p.is_late, 'No') = 'Yes'
+          AND (
+              (p.payment_date IS NOT NULL AND DATE(p.payment_date) > DATE(p.due_date))
+              OR (
+                  DATE(p.due_date) < DATE('now')
+                  AND (
+                      p.payment_date IS NULL
+                      OR COALESCE(p.amount, 0) < COALESCE(l.Agreed_rent, 0)
+                  )
+              )
+          )
         GROUP BY b.postcode
         ORDER BY late_count DESC
         """,
@@ -296,13 +318,13 @@ def get_late_payment_trend(user_id):
 
 
 def get_neighbor_comparison(user_id):
-    """Compare tenant's payments with neighbors in same apartment type."""
+    """Compare tenant's payments with up to two neighbors in the same building."""
     tenant_row = execute_query(
         """
         SELECT
             COALESCE(AVG(p.amount), 0),
             a.type,
-            b.city_id
+            a.building_id
         FROM Payment p
         JOIN Lease l ON p.lease_id = l.lease_id
         JOIN Tenant t ON l.tenant_id = t.tenant_id
@@ -315,34 +337,58 @@ def get_neighbor_comparison(user_id):
     )
 
     if not tenant_row:
-        return {"tenant_avg": 0.0, "neighbor_avg": 0.0, "group": "N/A"}
+        return {
+            "tenant_avg": 0.0,
+            "neighbor_1_label": "Neighbor 1",
+            "neighbor_1_avg": 0.0,
+            "neighbor_2_label": "Neighbor 2",
+            "neighbor_2_avg": 0.0,
+        }
 
     tenant_avg = float(tenant_row[0] or 0)
     apt_type = tenant_row[1]
-    city_id = tenant_row[2]
+    building_id = tenant_row[2]
 
-    neighbor_row = execute_query(
+    neighbor_rows = execute_query(
         """
-        SELECT COALESCE(AVG(p.amount), 0)
+        SELECT
+            u.first_name || ' ' || u.surname AS neighbor_name,
+            COALESCE(AVG(p.amount), 0) AS neighbor_avg
         FROM Payment p
         JOIN Lease l ON p.lease_id = l.lease_id
         JOIN Tenant t ON l.tenant_id = t.tenant_id
+        JOIN User u ON t.user_id = u.user_id
         JOIN Apartments a ON l.apartment_id = a.apartment_id
-        JOIN Buildings b ON a.building_id = b.building_id
-        WHERE a.type = ?
-          AND b.city_id = ?
+                WHERE a.building_id = ?
           AND t.user_id != ?
           AND p.payment_date IS NOT NULL
+        GROUP BY t.user_id
+        ORDER BY neighbor_avg DESC, neighbor_name ASC
+        LIMIT 2
         """,
-        (apt_type, city_id, user_id),
-        'one'
+                (building_id, user_id),
+        'all'
     )
 
-    neighbor_avg = float(neighbor_row[0] or 0)
+    neighbor_1_label = "Neighbor 1"
+    neighbor_1_avg = 0.0
+    neighbor_2_label = "Neighbor 2"
+    neighbor_2_avg = 0.0
+
+    if neighbor_rows:
+        if len(neighbor_rows) >= 1:
+            neighbor_1_label = str(neighbor_rows[0][0] or "Neighbor 1")
+            neighbor_1_avg = float(neighbor_rows[0][1] or 0)
+        if len(neighbor_rows) >= 2:
+            neighbor_2_label = str(neighbor_rows[1][0] or "Neighbor 2")
+            neighbor_2_avg = float(neighbor_rows[1][1] or 0)
+
     return {
         "tenant_avg": tenant_avg,
-        "neighbor_avg": neighbor_avg,
-        "group": f"{apt_type} / same city",
+        "neighbor_1_label": neighbor_1_label,
+        "neighbor_1_avg": neighbor_1_avg,
+        "neighbor_2_label": neighbor_2_label,
+        "neighbor_2_avg": neighbor_2_avg,
     }
 
 

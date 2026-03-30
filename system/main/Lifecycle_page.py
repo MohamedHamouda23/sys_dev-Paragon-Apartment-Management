@@ -59,7 +59,7 @@ class MaintenanceManagementPage:
 
         # Assign & Schedule button (disabled by default)
         self.assign_btn = create_button(
-            btns_inner_frame, text="Assign & Schedule", width=180, height=45,
+            btns_inner_frame, text="Assign & Schedule", width=230, height=45,
             bg="#dc3545", fg="white", command=self._assign_and_schedule,
         )
         self.assign_btn.pack(side="left", padx=8)
@@ -273,7 +273,7 @@ class MaintenanceManagementPage:
 
     def _on_staff_assigned_and_scheduled(self, request_id, staff_name, comment):
         """Handle successful staff assignment"""
-        messagebox.showinfo("Success", f"Staff assigned to #{request_id}")
+        messagebox.showinfo("Success", f"Staff assigned to #{request_id}", parent=self.frame)
         self._load_requests(reselect_id=request_id)
         self._on_row_select()
 
@@ -284,11 +284,11 @@ class MaintenanceManagementPage:
             return
 
         if update_request_status(target_id, "approve"):
-            messagebox.showinfo("Approved", f"Request #{target_id} approved.")
+            messagebox.showinfo("Approved", f"Request #{target_id} approved.", parent=self.frame)
             self._load_requests(reselect_id=target_id)
             self._on_row_select()
         else:
-            messagebox.showerror("Error", "Approval failed.")
+            messagebox.showerror("Error", "Approval failed.", parent=self.frame)
 
     def _deny(self, request_id=None):
         """Deny a maintenance request"""
@@ -297,16 +297,16 @@ class MaintenanceManagementPage:
             return
 
         if update_request_status(target_id, "reject"):
-            messagebox.showinfo("Denied", f"Request #{target_id} denied.")
+            messagebox.showinfo("Denied", f"Request #{target_id} denied.", parent=self.frame)
             self._load_requests(reselect_id=target_id)
             self._on_row_select()
         else:
-            messagebox.showerror("Error", "Denial failed.")
+            messagebox.showerror("Error", "Denial failed.", parent=self.frame)
 
     def _on_resolved(self, notes, repair_cost, repair_time):
         """Handle request resolution"""
         if resolve_request(self.selected_request_id, notes, repair_cost, repair_time):
-            messagebox.showinfo("Resolved", "Request marked as Resolved.")
+            messagebox.showinfo("Resolved", "Request marked as Resolved.", parent=self.frame)
             self._load_requests(reselect_id=self.selected_request_id)
             self._on_row_select()
 

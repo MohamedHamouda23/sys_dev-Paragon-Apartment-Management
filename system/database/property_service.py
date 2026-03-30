@@ -88,6 +88,46 @@ def create_apartment(city_id, building_id, num_rooms, apt_type, occupancy_status
     )
 
 
+def get_apartments_by_status(status, scope_city_id=None):
+    query = """
+        SELECT a.apartment_id, l.city_name, b.street, b.postcode, a.num_rooms, a.type, a.occupancy_status
+        FROM Apartments a
+        JOIN Location l ON a.city_id = l.city_id
+        JOIN Buildings b ON a.building_id = b.building_id
+        WHERE a.occupancy_status = ?
+    """
+    params = [status]
+
+    if scope_city_id is not None:
+        query += " AND a.city_id = ?"
+        params.append(scope_city_id)
+
+    query += " ORDER BY a.apartment_id"
+    return execute_query(query, tuple(params))
+
+
+def update_apartment_status(apartment_id, new_status):
+    allowed = {"Vacant", "Unavailable"}
+    if new_status not in allowed:
+        raise ValueError("Invalid occupancy status. Only Vacant or Unavailable can be set manually.")
+
+    current = execute_query(
+        "SELECT occupancy_status FROM Apartments WHERE apartment_id = ?",
+        (apartment_id,),
+        'one'
+    )
+    if not current:
+        raise ValueError("Apartment not found.")
+    if str(current[0]).strip() == "Occupied":
+        raise ValueError("Occupied apartments cannot be changed manually.")
+
+    execute_query(
+        "UPDATE Apartments SET occupancy_status = ? WHERE apartment_id = ?",
+        (new_status, apartment_id),
+        'none'
+    )
+
+
 def fetch_available_apartments():
     apartments = get_all_apartments()
     return [

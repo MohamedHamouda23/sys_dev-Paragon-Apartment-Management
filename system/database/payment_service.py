@@ -1,12 +1,19 @@
 from .db_utils import execute_query
+from database.lease_service import sync_lease_payments_up_to_horizon
 
 
 def update_late_status():
     """Updates the 'is_late' column. Late if past due date and unpaid/underpaid."""
+    # Keep payment schedules rolling monthly without generating far-future rows.
+    sync_lease_payments_up_to_horizon(months_ahead=1)
+
     execute_query(
         """
         UPDATE Payment
         SET is_late = CASE
+            WHEN payment_date IS NOT NULL
+                 AND DATE(payment_date) > DATE(due_date)
+            THEN 'Yes'
             WHEN DATE(due_date) < DATE('now')
                  AND (
                      payment_date IS NULL

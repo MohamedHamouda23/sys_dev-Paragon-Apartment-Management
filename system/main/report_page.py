@@ -250,6 +250,73 @@ class ReportManagementPage:
         self.table_host = tk.Frame(results_wrap, bg="white")
         self.table_host.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
+        self.finance_graph_host = tk.Frame(results_wrap, bg="white")
+        self.finance_graph_host.pack(fill="x", padx=10, pady=(0, 8))
+
+    def _should_show_financial_graph(self):
+        return self.role in ["Administrators", "Manager", "Finance Manager"]
+
+    def _render_financial_graph(self, rows):
+        for w in self.finance_graph_host.winfo_children():
+            w.destroy()
+
+        if not self._should_show_financial_graph() or self.selected_report_type.get() != "Financial":
+            return
+
+        paid_total = 0.0
+        pending_total = 0.0
+
+        for r in rows:
+            try:
+                amount = float(r[4] or 0)
+            except (TypeError, ValueError):
+                amount = 0.0
+
+            is_paid = str(r[5]).strip().lower() == "yes"
+            if is_paid:
+                paid_total += amount
+            else:
+                pending_total += amount
+
+        graph_wrap = tk.Frame(self.finance_graph_host, bg="#f8fbff", bd=1, relief="solid")
+        graph_wrap.pack(fill="x")
+
+        total_value = paid_total + pending_total
+        paid_pct = (paid_total / total_value * 100.0) if total_value > 0 else 0.0
+        pending_pct = (pending_total / total_value * 100.0) if total_value > 0 else 0.0
+
+        tk.Label(
+            graph_wrap,
+            text="Paid vs Pending Rent",
+            font=("Arial", 11, "bold"),
+            bg="#f8fbff",
+            fg="#1f3b63",
+        ).pack(anchor="w", padx=12, pady=(8, 2))
+
+        canvas_w, canvas_h = 560, 140
+        chart = tk.Canvas(graph_wrap, width=canvas_w, height=canvas_h, bg="#f8fbff", highlightthickness=0)
+        chart.pack(fill="x", padx=10, pady=(0, 8))
+
+        bar_left = 145
+        max_bar_width = canvas_w - bar_left - 70
+        max_value = max(paid_total, pending_total, 1.0)
+
+        def draw_metric(y, label, value, pct, color):
+            bar_width = int((value / max_value) * max_bar_width) if max_value > 0 else 0
+            chart.create_text(14, y + 10, anchor="w", text=label, fill="#24364f", font=("Arial", 10, "bold"))
+            chart.create_rectangle(bar_left, y, bar_left + bar_width, y + 22, fill=color, outline=color)
+            chart.create_text(
+                bar_left + max(bar_width, 2) + 8,
+                y + 11,
+                anchor="w",
+                text=f"£{value:,.2f} ({pct:.1f}%)",
+                fill="#1f3b63",
+                font=("Arial", 10, "bold"),
+            )
+
+        draw_metric(28, "Paid", paid_total, paid_pct, "#17a2b8")
+        draw_metric(78, "Pending", pending_total, pending_pct, "#ff8a3d")
+
     def _update_summary_cards_visibility(self, report_key):
         """Show only relevant snapshot cards for the selected report type."""
         visible_by_report = {
@@ -362,6 +429,10 @@ class ReportManagementPage:
         if self.is_admin and self.assigned_city_id:
             return self.assigned_city_id
 
+        # Finance Manager is city-scoped and should not see cross-city report data.
+        if self.role == "Finance Manager" and self.assigned_city_id:
+            return self.assigned_city_id
+
         name = self.city_cb.get().strip() if self.city_cb else self.selected_city.get().strip()
         return self.city_name_to_id.get(name) if name != "All Cities" else None
 
@@ -423,6 +494,10 @@ class ReportManagementPage:
         report_key = self.selected_report_type.get()
         city_label = self.selected_city.get()
 
+        if report_key != "Financial":
+            for w in self.finance_graph_host.winfo_children():
+                w.destroy()
+
         self._update_summary_cards_visibility(report_key)
         self._set_report_filter_visibility(report_key)
 
@@ -466,8 +541,24 @@ class ReportManagementPage:
             elif late_choice == "not late":
                 rows = [r for r in rows if str(r[6]).strip().lower() == "no"]
 
+            # Keep collected card aligned with what is currently shown in the table.
+            collected_visible = 0.0
+            for r in rows:
+                try:
+                    paid_flag = str(r[5]).strip().lower() == "yes"
+                    amount_val = float(r[4] or 0)
+                    if paid_flag:
+                        collected_visible += amount_val
+                except (TypeError, ValueError):
+                    continue
+
+            if "Collected" in self.summary_cards:
+                self.summary_cards["Collected"].config(text=f"£{collected_visible:,.2f}")
+
             if "Apartments" in self.summary_cards:
                 self.summary_cards["Apartments"].config(text=str(len(rows)))
+
+            self._render_financial_graph(rows)
 
             self._render_table(
                 "Financial Summary",

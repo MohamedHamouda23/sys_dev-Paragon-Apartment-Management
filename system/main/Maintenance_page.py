@@ -253,7 +253,11 @@ class MaintenancePage:
     
     def _on_request_registered(self, new_id):
         """Handle successful request registration"""
-        messagebox.showinfo("Success", f"Maintenance request #{new_id} has been registered successfully.")
+        messagebox.showinfo(
+            "Success",
+            f"Maintenance request #{new_id} has been registered successfully.",
+            parent=self.frame,
+        )
         self._load_requests(reselect_id=new_id)
         self._clear_form()
     

@@ -4,6 +4,7 @@
 
 import tkinter as tk
 from tkinter import ttk
+from tkinter import messagebox
 import os
 import sys
 from main.helpers import create_side_navbar
@@ -70,15 +71,15 @@ def page_template(main_window, user_info):
         "Maintenance": MaintenancePage,
         "Request Lifecycle": Lifecycle_Management,
         "Payments": Payments_Management,
-        "complaints": complaints,
+        "Complaints": complaints,
         "Lease": Lease_Management,
         "Profile": Tenant_Management,
     }
 
     role = user_info[4]
     ROLE_PAGES = {
-        "Administrators": ["Users", "Properties", "Lease", "Reports", "Request Lifecycle"],
-        "Front-desk Staff": ["Tenants", "Maintenance","complaints"],
+        "Administrators": ["Users", "Properties", "Lease", "Reports", "Request Lifecycle", "Tenants"],
+        "Front-desk Staff": ["Tenants", "Maintenance","Complaints"],
         "Maintenance Staff": ["Request Lifecycle", "Reports"],
         "Manager": ["Properties", "Lease", "Reports", "Maintenance", "Request Lifecycle"],
         "Finance Manager": ["Reports", "Payments"],
@@ -88,33 +89,60 @@ def page_template(main_window, user_info):
     allowed_pages = ROLE_PAGES.get(role, [])
     page_modules = {name: ALL_PAGES[name] for name in allowed_pages if name in ALL_PAGES}
 
-    for name, module in page_modules.items():
-        # Consistent page creation
-        frame = module.create_page(content_frame, user_info=user_info)
-        frame.place(relx=0, rely=0, relwidth=1, relheight=1)
-        pages[name] = frame
+    def _load_page(page_name):
+        if page_name in pages:
+            return pages[page_name]
+
+        module = page_modules.get(page_name)
+        if module is None:
+            return None
+
+        try:
+            frame = module.create_page(content_frame, user_info=user_info)
+            frame.place(relx=0, rely=0, relwidth=1, relheight=1)
+            pages[page_name] = frame
+            return frame
+        except Exception as exc:
+            messagebox.showerror(
+                "Page Load Error",
+                f"Could not open '{page_name}' page.\n\n{exc}",
+                parent=root,
+            )
+            return None
 
     def show_page(page_name):
-        frame = pages.get(page_name)
-        if frame:
-            # Trigger refresh if the module supports it
+        frame = _load_page(page_name)
+        if not frame:
+            return
+
+        # Trigger refresh if the module supports it
+        try:
             for m in ["on_show", "refresh_payments", "refresh_data"]:
                 if hasattr(frame, m):
                     getattr(frame, m)()
                     break
-            frame.tkraise()
+        except Exception as exc:
+            messagebox.showerror(
+                "Page Refresh Error",
+                f"Could not refresh '{page_name}' page.\n\n{exc}",
+                parent=root,
+            )
+            return
 
-    button_commands = [lambda n=name: show_page(n) for name in page_modules]
+        frame.tkraise()
+
+    page_order = list(page_modules.keys())
+    button_commands = [lambda n=name: show_page(n) for name in page_order]
 
     create_side_navbar(
         parent=root,
-        button_text=list(page_modules.keys()),
+        button_text=page_order,
         user_info=user_info,
         button_command=button_commands,
     )
 
-    if page_modules:
-        show_page(list(page_modules.keys())[0])
+    if page_order:
+        show_page(page_order[0])
 
     root.mainloop()
 

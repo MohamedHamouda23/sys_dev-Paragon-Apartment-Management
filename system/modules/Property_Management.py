@@ -32,7 +32,7 @@ class AddApartmentStepper:
 
     # Property type and occupancy options
     TYPES     = ['Studio', 'Apartment', 'Penthouse']
-    OCCUPANCY = ['Occupied', 'Vacant', 'Unavailable']
+    OCCUPANCY = ['Vacant', 'Unavailable']
 
     def __init__(self, parent, refresh_callback, user_info=None):
         # Store parent and refresh callback
@@ -317,4 +317,6 @@ class AddApartmentStepper:
 def create_page(parent, user_info=None):
     """Create and return property management page"""
     from main.apartment_page import ApartmentManagerPage
-    return ApartmentManagerPage(parent, user_info=user_info).frame
+    page = ApartmentManagerPage(parent, user_info=user_info)
+    page.frame.on_show = page.on_show
+    return page.frame

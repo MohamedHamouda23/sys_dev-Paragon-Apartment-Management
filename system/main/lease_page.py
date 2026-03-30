@@ -40,6 +40,9 @@ class LeaseManagerPage:
         self._build_layout()
         self._load_leases()
 
+    def on_show(self):
+        self._load_leases()
+
     def _get_filtered_leases(self):
         leases = list(self.all_leases)
 
@@ -158,6 +161,7 @@ class LeaseManagerPage:
             self._refresh_building_filter()
 
         self._render_leases(self._get_filtered_leases())
+        self._refresh_form_options()
 
     def _on_manager_city_filter_change(self, event=None):
         if self.user_role != "Manager":
@@ -185,12 +189,14 @@ class LeaseManagerPage:
 
         create_button(btns_inner, "Add Lease", 140, 45, "#3B86FF", "white", self._add_lease).pack(side="left", padx=8)
         create_button(btns_inner, "Remove Lease", 140, 45, "#3B86FF", "white", self._remove_lease).pack(side="left", padx=8)
-        create_button(btns_inner, "Track Lease", 140, 45, "#3B86FF", "white", self._load_leases).pack(side="left", padx=8)
+        if self.user_role != "Administrators":
+            create_button(btns_inner, "Track Lease", 140, 45, "#3B86FF", "white", self._load_leases).pack(side="left", padx=8)
 
         content_frame = tk.Frame(self.frame, bg="#c9e4c4")
         content_frame.pack(fill="both", expand=True, padx=20, pady=(6, 20))
 
-        tk.Label(content_frame, text="Lease Information", bg="#c9e4c4", font=("Arial", 16, "bold")).pack(pady=(0, 10))
+        if self.user_role != "Administrators":
+            tk.Label(content_frame, text="Lease Information", bg="#c9e4c4", font=("Arial", 16, "bold")).pack(pady=(0, 10))
 
         if self.user_role in ["Manager", "Administrators"]:
             filter_frame = tk.Frame(content_frame, bg="#c9e4c4")
@@ -311,6 +317,35 @@ class LeaseManagerPage:
         self.form_frame.grid_columnconfigure(1, weight=1)
         self.form_frame.grid_columnconfigure(3, weight=1)
 
+    def _refresh_form_options(self):
+        if not hasattr(self, "tenant_cb") or not hasattr(self, "apt_cb"):
+            return
+
+        if self.user_role == "Administrators":
+            tenants = fetch_tenants(city_id=self.assigned_city_id)
+            apartments = fetch_available_apartments(city_id=self.assigned_city_id)
+        elif self.user_role == "Tenant":
+            tenants = fetch_tenants(tenant_id=self.tenant_id)
+            apartments = fetch_available_apartments(city_id=None)
+        else:
+            tenants = fetch_tenants(city_id=None)
+            apartments = fetch_available_apartments(city_id=None)
+
+        current_tenant = self.tenant_cb.get().strip()
+        current_apartment = self.apt_cb.get().strip()
+
+        self.tenant_map = {t[1]: t for t in tenants}
+        self.available_map = build_apartment_map(apartments)
+
+        tenant_values = list(self.tenant_map.keys())
+        apartment_values = list(self.available_map.keys())
+
+        self.tenant_cb["values"] = tenant_values
+        self.apt_cb["values"] = apartment_values
+
+        self.tenant_cb.set(current_tenant if current_tenant in self.tenant_map else (tenant_values[0] if tenant_values else ""))
+        self.apt_cb.set(current_apartment if current_apartment in self.available_map else (apartment_values[0] if apartment_values else ""))
+
     def _add_lease(self):
         if not self.tenant_cb.get() or not self.apt_cb.get():
             messagebox.showerror("Validation Error", "Please choose tenant and apartment.")
@@ -350,7 +385,11 @@ class LeaseManagerPage:
 
         msg = f"Tenant: {values[1]}\nApartment: {values[2]}\nLease End: {end_str}\nVacate By: {vacate}\n"
         if is_early:
-            msg += f"Penalty (5%): £{penalty:,.2f}\n\nEarly termination applies."
+            msg += (
+                f"Penalty (5%): £{penalty:,.2f}\n\n"
+                "Notice: A minimum 1 month notice applies.\n"
+                "By agreeing, you accept the 5% early termination penalty."
+            )
 
         if not messagebox.askyesno("Confirm Removal", msg):
             return

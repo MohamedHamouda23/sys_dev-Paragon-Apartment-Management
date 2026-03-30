@@ -578,6 +578,7 @@ class TenantLeaseExitPage:
         """Handle lease termination with confirmation"""
         # Calculate penalty (5% of monthly rent)
         penalty = round(rent * 0.05, 2)
+        vacate_by = (date.today() + timedelta(days=30)).isoformat()
         
         # Show confirmation dialog with details
         confirm = messagebox.askyesno(
@@ -585,7 +586,10 @@ class TenantLeaseExitPage:
             f"Are you sure you want to terminate this lease?\n\n"
             f"Lease ID: #{lease_id}\n"
             f"Monthly Rent: £{rent:,.2f}\n"
+            f"Vacate By: {vacate_by}\n"
             f"Early Termination Penalty (5%): £{penalty:,.2f}\n\n"
+            f"Notice: A minimum 1 month notice applies.\n"
+            f"By agreeing, you accept the 5% early termination penalty.\n\n"
             f"⚠ This action is immediate and cannot be undone."
         )
         
@@ -622,4 +626,6 @@ def create_page(parent, user_info):
         return page.frame
     else:
         from main.lease_page import LeaseManagerPage
-        return LeaseManagerPage(parent, user_info=user_info).frame
+        page = LeaseManagerPage(parent, user_info=user_info)
+        page.frame.on_show = page.on_show
+        return page.frame
