@@ -23,6 +23,7 @@ The system modernises apartment management by replacing manual processes with a 
 ------------------------
 
 ```text
+planning_and_design/       # Contains all project planning and design documents
 system/
   ├── main /               # Main program pages
   ├── database /           # Database scripts, schemas, and initial data
@@ -38,8 +39,7 @@ system/
 ----------------------
 
 *   Python 3.x
-*   Required Python libraries (see requirements.txt if provided)
-
+*   Required Python libraries
 * * *
 
 
@@ -59,7 +59,7 @@ cd system
 
 ### 3️⃣ Run the System
 
-python3 main.py
+python3 -m main.index
 ```
 
 * * *
@@ -94,6 +94,16 @@ The project team collaborated on different areas to ensure a complete and high-q
 *   Git & GitHub
 
 * * *
+
+User Roles and Passwords
+----------
+
+
+
+
+
+* * *
+
 
 📄 License
 ----------
