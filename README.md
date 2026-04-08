@@ -97,10 +97,34 @@ The project team collaborated on different areas to ensure a complete and high-q
 
 User Roles and Passwords
 ----------
+## Administrators
+- `1234` / `1234`
+- `ava.admin@bristol.com` / `hash36`
+- `farah.admin@cardiff.com` / `hash41`
 
+## Managers
+- `lucas@manager.com` / `hash4`
+- `123` / `123`
+- `ben.manager@bristol.com` / `hash37`
 
+## Front-desk Staff
+- `oliver@frontdesk.com` / `hash6`
+- `lily@f.com` / `h16`
+- `elena@frontdesk.com` / `hash22`
 
+## Finance Managers
+- `noah@finance.com` / `hash8`
+- `alice.f@bristol.com` / `hash32`
 
+## Maintenance Staff
+- `aisha@maintenance.com` / `hash7`
+- `jack@m.com` / `h13`
+- `will@m.com` / `h19`
+- `dan@maintenance.com` / `hash25`
+
+## Tenants
+- `zainab@tenant.com` / `hash5`
+- `12` / `12`
 
 * * *
 
